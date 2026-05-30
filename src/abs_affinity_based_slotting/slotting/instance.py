@@ -1,107 +1,284 @@
-"""The problem to solve: immutable data for one slotting instance.
+"""Slotting problem instance.
 
-A :class:`SlottingInstance` bundles everything a method needs to produce and
-score an assignment, and nothing else. It is read-only; methods consume it and
-return an :class:`Assignment`, they never mutate it.
+A ``SlottingInstance`` contains the fixed data needed to build, score, and
+compare slotting assignments.
 
-Units: distances are kept in their native unit (inches); convert to meters only
-when reporting.
+It does not represent a solution. A solution is represented by ``Assignment``.
+The instance is immutable: methods and heuristics should read from it and
+return assignments without modifying the instance itself.
+"""
+"""Slotting problem instance.
+
+A SlottingInstance stores the fixed numerical data needed to evaluate and
+solve one warehouse slotting problem.
+
+External identifiers such as SKU ids, location ids and bay ids are kept for
+interpretability. Internally, the instance uses integer positions and NumPy /
+SciPy objects, which are more convenient for objective functions and heuristics.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Hashable
 
 import numpy as np
-import pandas as pd
+from scipy.sparse import csr_matrix, issparse
+
+SkuId = Hashable
+LocationId = Hashable
+BayId = Hashable
 
 
 @dataclass(frozen=True, eq=False, repr=False)
 class SlottingInstance:
-    demand: pd.Series          # index = sku; defines the SKU universe
-    location_cost: pd.Series   # index = location_id; access cost (to dock)
-    location_bay: pd.Series    # index = location_id; value = bay_id
-    bay_distance: pd.DataFrame  # symmetric bay-by-bay distances
-    affinity: Any | None = None        # SKU-SKU affinity, built later
-    merchant: pd.Series | None = None  # index = sku; owning merchant
+    """Numerical representation of one slotting instance.
+
+    Parameters
+    ----------
+    sku_ids:
+        SKU identifiers. Position i in this array corresponds to SKU i.
+    location_ids:
+        Location identifiers. Position l in this array corresponds to location l.
+    bay_ids:
+        Bay identifiers. Position b in this array corresponds to bay b.
+    demand:
+        Demand weight per SKU. Shape: (n_skus,).
+    location_cost:
+        Access cost per location, usually distance to the dock. Shape:
+        (n_locations,).
+    location_bay:
+        Bay index for each location. Shape: (n_locations,).
+    bay_distance:
+        Walking distance between bays. Shape: (n_bays, n_bays).
+    affinity:
+        SKU-SKU affinity matrix. Shape: (n_skus, n_skus). Stored as CSR sparse
+        matrix.
+    merchant_ids:
+        Optional merchant identifier per SKU. Shape: (n_skus,).
+
+    Notes
+    -----
+    This class does not represent a solution. A solution is represented by an
+    Assignment.
+
+    Distances are kept in the unit used by the source data, currently inches.
+    Convert to meters only when reporting results.
+    """
+
+    sku_ids: np.ndarray
+    location_ids: np.ndarray
+    bay_ids: np.ndarray
+
+    demand: np.ndarray
+    location_cost: np.ndarray
+    location_bay: np.ndarray
+    bay_distance: np.ndarray
+    affinity: csr_matrix
+
+    merchant_ids: np.ndarray | None = None
 
     def __post_init__(self) -> None:
-        if not self.demand.index.is_unique:
-            raise ValueError("demand has duplicate SKUs in its index")
-        if not self.location_cost.index.is_unique:
-            raise ValueError("location_cost has duplicate locations in its index")
-        if not self.location_cost.index.equals(self.location_bay.index):
-            raise ValueError("location_cost and location_bay must share the same index")
+        object.__setattr__(self, "sku_ids", np.asarray(self.sku_ids, dtype=object))
+        object.__setattr__(
+            self,
+            "location_ids",
+            np.asarray(self.location_ids, dtype=object),
+        )
+        object.__setattr__(self, "bay_ids", np.asarray(self.bay_ids, dtype=object))
+
+        object.__setattr__(self, "demand", np.asarray(self.demand, dtype=float))
+        object.__setattr__(
+            self,
+            "location_cost",
+            np.asarray(self.location_cost, dtype=float),
+        )
+        object.__setattr__(
+            self,
+            "location_bay",
+            np.asarray(self.location_bay, dtype=int),
+        )
+        object.__setattr__(
+            self,
+            "bay_distance",
+            np.asarray(self.bay_distance, dtype=float),
+        )
+
+        if not issparse(self.affinity):
+            affinity = csr_matrix(self.affinity)
+        else:
+            affinity = self.affinity.tocsr()
+
+        object.__setattr__(self, "affinity", affinity)
+
+        if self.merchant_ids is not None:
+            merchant_ids = np.asarray(self.merchant_ids, dtype=object)
+            object.__setattr__(self, "merchant_ids", merchant_ids)
+
+        self._validate()
+        self._build_indexes()
+
+    def _validate(self) -> None:
+        self._validate_ids()
+        self._validate_shapes()
+        self._validate_values()
+
+    def _validate_ids(self) -> None:
+        if len(set(self.sku_ids)) != len(self.sku_ids):
+            raise ValueError("sku_ids contains duplicated values.")
+
+        if len(set(self.location_ids)) != len(self.location_ids):
+            raise ValueError("location_ids contains duplicated values.")
+
+        if len(set(self.bay_ids)) != len(self.bay_ids):
+            raise ValueError("bay_ids contains duplicated values.")
+
+    def _validate_shapes(self) -> None:
+        if self.demand.shape != (self.n_skus,):
+            raise ValueError(
+                f"demand must have shape ({self.n_skus},), "
+                f"got {self.demand.shape}."
+            )
+
+        if self.location_cost.shape != (self.n_locations,):
+            raise ValueError(
+                f"location_cost must have shape ({self.n_locations},), "
+                f"got {self.location_cost.shape}."
+            )
+
+        if self.location_bay.shape != (self.n_locations,):
+            raise ValueError(
+                f"location_bay must have shape ({self.n_locations},), "
+                f"got {self.location_bay.shape}."
+            )
+
+        if self.bay_distance.shape != (self.n_bays, self.n_bays):
+            raise ValueError(
+                f"bay_distance must have shape ({self.n_bays}, {self.n_bays}), "
+                f"got {self.bay_distance.shape}."
+            )
+
+        if self.affinity.shape != (self.n_skus, self.n_skus):
+            raise ValueError(
+                f"affinity must have shape ({self.n_skus}, {self.n_skus}), "
+                f"got {self.affinity.shape}."
+            )
+
+        if self.merchant_ids is not None and self.merchant_ids.shape != (self.n_skus,):
+            raise ValueError(
+                f"merchant_ids must have shape ({self.n_skus},), "
+                f"got {self.merchant_ids.shape}."
+            )
+
         if self.n_locations < self.n_skus:
             raise ValueError(
-                f"infeasible: {self.n_skus} SKUs but only {self.n_locations} locations"
+                f"Infeasible instance: {self.n_skus} SKUs but only "
+                f"{self.n_locations} locations."
             )
-        unknown = set(self.location_bay.unique()) - set(self.bay_distance.index)
-        if unknown:
-            raise ValueError(f"{len(unknown)} bays missing from bay_distance, e.g. {next(iter(unknown))!r}")
 
-    # --- universes ---
+    def _validate_values(self) -> None:
+        if np.isnan(self.demand).any():
+            raise ValueError("demand contains NaN values.")
 
-    @property
-    def skus(self) -> pd.Index:
-        return self.demand.index
+        if np.isnan(self.location_cost).any():
+            raise ValueError("location_cost contains NaN values.")
 
-    @property
-    def locations(self) -> pd.Index:
-        return self.location_cost.index
+        if np.isnan(self.bay_distance).any():
+            raise ValueError("bay_distance contains NaN values.")
+
+        if (self.demand < 0).any():
+            raise ValueError("demand must be non-negative.")
+
+        if (self.location_cost < 0).any():
+            raise ValueError("location_cost must be non-negative.")
+
+        if (self.bay_distance < 0).any():
+            raise ValueError("bay_distance must be non-negative.")
+
+        if self.location_bay.min(initial=0) < 0:
+            raise ValueError("location_bay contains negative bay indexes.")
+
+        if self.location_bay.max(initial=0) >= self.n_bays:
+            raise ValueError("location_bay contains indexes outside bay_ids.")
+
+    def _build_indexes(self) -> None:
+        sku_to_idx = {sku: idx for idx, sku in enumerate(self.sku_ids)}
+        location_to_idx = {loc: idx for idx, loc in enumerate(self.location_ids)}
+        bay_to_idx = {bay: idx for idx, bay in enumerate(self.bay_ids)}
+
+        object.__setattr__(self, "_sku_to_idx", sku_to_idx)
+        object.__setattr__(self, "_location_to_idx", location_to_idx)
+        object.__setattr__(self, "_bay_to_idx", bay_to_idx)
 
     @property
     def n_skus(self) -> int:
-        return len(self.demand)
+        return len(self.sku_ids)
 
     @property
     def n_locations(self) -> int:
-        return len(self.location_cost)
+        return len(self.location_ids)
 
-    # --- geometry ---
+    @property
+    def n_bays(self) -> int:
+        return len(self.bay_ids)
 
-    def distance(self, loc_a, loc_b) -> float:
-        """Walking distance between two locations, via their bays."""
-        bay_a = self.location_bay.at[loc_a]
-        bay_b = self.location_bay.at[loc_b]
-        return float(self.bay_distance.at[bay_a, bay_b])
+    def sku_index(self, sku_id: SkuId) -> int:
+        """Return internal integer index for a SKU id."""
+        return self._sku_to_idx[sku_id]
 
-    # --- construction ---
+    def location_index(self, location_id: LocationId) -> int:
+        """Return internal integer index for a location id."""
+        return self._location_to_idx[location_id]
 
-    @classmethod
-    def from_tables(
-        cls,
-        sku_demand: pd.DataFrame,
-        location_costs: pd.DataFrame,
-        bay_distance: pd.DataFrame,
-        *,
-        skus: np.ndarray | pd.Index | None = None,
-        demand_metric: str = "pick_lines",
-        cost_col: str = "distance_to_dock_in",
-    ) -> "SlottingInstance":
-        """Assemble an instance from the processed tables.
+    def bay_index(self, bay_id: BayId) -> int:
+        """Return internal integer index for a bay id."""
+        return self._bay_to_idx[bay_id]
 
-        The SKU universe is ``skus`` if given, else every SKU in ``sku_demand``.
-        SKUs in the universe without recorded demand get demand 0.
-        """
-        demand_by_sku = sku_demand.set_index("sku")
-        universe = pd.Index(skus) if skus is not None else demand_by_sku.index
+    def location_id(self, location_idx: int) -> LocationId:
+        """Return external location id from internal location index."""
+        return self.location_ids[location_idx]
 
-        demand = demand_by_sku[demand_metric].reindex(universe, fill_value=0)
-        merchant = demand_by_sku["merchant_account_id"].reindex(universe)
+    def sku_id(self, sku_idx: int) -> SkuId:
+        """Return external SKU id from internal SKU index."""
+        return self.sku_ids[sku_idx]
 
-        costs = location_costs.set_index("location_id")
-        return cls(
-            demand=demand,
-            location_cost=costs[cost_col],
-            location_bay=costs["bay_id"],
-            bay_distance=bay_distance,
-            merchant=merchant,
-        )
+    def bay_id(self, bay_idx: int) -> BayId:
+        """Return external bay id from internal bay index."""
+        return self.bay_ids[bay_idx]
+
+    def bay_of_location_index(self, location_idx: int) -> int:
+        """Return bay index of a location index."""
+        return int(self.location_bay[location_idx])
+
+    def cost_of_location_index(self, location_idx: int) -> float:
+        """Return access cost of a location index."""
+        return float(self.location_cost[location_idx])
+
+    def distance_between_location_indices(
+        self,
+        location_a: int,
+        location_b: int,
+    ) -> float:
+        """Return walking distance between two location indices."""
+        bay_a = self.location_bay[location_a]
+        bay_b = self.location_bay[location_b]
+
+        return float(self.bay_distance[bay_a, bay_b])
+
+    def affinity_between_sku_indices(
+        self,
+        sku_a: int,
+        sku_b: int,
+    ) -> float:
+        """Return affinity score between two SKU indices."""
+        return float(self.affinity[sku_a, sku_b])
 
     def __repr__(self) -> str:
         return (
-            f"SlottingInstance(skus={self.n_skus}, locations={self.n_locations}, "
-            f"affinity={'set' if self.affinity is not None else 'none'})"
+            "SlottingInstance("
+            f"n_skus={self.n_skus}, "
+            f"n_locations={self.n_locations}, "
+            f"n_bays={self.n_bays}, "
+            f"affinity_edges={self.affinity.nnz}"
+            ")"
         )

@@ -13,8 +13,6 @@ from ..config import DOCK
 
 def build_bay_distance_matrix(distances: pd.DataFrame) -> pd.DataFrame:
     """Return a symmetric bay-by-bay distance matrix (inches), zero diagonal.
-
-    Index and columns are ``bay_id`` values (the dock included).
     """
     long = distances.rename(
         columns={"bay_a": "src", "bay_b": "dst", "distance_in": "d"}
