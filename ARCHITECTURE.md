@@ -86,24 +86,37 @@ y las responsabilidades de cada pieza.
 ### 3.1 `SlottingInstance` — datos del problema (inmutable)
 
 Todo lo necesario para plantear y resolver una instancia, y nada más.
+Representación **numérica por posiciones**: los ids externos se guardan como
+arrays y la lógica interna trabaja con índices enteros. Sin pandas adentro.
 
 ```python
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False, repr=False)
 class SlottingInstance:
-    skus: np.ndarray            # SKUs a ubicar (el universo es configurable)
-    locations: np.ndarray       # locations candidatas (>= cant. de SKUs)
-    demand: np.ndarray          # demanda por SKU (alineada con `skus`)
-    location_cost: np.ndarray   # costo de acceso por location (al dock)
-    affinity: AffinityMatrix    # afinidad SKU-SKU, dispersa
-    distance: DistanceLookup    # distancia entre locations (vía bay)
-    # + metadata: mapa location->bay, merchant por SKU, etc.
+    # ids externos (posición i del array <-> índice interno i)
+    sku_ids: np.ndarray
+    location_ids: np.ndarray
+    bay_ids: np.ndarray
+    # datos numéricos alineados por posición
+    demand: np.ndarray          # (n_skus,)        demanda por SKU
+    location_cost: np.ndarray   # (n_locations,)   costo de acceso (al dock)
+    location_bay: np.ndarray    # (n_locations,)   índice de bay de cada location
+    bay_distance: np.ndarray    # (n_bays, n_bays) distancias entre bays
+    affinity: csr_matrix        # (n_skus, n_skus) afinidad dispersa (CSR)
+    merchant_ids: np.ndarray | None = None
 ```
 
-- El **universo de SKUs y de locations se pasa al constructor**, no se asume.
-  Esto deja abierto: todos los SKUs, solo los con demanda, por merchant, etc.
-- La afinidad y las distancias se guardan en estructuras eficientes (dispersa /
-  lookup) porque son las que escalan mal (ver QAP en
+- **Espacio de índices vs ids.** Métodos y objetivo operan con índices enteros
+  (rápido); la traducción a ids ocurre solo en los bordes vía `sku_index` /
+  `location_index` / `bay_index` y sus inversos.
+- El **universo de SKUs y de locations se pasa al builder**, no se asume. Esto
+  deja abierto: todos los SKUs, solo los con demanda, por merchant, etc.
+- **Afinidad dispersa (CSR)** y distancias a nivel bay porque son las que escalan
+  mal (ver QAP en
   [Resumen y punto de partida.md](Resumen%20y%20punto%20de%20partida.md)).
+- Validación exhaustiva en `__post_init__` (unicidad, shapes, NaN,
+  no-negatividad, índices de bay en rango, factibilidad `n_locations >= n_skus`).
+- **El armado desde las tablas pandas vive aparte** (`slotting/build.py`,
+  `build_instance(...)`), para que la instancia no toque pandas ni al construirse.
 
 ### 3.2 `Assignment` — una solución (biyección parcial)
 
@@ -113,13 +126,15 @@ class Assignment:
     def location_of(self, sku) -> location
     def sku_at(self, location) -> sku | None
     def to_frame(self) -> pd.DataFrame      # representación canónica, serializable
-    def swap(self, sku_a, sku_b) -> "Assignment"   # para búsqueda local
+    def to_dict(self) -> dict               # copia del mapa sku -> location
+    def swap(self, sku_a, sku_b) -> None     # in-place, O(1), para búsqueda local
+    def copy(self) -> "Assignment"           # snapshot independiente
 ```
 
-- Representación **canónica** = DataFrame (`sku`, `location_id`, ...), fácil de
+- **Mutable in-place**: `swap` modifica el objeto (O(1) con dos dicts) porque la
+  búsqueda local hace miles de swaps; `copy()` da un snapshot de la mejor solución.
+- Representación **canónica** = DataFrame (`sku`, `location_id`), fácil de
   guardar y comparar entre estrategias.
-- Vistas internas con arrays/dicts para que los swaps de la búsqueda local sean
-  baratos.
 
 ### 3.3 `SlottingMethod` — estrategia (patrón Strategy)
 
@@ -211,8 +226,9 @@ src/abs_affinity_based_slotting/
 │   ├── distances.py     matriz de distancias entre bays / al dock            [hecho]
 │   └── costs.py         costo de acceso por location                          [hecho]
 ├── slotting/
-│   ├── instance.py      SlottingInstance (datos del problema)                 [pendiente]
-│   ├── assignment.py    Assignment (solución, biyección parcial)              [pendiente]
+│   ├── instance.py      SlottingInstance (datos del problema, numérico)       [hecho]
+│   ├── build.py         build_instance: tablas processed -> instancia         [pendiente]
+│   ├── assignment.py    Assignment (solución, biyección parcial)              [hecho]
 │   └── objective.py     función de costo + delta de swap                      [pendiente]
 ├── methods/
 │   ├── current.py       baseline: slotting actual (snapshot)                  [pendiente]

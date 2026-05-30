@@ -1,14 +1,5 @@
 """Slotting problem instance.
 
-A ``SlottingInstance`` contains the fixed data needed to build, score, and
-compare slotting assignments.
-
-It does not represent a solution. A solution is represented by ``Assignment``.
-The instance is immutable: methods and heuristics should read from it and
-return assignments without modifying the instance itself.
-"""
-"""Slotting problem instance.
-
 A SlottingInstance stores the fixed numerical data needed to evaluate and
 solve one warehouse slotting problem.
 
