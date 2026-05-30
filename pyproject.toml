@@ -1,0 +1,19 @@
+[project]
+name = "abs-affinity-based-slotting"
+version = "0.1.0"
+description = "Affinity-based slotting tools"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "numpy",
+    "pyarrow",
+    "matplotlib",
+    "scipy",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
