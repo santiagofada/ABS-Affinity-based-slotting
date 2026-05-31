@@ -183,6 +183,30 @@ Para cada batch de test: re-ubica sus SKUs según `assignment`, ordena el
 recorrido (snake / orden de picking) y suma distancias. Es independiente del
 método que generó la asignación.
 
+### 3.6 Modularidad: contratos + registro
+
+Las tres familias intercambiables (métodos, afinidades, clustering) siguen el
+**mismo patrón**: un `Protocol` define el contrato y un `Registry` mapea
+`nombre -> implementación`. Agregar una variante = **una clase nueva + registrarla**;
+nada que itere el registro cambia.
+
+```python
+@method_registry.register("abc")
+class ABCFrequency:
+    name = "abc"
+    def solve(self, instance) -> Assignment: ...
+```
+
+| Familia | Contrato (`Protocol`) | Registro | Dónde |
+|---|---|---|---|
+| Métodos `.solve` | `SlottingMethod.solve(instance) -> Assignment` | `method_registry` | `methods/base.py` |
+| Afinidades (`A`) | `AffinityBuilder.build(cooccurrence, support, n_batches) -> csr` | `affinity_registry` | `demand/affinity.py` |
+| Clustering | `ClusteringStrategy.cluster(instance) -> labels` | `clustering_registry` | `clustering.py` |
+
+El helper genérico `Registry` vive en `registry.py`. Las *implementaciones*
+concretas (abc, jaccard, cosine, k-means, ...) son la parte de optimización y se
+agregan después; los contratos ya están fijados.
+
 ---
 
 ## 4. Convenciones
@@ -211,6 +235,8 @@ método que generó la asignación.
 ```
 src/abs_affinity_based_slotting/
 ├── config.py            rutas, constante DOCK, conversión pulgadas<->metros   [hecho]
+├── registry.py          Registry genérico (nombre -> implementación)          [hecho]
+├── clustering.py        contrato ClusteringStrategy + registro                [hecho]
 ├── data/
 │   ├── loaders.py       lectura de data/raw (WarehouseDataLoader)             [hecho]
 │   ├── schemas.py       validación de columnas                                [hecho]
@@ -219,7 +245,8 @@ src/abs_affinity_based_slotting/
 ├── demand/
 │   ├── sku_demand.py    demanda por SKU desde picking                         [hecho]
 │   ├── cooccurrence.py  pares de SKU coocurrentes por batch                   [pendiente]
-│   ├── affinity.py      métricas de afinidad (jaccard, cosine, lift, ...)     [pendiente]
+│   ├── affinity.py      contrato AffinityBuilder + registro                   [hecho]
+│   │                    (métricas jaccard/cosine/lift = optimización)         [pendiente]
 │   └── merchants.py     estructura/afinidad por merchant                      [pendiente]
 ├── warehouse/
 │   ├── locations.py     locations desde initial_stock (+ is_empty)            [hecho]
@@ -231,16 +258,17 @@ src/abs_affinity_based_slotting/
 │   ├── assignment.py    Assignment (solución, biyección parcial)              [hecho]
 │   └── objective.py     función de costo + delta de swap                      [pendiente]
 ├── methods/
-│   ├── current.py       baseline: slotting actual (snapshot)                  [pendiente]
+│   ├── base.py          contrato SlottingMethod + registro                    [hecho]
+│   ├── current.py       baseline: slotting actual (snapshot) + CurrentSlotting [hecho]
 │   ├── abc.py           baseline: frecuencia / ABC                            [pendiente]
 │   ├── merchant.py      baseline: agrupado por merchant                       [pendiente]
 │   ├── swaps.py         heurística: búsqueda local por swaps                  [pendiente]
 │   ├── clustering.py    heurística: clustering por afinidad                   [pendiente]
 │   └── anchors.py       heurística: productos ancla                           [pendiente]
 ├── evaluation/
-│   ├── routes.py        costo de recorrido de un batch                        [pendiente]
-│   ├── metrics.py       Metrics + agregaciones                                [pendiente]
-│   └── evaluator.py     Evaluator (orquesta sobre test)                       [pendiente]
+│   ├── routes.py        costo de recorrido de un batch                        [hecho]
+│   ├── metrics.py       Metrics + agregaciones                                [hecho]
+│   └── evaluator.py     Evaluator (orquesta sobre test)                       [hecho]
 └── plotting.py          figuras para el documento                            [pendiente]
 
 scripts/build_inputs.py  genera data/processed/*                               [hecho]
@@ -252,7 +280,9 @@ scripts/build_inputs.py  genera data/processed/*                               [
 
 | Decisión | Elección | Motivo / estado |
 |---|---|---|
-| Universo de SKUs a ubicar | **Configurable** (parámetro de la instancia) | Aún no decidido; mantenerlo general. |
+| Universo de SKUs a ubicar | **Todos los SKUs ocupados** de `initial_stock` (~27.000) | Garantiza cobertura 100% en test: toda asignación ubica todo SKU pickeable. SKUs sin demanda en train entran con demanda 0. El builder igual lo deja configurable. |
+| Orden de recorrido (Evaluator) | **Snake a nivel bay** (orden por aisle, bay_number) | Recalculado según la asignación bajo prueba. Shelf/bin no afectan la distancia (viaje intra-bay = 0). |
+| SKU de test sin ubicar | **Error** (no debería pasar) | Con cobertura 100%, un faltante es un bug; el evaluador lanza excepción en vez de saltarlo. |
 | Dinámica de stock (relocations) | **Slotting estático** (snapshot) | Alcance clásico del SLAP; simplificación documentada. Hay 6.452 relocations en los datos que ignoramos a propósito. |
 | Granularidad de distancia | Nivel **bay** | Es como vienen las distancias; viaje intra-bay no modelado. |
 | Unidad del split temporal | **batch** | Evita fuga; batch es unidad de coocurrencia y evaluación. |
@@ -263,10 +293,9 @@ scripts/build_inputs.py  genera data/processed/*                               [
 
 ## 7. Preguntas abiertas
 
-- Universo de SKUs definitivo y qué hacer con SKUs que aparecen en test pero no
-  en train.
-- Cómo se asignan locations vacías / sobrantes (hay más locations que SKUs).
-- Orden de recorrido exacto en el `Evaluator` (snake puro vs. heurística de ruta).
+- Cómo se asignan las locations vacías / sobrantes (hay más locations que SKUs).
+- Snake simple (orden por aisle, bay_number) vs. S-shape real (boustrophedon que
+  alterna sentido por pasillo). Arrancamos con el simple.
 - Valor(es) de `lam` en la función objetivo y cómo se calibra.
 - Definición de "zona" para los métodos en dos etapas (clustering, merchant).
 ```
