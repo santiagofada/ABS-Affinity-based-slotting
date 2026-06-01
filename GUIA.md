@@ -1,364 +1,443 @@
-# Guía del proyecto — Affinity-Based Slotting (ABS)
+# Affinity-Based Slotting — Documento técnico
 
-> **Para quién es esto.** Para alguien con base técnica (sabe programar, leer
-> Python) pero que **no necesita saber de optimización** ni conocer el proyecto.
-> Al terminar de leer vas a entender *qué problema resolvemos*, *qué datos hay*,
-> *cómo está organizado el código*, *qué está hecho y qué falta*, y *cómo correrlo*.
+Documento de referencia técnica del proyecto: formulación del problema, decisiones
+de modelado, metodología de evaluación y arquitectura de la implementación. Asume
+lector con base cuantitativa y de ingeniería de software; no asume familiaridad
+previa con optimización combinatoria ni con el dominio logístico.
 
-Otros documentos del repo y cuándo leerlos:
-- [propuesta de tesis.md](propuesta%20de%20tesis.md) — el problema y la motivación (contexto de tesis).
-- [Resumen y punto de partida.md](Resumen%20y%20punto%20de%20partida.md) — el marco teórico.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — los contratos del código en detalle (más técnico).
-- [plan.md](plan.md) — la hoja de ruta paso a paso.
-- **Este documento** es el resumen integrador: empezá por acá.
+Documentos complementarios: [propuesta de tesis.md](propuesta%20de%20tesis.md)
+(motivación y encuadre), [Resumen y punto de partida.md](Resumen%20y%20punto%20de%20partida.md)
+(estado del arte), [ARCHITECTURE.md](ARCHITECTURE.md) (contratos de código en
+detalle), [plan.md](plan.md) (hoja de ruta).
 
 ---
 
-## 1. El problema, en palabras simples
+## 1. Problema y alcance
 
-Imaginá un **depósito** gigante de e-commerce (un *warehouse*). Cuando llega un
-pedido, un operario camina por los pasillos, va a buscar cada producto a su
-estante, y los junta para empaquetar. **La mayor parte del tiempo se va en
-caminar.** Menos caminata = más pedidos por hora = menos costo.
+### 1.1 Contexto operativo
 
-La pregunta central del proyecto:
+En un centro de distribución (*warehouse*) el costo dominante del cumplimiento de
+órdenes es el **desplazamiento del operario** durante el picking: recuperar los
+ítems de una orden implica recorrer pasillos hasta cada ubicación. La asignación
+de productos a ubicaciones (*slotting*) determina esos recorridos y, por lo tanto,
+la productividad del depósito. En la práctica el slotting suele decidirse de forma
+heurística (por disponibilidad de hueco o rotación individual), ignorando que los
+productos no se demandan de forma aislada: existen **patrones de co-demanda**
+(afinidades) que, si no se explotan, producen recorridos redundantes.
 
-> **¿Dónde conviene ubicar cada producto para que los operarios caminen lo menos posible?**
+### 1.2 Definición del problema
 
-A esto se le llama **slotting** (asignar a cada producto un "slot"/ubicación).
+El problema pertenece a la familia **Storage Location Assignment Problem (SLAP)**,
+y específicamente a su variante de **correlated storage assignment** /
+*affinity-based slotting*: ubicar los SKUs de modo de minimizar el costo de
+picking esperado, considerando tanto la **frecuencia individual** de demanda como
+la **afinidad** (co-ocurrencia en órdenes) entre pares de SKUs.
 
-Dos ideas clave que usamos:
+### 1.3 Alcance y no-objetivos
 
-1. **Productos muy pedidos cerca de la salida.** Si un producto se pide todo el
-   tiempo, ponelo cerca del punto de empaque (el *dock*) para no caminar de más.
-2. **Productos que se piden juntos, cerca entre sí.** Si dos productos aparecen
-   seguido en el mismo pedido (tienen **afinidad**), conviene que estén pegados,
-   así el operario los agarra en un solo tramo del recorrido. Hoy en muchos
-   depósitos las ubicaciones se eligen "a ojo" (donde hay hueco libre), sin mirar
-   estas relaciones — y ahí está la oportunidad de mejora.
+| Dentro de alcance | Fuera de alcance (explícito) |
+|---|---|
+| Slotting **estático** (una asignación SKU→ubicación) | Re-slotting dinámico / mudanzas en el tiempo |
+| Minimizar distancia de picking estimada | Modelado de congestión, mano de obra, layout design |
+| Comparación rigurosa de estrategias sobre datos retenidos | Resolución exacta a escala industrial |
+| Distancia a nivel **bay** (dato provisto) | Modelado del viaje intra-bay (estante/posición) |
 
-### Vocabulario mínimo (ver [Glosario](#9-glosario) al final)
-
-- **SKU**: un producto distinto (ej. `SKU-00042`). Hay ~27.000.
-- **Location** (ubicación): un hueco físico exacto (ej. `A14-21-B-02`). Hay 30.000.
-- **Bay**: la "columna" de estantería donde están varias locations (ej. `A14-21`).
-  Las distancias se miden entre bays. Hay 1.000 bays + el **dock**.
-- **Dock**: el punto de empaque; todo recorrido empieza y termina ahí.
-- **Batch**: un lote de pedidos que un operario recolecta de una sola pasada.
-  Es nuestra unidad de "qué se pide junto".
-- **Afinidad**: una medida de cuánto se piden juntos dos SKUs.
-
----
-
-## 2. La idea de la solución (sin jerga pesada)
-
-Tenemos el **historial real** de qué se pickeó, cuándo y desde dónde. Lo usamos
-para:
-
-1. **Medir la demanda** de cada SKU (¿cuánto se pide?).
-2. **Medir la afinidad** entre SKUs (¿qué se pide junto?).
-3. **Conocer la geometría** del depósito (¿qué tan lejos está cada cosa?).
-4. Con todo eso, **proponer una mejor asignación** SKU → location.
-5. **Evaluarla**: simular cuánto se caminaría con esa asignación y compararla
-   contra cómo está hoy.
-
-El núcleo matemático (el "ubicar óptimamente") es un problema conocido y **difícil**
-(formalmente, un *Quadratic Assignment Problem*; no escala si se resuelve de forma
-exacta). Por eso la estrategia es: primero **baselines** simples (reglas fáciles de
-entender), después **heurísticas** (métodos aproximados más astutos), y comparar
-todo contra el estado actual. **Esa parte de "resolver" todavía no está implementada**
-— ver [sección 6](#6-qué-está-hecho-y-qué-falta). Lo que **sí** está listo es toda la
-base que la rodea.
-
-### El flujo de una comparación
-
-Todo experimento tiene la misma forma (esta es la columna vertebral del proyecto):
-
-```
-   datos del problema        un método propone        el "juez" mide
-        (instancia)   ───▶   una asignación   ───▶   cuánto se camina
-   SlottingInstance          SlottingMethod           Evaluator
-                             → Assignment              → Metrics
-```
+El objetivo metodológico central es construir una **base de comparación honesta**
+(instancia, función de costo, evaluación out-of-sample) sobre la cual medir
+distintas estrategias de asignación.
 
 ---
 
-## 3. Los datos
+## 2. Formulación matemática
 
-Un dataset **sintético** (generado, no de un cliente real) que describe un
-depósito de zona única y un mes de actividad. Están en
-[data/raw/](data/raw/) como archivos `.parquet`. La descripción completa de
-columnas está en [data/readme.txt](data/readme.txt). Resumen:
+### 2.1 Notación
 
-| Archivo | Qué es | Tamaño |
+| Símbolo | Significado |
+|---|---|
+| $I$, $n=\lvert I\rvert$ | conjunto de SKUs a ubicar |
+| $L$, $m=\lvert L\rvert$ | conjunto de ubicaciones candidatas, $m \ge n$ |
+| $f_i \ge 0$ | demanda del SKU $i$ (métrica primaria: `pick_lines`) |
+| $c_\ell \ge 0$ | costo de acceso de la ubicación $\ell$ (distancia al dock) |
+| $a_{ij} \ge 0$ | afinidad entre SKUs $i,j$; simétrica, $a_{ii}=0$ |
+| $D_{\ell k} \ge 0$ | distancia entre ubicaciones $\ell,k$ (vía sus bays); simétrica, $D_{\ell\ell}=0$ |
+| $x_{i\ell}\in\{0,1\}$ | variable de decisión: $1$ si $i$ se ubica en $\ell$ |
+| $\lambda\in[0,1]$ | peso relativo demanda-acceso vs afinidad-proximidad |
+
+### 2.2 Programa cuadrático binario
+
+$$
+\min_{x}\;\; \lambda \sum_{i\in I}\sum_{\ell\in L} f_i\, c_\ell\, x_{i\ell}
+\;+\; (1-\lambda)\sum_{i\in I}\sum_{j\in I}\sum_{\ell\in L}\sum_{k\in L}
+a_{ij}\, D_{\ell k}\, x_{i\ell}\, x_{jk}
+$$
+
+sujeto a
+
+$$
+\sum_{\ell\in L} x_{i\ell}=1\ \ \forall i\in I,\qquad
+\sum_{i\in I} x_{i\ell}\le 1\ \ \forall \ell\in L,\qquad
+x_{i\ell}\in\{0,1\}.
+$$
+
+El **término lineal** modela "ubicar SKUs frecuentes en posiciones de bajo costo
+de acceso"; el **término cuadrático** penaliza ubicar lejos a SKUs con alta
+afinidad. Las restricciones imponen que cada SKU ocupe exactamente una ubicación y
+cada ubicación a lo sumo un SKU (la desigualdad admite ubicaciones vacías, ya que
+$m>n$).
+
+### 2.3 Vista como permutación y relación con el QAP
+
+Cuando se restringe a las $n$ ubicaciones efectivamente usadas, una solución
+factible es una **inyección** $\pi: I \to L$ (SKU $i$ → ubicación $\pi(i)$), y el
+costo se reescribe como
+
+$$
+C(\pi)=\lambda\sum_{i} f_i\, c_{\pi(i)}
+\;+\;(1-\lambda)\sum_{i}\sum_{j} a_{ij}\, D_{\pi(i)\pi(j)} .
+$$
+
+Esta es la forma de **Koopmans–Beckmann** del **Quadratic Assignment Problem
+(QAP)** con término lineal. El QAP es **NP-hard** y notoriamente difícil incluso
+para instancias moderadas; no admite resolución exacta a la escala de este
+problema. De ahí la estrategia por baselines + heurísticas (sección 7).
+
+### 2.4 Escala y consecuencias computacionales
+
+Con $n\approx 27\,000$ y $m\approx 30\,000$:
+
+- variables binarias $n\cdot m \approx 8.1\times 10^{8}$;
+- la matriz de afinidad densa tendría $n^2 \approx 7.3\times 10^{8}$ entradas;
+- una evaluación completa del término cuadrático es $O(n^2)$.
+
+Dos consecuencias de diseño, ambas adoptadas:
+
+1. **Afinidad dispersa.** $a_{ij}$ se almacena como matriz **CSR** y se restringe
+   a los vínculos más fuertes (top-$k$ por SKU, sección 4.2), llevando los aristas
+   de $O(n^2)$ a $O(nk)$.
+2. **Evaluación incremental de movimientos.** Las heurísticas de búsqueda local no
+   recomputan $C(\pi)$ sino su **delta** ante un intercambio (sección 2.5).
+
+### 2.5 Delta de costo de un intercambio (swap)
+
+Para búsqueda local interesa el costo de intercambiar las ubicaciones de dos SKUs
+$u,v$ con $p=\pi(u)$, $q=\pi(v)$. El cambio de costo $\Delta = C(\pi')-C(\pi)$ se
+calcula sin recomputar la suma global. Con $a$ y $D$ simétricas y diagonal nula:
+
+$$
+\Delta_{\text{lin}} = (f_u - f_v)\,(c_q - c_p),
+$$
+
+$$
+\Delta_{\text{quad}} = 2\!\!\sum_{k\neq u,v}\!\! (a_{uk}-a_{vk})\,
+\bigl(D_{q,\pi(k)}-D_{p,\pi(k)}\bigr),
+$$
+
+$$
+\Delta = \lambda\,\Delta_{\text{lin}} + (1-\lambda)\,\Delta_{\text{quad}} .
+$$
+
+(El factor $2$ corresponde a sumar pares ordenados; el término $a_{uv}D_{pq}$ no
+cambia porque $D$ es simétrica.) El costo de $\Delta_{\text{quad}}$ es $O(n)$
+denso, pero $O(\deg(u)+\deg(v))=O(k)$ con afinidad top-$k$: este es el argumento
+de escalabilidad que habilita la búsqueda local sobre decenas de miles de SKUs.
+
+---
+
+## 3. De los datos al modelo
+
+### 3.1 Dataset
+
+Dataset sintético de un depósito de zona única y 30 días de actividad
+([data/raw/](data/raw/), esquema completo en [data/readme.txt](data/readme.txt)).
+Unidades de distancia en pulgadas; conversión a metros sólo para reporte.
+
+| Tabla | Contenido | Filas |
 |---|---|---|
-| `coordinates.parquet` | Cada bay con su posición (pasillo, número, x/y). | 1.001 filas |
-| `distances.parquet` | Distancia caminando entre cada par de bays. | 500.500 filas |
-| `initial_stock.parquet` | Qué SKU vive en cada location al inicio. | 30.000 filas |
-| `picking_events.parquet` | Cada línea de picking: batch, momento, SKU, ubicación. | 174.597 filas |
-| `replenishment_events.parquet` | Reposiciones de stock (incl. mudanzas de SKU). | 14.647 filas |
+| `coordinates` | bays con pasillo, número, lado y coordenadas $(x,y)$ | 1.001 |
+| `distances` | distancia camino-mínimo (Dijkstra) entre pares de bays | 500.500 |
+| `initial_stock` | SKU y stock por ubicación (incluye vacías) | 30.000 |
+| `picking_events` | una fila por línea de pick (batch, timestamp, ubicación, SKU) | 174.597 |
+| `replenishment_events` | reposiciones, incluidas relocations de SKU | 14.647 |
 
-Números útiles para tener en la cabeza:
-- **30 días** de historia (enero 2025), ~5.700 picks/día.
-- **2.000 batches**, ~87 líneas por batch, **10 merchants** (vendedores).
-- **27.000 SKUs** con ubicación, **3.000 locations vacías**.
-- Distancias **en pulgadas** (se convierten a metros solo para reportar).
+Magnitudes: $\sim$2.000 batches ($\approx$87 líneas/batch), 10 merchants, 27.000
+SKUs ubicados, 3.000 ubicaciones vacías, 1.000 bays + dock.
 
-> **Dos decisiones importantes sobre los datos:**
-> - **Slotting estático.** Los SKUs en realidad se mudan en el tiempo (hay 6.452
->   mudanzas por reposición). Nosotros ignoramos eso a propósito y trabajamos con
->   una "foto" fija: cada SKU vive en un lugar. Es el alcance clásico del problema.
-> - **Distancia a nivel bay.** No modelamos cuánto se camina *dentro* de una bay
->   (entre estantes); dos productos en la misma bay están "a distancia 0".
+### 3.2 Construcción de los parámetros del modelo
 
----
-
-## 4. Cómo está organizado el código
-
-El paquete es [src/abs_affinity_based_slotting/](src/abs_affinity_based_slotting/).
-Está pensado en **capas**, donde cada capa solo usa las de arriba:
-
-```
- datos crudos   →  data/         leer y partir el historial
- features       →  demand/ warehouse/   demanda, afinidad, costos, distancias
- problema       →  slotting/     juntar todo en "la instancia" + la solución
- métodos        →  methods/      estrategias que proponen una asignación
- evaluación     →  evaluation/   el juez que mide cuánto se camina
- experimentos   →  scripts/ notebooks/   correr y comparar
-```
-
-Hay dos ideas de diseño que conviene entender porque se repiten:
-
-**(a) "Datos del problema" (instancia) vs "una solución" (asignación).**
-La `SlottingInstance` es de **solo lectura**: contiene lo dado (qué SKUs, qué
-locations, demanda, distancias, afinidad). Una `Assignment` es **una propuesta**
-de dónde poner cada SKU. Un método lee la instancia y devuelve una asignación;
-nunca modifica la instancia.
-
-**(b) Lo "computado" trabaja con números, no con nombres.**
-Por dentro, la instancia usa **índices enteros** (el SKU número 0, 1, 2…) y
-matrices de NumPy/SciPy, que son rápidas. Los nombres lindos (`SKU-00042`,
-`A14-21`) se guardan aparte y se traducen solo en los bordes. Pandas se usa para
-leer/escribir archivos, **no** en el cálculo pesado.
-
-**(c) Las piezas intercambiables siguen un patrón único: contrato + registro.**
-Hay tres "familias" que tendrán muchas variantes (métodos de optimización, formas
-de medir afinidad, formas de clusterizar). Para que sean **modulares**, cada
-familia define un *contrato* (una interfaz) y un *registro* (un diccionario
-`nombre → implementación`). Agregar una variante nueva = escribir una clase y
-registrarla; nada más cambia. (Detalle en [ARCHITECTURE.md §3.6](ARCHITECTURE.md).)
-
----
-
-## 5. Recorrido por los módulos (qué hace cada uno)
-
-### Configuración y utilidades
-- [config.py](src/abs_affinity_based_slotting/config.py) — rutas del proyecto,
-  la constante `DOCK`, y la conversión pulgadas↔metros.
-- [registry.py](src/abs_affinity_based_slotting/registry.py) — el `Registry`
-  genérico (`nombre → implementación`) que comparten las familias modulares.
-
-### `data/` — leer y preparar el historial
-- [data/loaders.py](src/abs_affinity_based_slotting/data/loaders.py) —
-  `WarehouseDataLoader`: lee los 5 parquets crudos a DataFrames.
-- [data/schemas.py](src/abs_affinity_based_slotting/data/schemas.py) — valida
-  que cada tabla tenga las columnas esperadas.
-- [data/io.py](src/abs_affinity_based_slotting/data/io.py) — leer/escribir los
-  artefactos derivados (`read_parquet`, `write_parquet`).
-- [data/split.py](src/abs_affinity_based_slotting/data/split.py) —
-  `split_picking_events`: parte el historial en **train** (para aprender demanda
-  y afinidad) y **test** (para evaluar). El corte es temporal y **respeta batches
-  enteros** para no "hacer trampa" (no mezclar info del futuro en el pasado).
-
-### `demand/` — qué se pide y qué se pide junto
-- [demand/sku_demand.py](src/abs_affinity_based_slotting/demand/sku_demand.py) —
-  `build_sku_demand`: una fila por SKU con su demanda (líneas de pick, unidades,
-  en cuántos batches aparece, etc.).
-- [demand/affinity.py](src/abs_affinity_based_slotting/demand/affinity.py) — el
-  **contrato** `AffinityBuilder` (cómo se construye la matriz de afinidad `A`) +
-  su registro. Las fórmulas concretas (Jaccard, coseno, lift…) son parte de la
-  optimización y **aún no están implementadas**.
-
-### `warehouse/` — el espacio físico
-- [warehouse/locations.py](src/abs_affinity_based_slotting/warehouse/locations.py)
-  — locations a partir del stock inicial (con flag de "vacía").
-- [warehouse/distances.py](src/abs_affinity_based_slotting/warehouse/distances.py)
-  — matriz simétrica de distancias entre bays y distancia de cada bay al dock.
-- [warehouse/costs.py](src/abs_affinity_based_slotting/warehouse/costs.py) —
-  `build_location_costs`: el "costo de acceso" de cada location (= su distancia
-  al dock).
-
-### `slotting/` — el problema y la solución
-- [slotting/instance.py](src/abs_affinity_based_slotting/slotting/instance.py) —
-  `SlottingInstance`: el objeto-problema, **inmutable y numérico**. Junta SKUs,
-  locations, demanda, costos, geometría y afinidad. Valida que todo sea coherente.
-- [slotting/build.py](src/abs_affinity_based_slotting/slotting/build.py) —
-  `build_instance`: arma la instancia a partir de las tablas (es el único lugar
-  donde pandas toca la instancia).
-- [slotting/assignment.py](src/abs_affinity_based_slotting/slotting/assignment.py)
-  — `Assignment`: una solución (mapa SKU↔location). Permite consultar e
-  intercambiar ubicaciones de forma eficiente (clave para las heurísticas).
-
-### `methods/` — las estrategias que proponen una asignación
-- [methods/base.py](src/abs_affinity_based_slotting/methods/base.py) — el
-  **contrato** `SlottingMethod` (`solve(instancia) → asignación`) + su registro.
-- [methods/current.py](src/abs_affinity_based_slotting/methods/current.py) — el
-  baseline **estado actual**: lee del stock inicial dónde está hoy cada SKU. Es
-  el punto de comparación principal. (Los demás métodos están vacíos: ver abajo.)
-
-### `clustering.py` — agrupar SKUs (para métodos en dos etapas)
-- [clustering.py](src/abs_affinity_based_slotting/clustering.py) — el **contrato**
-  `ClusteringStrategy` (`cluster(instancia) → etiqueta por SKU`) + su registro.
-  Implementaciones, aún no.
-
-### `evaluation/` — el juez
-- [evaluation/routes.py](src/abs_affinity_based_slotting/evaluation/routes.py) —
-  la matemática de **un recorrido**: dado el orden de visita, suma las distancias
-  `dock → ubicaciones → dock`.
-- [evaluation/metrics.py](src/abs_affinity_based_slotting/evaluation/metrics.py) —
-  `Metrics` y `summarize`: agrega los costos de todos los batches (total, media,
-  mediana, percentil 95).
-- [evaluation/evaluator.py](src/abs_affinity_based_slotting/evaluation/evaluator.py)
-  — `Evaluator`: para cada batch de test, mira dónde pone la asignación cada SKU,
-  ordena el recorrido en "snake" (recorriendo pasillos en orden) y suma distancias.
-  **Exige cobertura 100%**: si un SKU del test no está ubicado, es un error (no lo
-  tapa).
-
-### Orquestación
-- [scripts/build_inputs.py](scripts/build_inputs.py) — corre la preparación de
-  datos y deja los artefactos en `data/processed/`.
-- [notebooks/00_EDA.ipynb](notebooks/00_EDA.ipynb) — exploración inicial de datos.
-- [notebooks/test.ipynb](notebooks/test.ipynb) — pruebas que validan que todo lo
-  construido funciona (smoke-tests).
-
----
-
-## 6. Qué está hecho y qué falta
-
-### ✅ Hecho — toda la base "pre-optimización"
-
-Hay un **camino completo que funciona de punta a punta**: leer datos → armar la
-instancia → tomar una asignación → evaluarla y obtener un número. Ya corrimos el
-**primer benchmark** (el costo del slotting actual sobre el test):
-
-| Slotting actual sobre test | pulgadas | metros |
+| Parámetro | Fuente | Construcción |
 |---|---|---|
-| batches evaluados | 400 | — |
-| distancia total | 20.959.192 | ~532.363 m |
-| media por batch | 52.398 | ~1.331 m |
-| mediana por batch | 52.540 | ~1.335 m |
-| p95 por batch | 57.233 | ~1.454 m |
+| $f_i$ | `picking_events` (train) | conteo de líneas de pick por SKU ([demand/sku_demand.py](src/abs_affinity_based_slotting/demand/sku_demand.py)) |
+| $c_\ell$ | `distances` | distancia bay($\ell$)→dock ([warehouse/costs.py](src/abs_affinity_based_slotting/warehouse/costs.py)) |
+| $D_{\ell k}$ | `distances` | $D_{\ell k} = \text{dist}(\text{bay}(\ell),\text{bay}(k))$ ([warehouse/distances.py](src/abs_affinity_based_slotting/warehouse/distances.py)) |
+| $a_{ij}$ | `picking_events` (train) | co-ocurrencia por batch → métrica de afinidad (sección 4) |
 
-Concretamente, está listo: configuración, lectura y validación de datos, split
-train/test, demanda por SKU, distancias y costos del depósito, la instancia del
-problema (+ su builder), la representación de una solución, el baseline `current`,
-el evaluador completo, y **los tres contratos modulares** (métodos, afinidad,
-clustering) con su sistema de registro.
+La aproximación a nivel bay ($D_{\ell k}$ depende sólo de las bays) refleja que el
+dato de distancia es bay-a-bay y que el viaje intra-bay no está modelado; ítems en
+la misma bay quedan a distancia 0.
 
-### ⏳ Falta — la parte de optimización (y dos cosas de soporte)
+### 3.3 Protocolo de validación temporal
 
-**Soporte (no es optimización, son insumos/herramientas):**
-- [demand/cooccurrence.py](src/abs_affinity_based_slotting/demand/cooccurrence.py)
-  — contar qué pares de SKU aparecen en los mismos batches. Es el **insumo** de
-  toda afinidad (puro conteo).
-- [demand/merchants.py](src/abs_affinity_based_slotting/demand/merchants.py) —
-  análisis por merchant/vendedor.
-- [plotting.py](src/abs_affinity_based_slotting/plotting.py) — figuras.
-- **Harness de experimentos** — un comparador que recorra los métodos
-  registrados, los evalúe y arme una tabla de resultados.
-
-**Optimización propiamente dicha (el corazón de la tesis, aún por hacer):**
-- Implementar los `AffinityBuilder` (Jaccard, coseno, lift…) en
-  [demand/affinity.py](src/abs_affinity_based_slotting/demand/affinity.py).
-- [slotting/objective.py](src/abs_affinity_based_slotting/slotting/objective.py)
-  — la función de costo (estilo QAP) que las heurísticas minimizan.
-- Los métodos `.solve` en [methods/](src/abs_affinity_based_slotting/methods/):
-  `abc.py` (por frecuencia), `merchant.py`, `swaps.py` (búsqueda local),
-  `clustering.py` (dos etapas), `anchors.py` (productos ancla).
-- Las `ClusteringStrategy` concretas.
-
-> **Importante:** todo lo que falta **enchufa** sobre lo que ya existe sin
-> reescribir nada. Un método nuevo es una clase que implementa `solve` y se
-> registra; el evaluador y el harness no se tocan.
+Para estimar desempeño **fuera de muestra** se particiona `picking_events` en
+train (construcción de $f_i$ y $a_{ij}$) y test (evaluación). El corte es
+**temporal** y se realiza a **granularidad de batch**: cada batch se asigna
+íntegramente a una partición según el timestamp de su primer pick, y la fracción
+más reciente constituye el test ([data/split.py](src/abs_affinity_based_slotting/data/split.py)).
+Esto evita dos fugas: (i) usar el futuro para construir features del pasado, y
+(ii) partir un batch — la unidad de co-ocurrencia y de evaluación — entre ambas
+particiones. Con `test_size = 0.2`: 1.600 batches de train, 400 de test.
 
 ---
 
-## 7. Cómo correrlo
+## 4. Métricas de afinidad
 
-Requisitos: Python ≥ 3.11. El entorno se creó con [`uv`](https://github.com/astral-sh/uv).
+### 4.1 Espacio de métricas
 
-```bash
-# 1. Crear el entorno e instalar el paquete (editable)
-uv venv
-uv pip install -e .
+Sea $N$ el número de batches de train, $s_i$ el **soporte** (batches que contienen
+a $i$) y $n_{ij}$ la **co-ocurrencia** (batches que contienen a $i$ y $j$). Todas
+las métricas derivan de $(n_{ij}, s_i, N)$:
 
-# 2. Generar los artefactos derivados (split, demanda, costos)
-.venv/bin/python scripts/build_inputs.py
-#   -> escribe data/processed/{picking_train,picking_test,sku_demand,location_costs}.parquet
-
-# 3. Validar que todo funciona
-#   abrir notebooks/test.ipynb con el kernel del .venv y correr las celdas
-```
-
-Ejemplo mínimo de uso del pipeline completo (obtener el benchmark actual):
-
-```python
-from abs_affinity_based_slotting.config import RAW_DIR, PROCESSED_DIR
-from abs_affinity_based_slotting.data import WarehouseDataLoader, read_parquet
-from abs_affinity_based_slotting.warehouse import build_bay_distance_matrix
-from abs_affinity_based_slotting.slotting import build_instance
-from abs_affinity_based_slotting.methods import method_registry
-from abs_affinity_based_slotting.evaluation import Evaluator
-
-data = WarehouseDataLoader(RAW_DIR).load_all()
-inst = build_instance(
-    read_parquet(PROCESSED_DIR / "sku_demand.parquet"),
-    read_parquet(PROCESSED_DIR / "location_costs.parquet"),
-    build_bay_distance_matrix(data.distances),
-    skus=data.initial_stock["sku"].dropna().to_numpy(),  # universo = todos los SKUs
-)
-method = method_registry.get("current")(data.initial_stock)
-assignment = method.solve(inst)
-
-evaluator = Evaluator.from_tables(data.coordinates, data.distances, data.initial_stock)
-metrics = evaluator.evaluate(assignment, read_parquet(PROCESSED_DIR / "picking_test.parquet"))
-print(metrics)
-```
-
----
-
-## 8. Decisiones de diseño ya tomadas (para no rediscutir)
-
-| Decisión | Elección | Por qué |
+| Métrica | Definición | Interpretación |
 |---|---|---|
-| Qué SKUs se ubican | **Todos** los ~27.000 del stock | Garantiza que el test se pueda evaluar al 100% (toda asignación ubica todo). |
-| Dinámica de stock | **Estática** (una foto fija) | Alcance clásico del problema; las mudanzas se ignoran a propósito. |
-| Distancia | A nivel **bay** | Es como vienen los datos; no se modela el viaje dentro de una bay. |
-| Corte train/test | Temporal, **por batch** | Evita filtrar información del futuro al pasado. |
-| Demanda principal | `pick_lines` | Cada línea es una acción real de picking. |
-| Orden de recorrido | **Snake** (por pasillo) | Como camina un operario real; recalculado según la asignación que se evalúa. |
-| SKU de test sin ubicar | **Error** | Con cobertura 100% no debería pasar; si pasa, es un bug. |
+| Co-ocurrencia | $a_{ij}=n_{ij}$ | conteo crudo; sesgado a SKUs frecuentes |
+| Jaccard | $a_{ij}=\dfrac{n_{ij}}{s_i+s_j-n_{ij}}$ | solapamiento normalizado $\in[0,1]$ |
+| Coseno | $a_{ij}=\dfrac{n_{ij}}{\sqrt{s_i s_j}}$ | similitud de vectores de incidencia |
+| Lift | $a_{ij}=\dfrac{N\,n_{ij}}{s_i s_j}$ | co-ocurrencia vs independencia ($>1$: atracción) |
+| Confianza | $a_{i\to j}=\dfrac{n_{ij}}{s_i}$ | dirigida; requiere simetrización |
+
+La co-ocurrencia se obtiene de la matriz de incidencia batch×SKU $B$ (binaria):
+$C = B^\top B$, con $C_{ij}=n_{ij}$ fuera de la diagonal y $C_{ii}=s_i$.
+
+La elección de métrica es una **variable de diseño experimental**, no una
+constante del problema; el sistema permite compararlas (sección 6.3).
+
+### 4.2 Dispersión top-$k$
+
+Para tratabilidad se conserva, por cada SKU, sólo sus $k$ vecinos de mayor
+afinidad, con un umbral mínimo de soporte $n_{ij}\ge\tau$ para descartar ruido.
+Esto reduce las aristas a $O(nk)$ y descarta correlaciones débiles que aportarían
+poco a la solución y mucho al costo computacional (ver sección 2.5).
 
 ---
 
-## 9. Glosario
+## 5. Metodología de evaluación
 
-- **SKU** (*Stock Keeping Unit*): un producto distinto.
-- **Location**: hueco físico exacto donde vive un SKU.
-- **Bay**: columna de estantería; unidad a la que se miden las distancias.
-- **Dock**: estación de empaque; inicio y fin de cada recorrido.
-- **Batch**: lote de pedidos recolectado de una sola pasada; unidad de "qué se pide junto".
-- **Picking**: el acto de ir a buscar productos para un pedido.
-- **Slotting**: decidir en qué location va cada SKU.
-- **Afinidad**: medida de cuánto se piden juntos dos SKUs.
-- **Demanda**: cuánto se pide un SKU.
-- **Baseline**: método simple de referencia (ej. el estado actual).
-- **Heurística**: método aproximado que busca una buena solución sin garantizar la óptima.
-- **Train / Test**: datos para *aprender* (pasado) vs para *evaluar* (futuro).
-- **Instancia**: todos los datos de un problema concreto a resolver.
-- **Asignación**: una propuesta de SKU → location.
-- **QAP** (*Quadratic Assignment Problem*): la formulación matemática del problema;
-  es difícil de resolver de forma exacta a gran escala.
-- **Contrato / Registro**: una interfaz común + un catálogo de implementaciones,
-  para que las piezas sean intercambiables.
+La evaluación es la pieza que vuelve comparables a las estrategias; su rigor
+condiciona todas las conclusiones del trabajo.
+
+### 5.1 Modelo de costo de ruta
+
+Para un batch $B$ y una asignación $\pi$, sea $V(B)$ el conjunto de bays distintas
+visitadas (mapeando cada SKU de $B$ a su ubicación y ésta a su bay). Las bays se
+ordenan según una clave **snake** $\sigma$ (pasillo, luego número de bay),
+obteniendo la secuencia $b_1,\dots,b_T$. El costo de ruta es
+
+$$
+R(B;\pi)=D_0(\text{dock}, b_1)+\sum_{t=1}^{T-1} D(b_t,b_{t+1})+D_0(b_T,\text{dock}),
+$$
+
+con $D$ la distancia bay-a-bay y $D_0$ la distancia al dock. Picks en la misma bay
+no agregan distancia (modelo bay-level).
+
+Decisiones del modelo de ruta:
+
+- **Orden recalculado, no histórico.** El orden de visita se recomputa según las
+  ubicaciones que propone $\pi$, no según el orden en que se pickeó realmente
+  (que corresponde a las ubicaciones originales). Sin esto, la comparación entre
+  estrategias sería inconsistente.
+- **Ruteo de orden fijo (snake), no TSP óptimo.** Es una aproximación deliberada:
+  los depósitos reales usan políticas de ruteo tipo S-shape, y resolver un TSP por
+  batch confundiría la calidad del *ruteo* con la del *slotting*. El refinamiento
+  a S-shape estricto (boustrophedon) queda como extensión.
+
+### 5.2 Función objetivo (surrogate) vs evaluador (simulación)
+
+Se distinguen dos funciones que es habitual (y erróneo) confundir:
+
+| | Objetivo $C(\pi)$ | Evaluador $R$ |
+|---|---|---|
+| Rol | guía la búsqueda (qué optimizan las heurísticas) | KPI reportado |
+| Datos | afinidad/demanda de **train** | batches de **test** |
+| Forma | suma sobre pares (cuadrática, descomponible) | simulación discreta de recorridos |
+| Propiedad | barata, con delta incremental | fiel al costo operativo |
+
+El objetivo es un **surrogate** suave y eficiente; el evaluador es una
+**simulación** sobre datos retenidos. Separarlos evita sobreajustar el surrogate y
+provee una estimación honesta de generalización.
+
+### 5.3 Invariante de cobertura
+
+Toda asignación debe ubicar el **100%** de los SKUs que pueden aparecer en test.
+Esto se garantiza por construcción tomando como universo de SKUs **todos los
+ocupados en `initial_stock`** (sección 8), dado que todo SKU pickeado pertenece al
+stock. En consecuencia la cobertura no es una *política* del evaluador sino un
+**invariante**: un SKU de test sin ubicar es un error y el evaluador lanza
+excepción en lugar de enmascararlo
+([evaluation/evaluator.py](src/abs_affinity_based_slotting/evaluation/evaluator.py)).
+
+### 5.4 Métricas reportadas
+
+Sobre el conjunto de costos por batch $\{R(B;\pi)\}_{B\in\text{test}}$ se reporta
+total, media, mediana y percentil 95
+([evaluation/metrics.py](src/abs_affinity_based_slotting/evaluation/metrics.py)).
+La mediana y el p95 caracterizan, respectivamente, el caso típico y la cola
+(batches caros). La comparación entre métodos se expresa como **mejora relativa**
+respecto del baseline `current`. Complejidad de la evaluación:
+$O\!\left(\sum_B |B|\log|B|\right)$ por el ordenamiento; $\sim$0.16 s para los 400
+batches de test.
+
+---
+
+## 6. Arquitectura de la implementación
+
+### 6.1 Capas y dependencias
+
+Paquete [src/abs_affinity_based_slotting/](src/abs_affinity_based_slotting/),
+organizado en capas con dependencias unidireccionales (cada capa sólo usa las
+superiores):
+
+```
+data/        lectura, validación y partición del historial
+demand/, warehouse/   parámetros del modelo (f, a, c, D)
+slotting/    SlottingInstance (problema), Assignment (solución), objective
+methods/     estrategias .solve  →  Assignment
+evaluation/  Evaluator  →  Metrics
+scripts/, notebooks/   orquestación y experimentos
+```
+
+El flujo invariante de un experimento:
+
+$$
+\text{instancia} \xrightarrow{\;\text{método}.solve\;} \text{asignación}
+\xrightarrow{\;\text{evaluador}.evaluate\;} \text{métricas}.
+$$
+
+### 6.2 Estructuras de datos núcleo
+
+**`SlottingInstance`** ([slotting/instance.py](src/abs_affinity_based_slotting/slotting/instance.py))
+— representación **numérica por posiciones** e **inmutable** del problema. Los
+identificadores externos (`sku_ids`, `location_ids`, `bay_ids`) se guardan como
+arrays; la lógica interna opera en **espacio de índices enteros** con mapas
+$\text{id}\!\to\!\text{índice}$ y sus inversos. Datos numéricos en NumPy
+($f$, $c$, `location_bay`, $D$ a nivel bay) y afinidad en **SciPy CSR**. Validación
+exhaustiva en construcción (unicidad, shapes, no-negatividad, factibilidad
+$m\ge n$). Esta representación mapea directamente al álgebra del QAP y evita pandas
+en el cálculo. El ensamblado desde las tablas vive aparte
+([slotting/build.py](src/abs_affinity_based_slotting/slotting/build.py)), de modo
+que pandas queda confinado al borde de E/S.
+
+**`Assignment`** ([slotting/assignment.py](src/abs_affinity_based_slotting/slotting/assignment.py))
+— una solución, respaldada por dos diccionarios ($\text{sku}\!\to\!\text{loc}$ y
+$\text{loc}\!\to\!\text{sku}$):
+
+| Operación | Costo | Uso |
+|---|---|---|
+| `location_of`, `sku_at` | $O(1)$ | consultas |
+| `swap` (in-place) | $O(1)$ | búsqueda local |
+| `copy` | $O(n)$ | snapshot de la mejor solución |
+| `to_frame` | $O(n)$ | serialización / comparación |
+
+Es **mutable in-place** a propósito: el bucle de búsqueda local realiza
+"intercambiar → medir delta → deshacer si no mejora", patrón que exige swaps
+$O(1)$ sin reasignación de memoria.
+
+### 6.3 Modularidad: contrato + registro
+
+Las tres familias con múltiples variantes siguen el mismo patrón: un `Protocol`
+fija el contrato y un `Registry` ([registry.py](src/abs_affinity_based_slotting/registry.py))
+mapea `nombre → implementación`. Agregar una variante es definir una clase y
+registrarla; el resto del sistema (evaluador, harness) no se modifica.
+
+| Familia | Contrato | Registro | Módulo |
+|---|---|---|---|
+| Métodos | `SlottingMethod.solve(instance) → Assignment` | `method_registry` | [methods/base.py](src/abs_affinity_based_slotting/methods/base.py) |
+| Afinidad | `AffinityBuilder.build(cooccurrence, support, N) → csr` | `affinity_registry` | [demand/affinity.py](src/abs_affinity_based_slotting/demand/affinity.py) |
+| Clustering | `ClusteringStrategy.cluster(instance) → labels` | `clustering_registry` | [clustering.py](src/abs_affinity_based_slotting/clustering.py) |
+
+### 6.4 Decisiones de implementación
+
+- **NumPy/SciPy en el núcleo, pandas en el borde.** El cálculo opera sobre arrays
+  e índices; pandas sólo en E/S y construcción.
+- **Afinidad CSR dispersa.** Por escala (sección 2.4) y por el delta $O(k)$.
+- **Inmutabilidad de la instancia / mutabilidad de la solución.** Separa lo dado
+  de lo que se explora; previene efectos colaterales sobre el problema.
+- **Entorno reproducible.** Rutas centralizadas en
+  [config.py](src/abs_affinity_based_slotting/config.py); artefactos derivados
+  regenerables vía [scripts/build_inputs.py](scripts/build_inputs.py).
+
+---
+
+## 7. Estrategias de resolución (roadmap algorítmico)
+
+Esta es la parte de optimización, **aún no implementada** (los contratos sí
+existen). Las variantes registradas se compararán con la misma metodología.
+
+**Baselines.**
+- *Current* (implementado): la asignación vigente leída de `initial_stock`;
+  referencia principal.
+- *ABC / frecuencia*: ordenar SKUs por $f_i$ desc. y ubicaciones por $c_\ell$ asc.,
+  asignar en orden. Óptimo del **término lineal**; ignora afinidad. $O(n\log n)$.
+- *Por merchant*: respetar la estructura por vendedor como restricción/agrupador.
+
+**Heurísticas.**
+- *Búsqueda local por swaps*: desde una solución inicial (ABC), intercambiar pares
+  mientras $\Delta<0$ (sección 2.5); $\Delta$ en $O(k)$ con afinidad top-$k$.
+- *Clustering en dos etapas*: agrupar SKUs afines, ubicar clusters en zonas
+  cercanas, luego resolver dentro de cada cluster.
+- *Productos ancla*: ubicar primero SKUs de alta demanda/conectividad y colocar a
+  su alrededor los vecinos afines.
+
+**Metaheurísticas** (extensión): tabu search, simulated annealing, algoritmos
+genéticos, si las heurísticas simples quedan en óptimos locales pobres.
+
+---
+
+## 8. Estado actual y resultado preliminar
+
+**Implementado y verificado de punta a punta**: configuración, E/S y validación de
+datos, split temporal, demanda por SKU, geometría y costos, `SlottingInstance` +
+builder, `Assignment`, baseline `current`, evaluador completo, y los tres contratos
+modulares con su registro. El pipeline corre y produce el primer benchmark.
+
+**Benchmark — slotting actual sobre test** (400 batches):
+
+| Métrica | pulgadas | metros |
+|---|---|---|
+| total | 20.959.192 | $\approx$532.363 |
+| media / batch | 52.398 | $\approx$1.331 |
+| mediana / batch | 52.540 | $\approx$1.335 |
+| p95 / batch | 57.233 | $\approx$1.454 |
+
+Este valor fija la línea base contra la cual se medirá toda estrategia posterior.
+
+**Pendiente.** Soporte: `cooccurrence` (insumo de afinidad), `merchants`,
+`plotting`, harness de experimentos. Optimización: implementaciones de
+`AffinityBuilder`, `objective`, los `.solve` (`abc`, `merchant`, `swaps`,
+`clustering`, `anchors`) y las `ClusteringStrategy`. Todo enchufa sobre los
+contratos existentes sin reescritura.
+
+---
+
+## 9. Limitaciones y trabajo futuro
+
+- **Slotting estático.** Se ignoran las relocations (6.452 en los datos); modelar
+  la dinámica de stock es una extensión natural pero fuera del alcance actual.
+- **Distancia a nivel bay.** No se modela el viaje intra-bay; razonable dado el
+  dato, pero acota la fidelidad del costo.
+- **Ruteo de orden fijo.** El costo de ruta usa snake, no el recorrido óptimo;
+  separar ruteo de slotting es intencional pero conservador.
+- **Calibración de $\lambda$ y de la métrica de afinidad.** Son hiperparámetros a
+  estudiar empíricamente (sensibilidad sobre test).
+- **Generalización temporal.** Un único corte train/test; convendría validación
+  con múltiples cortes / ventanas móviles.
+
+---
+
+## 10. Referencias
+
+- Koopmans, T. C., & Beckmann, M. (1957). *Assignment problems and the location of
+  economic activities.* Econometrica.
+- Bartholdi, J. J., & Hackman, S. T. (2014). *Warehouse & Distribution Science*
+  (Rel. 0.96). Georgia Institute of Technology.
+- Viveros, P., et al. (2021). *Slotting Optimization Model for a Warehouse with
+  Divisible First-Level Accommodation Locations.* Applied Sciences, 11(3), 936.
 ```
