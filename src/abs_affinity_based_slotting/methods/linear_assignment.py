@@ -68,10 +68,10 @@ class LinearAssignmentSlotting:
         sku_indices, location_indices = linear_sum_assignment(cost_matrix)
 
         # Build Assignment: sku_id → location_id
-        assignment = Assignment()
+        mapping = {}
         for sku_idx, loc_idx in zip(sku_indices, location_indices):
             sku_id = instance.sku_id(sku_idx)
             location_id = instance.location_id(loc_idx)
-            assignment[sku_id] = location_id
+            mapping[sku_id] = location_id
 
-        return assignment
+        return Assignment(mapping)

@@ -37,10 +37,10 @@ class DemandGreedySlotting:
         location_order = np.argsort(instance.location_cost)
 
         # Greedy assignment: pair SKUs (by demand) with locations (by cost).
-        assignment = Assignment()
+        mapping = {}
         for sku_idx, loc_idx in zip(sku_order, location_order[: len(sku_order)]):
             sku_id = instance.sku_id(sku_idx)
             location_id = instance.location_id(loc_idx)
-            assignment[sku_id] = location_id
+            mapping[sku_id] = location_id
 
-        return assignment
+        return Assignment(mapping)
