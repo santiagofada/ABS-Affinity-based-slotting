@@ -19,3 +19,89 @@ Umbral de afinidad — solo aristas con Jaccard > τ. Requiere tunear τ y puede
 Mi recomendación: Louvain (opción 1). Es lo que un tribunal de tesis esperaría ver para "agrupar por afinidad", maneja pesos, y da grupos balanceados. La opción 2 es el plan B sin dependencias.
 
 ABC y merchant ya están y son correctos. ¿Con qué resolvemos el de afinidad?
+
+
+
+
+
+
+
+
+
+
+
+
+
+data ─┐
+      ├→ demand (f, A) ─┐
+      │                 ├→ slotting (Instance) ─→ methods (.solve) ─→ Assignment ─→ evaluation ─→ Metrics
+      └→ warehouse (c,D)┘                              ↑
+                                                  clustering (labels, opcional)
+
+
+
+
+
+
+
+
+
+
+Baseline current evaluado sobre test: 52.398 in promedio por batch (total 20.9M in, 400 batches). 
+Es el número a superar.
+
+Mi recomendación: antes de methods, arreglar los dos problemas de compatibilidad. El #2 (merchant) 
+requiere un cambio chico en build_instance — agregar que el merchant y el universo salgan de 
+initial_stock. El #1 es disciplina de uso, pero podríamos hacer un único punto de entrada que 
+arme la instancia "bien" siempre, para no repetir el cableado en cada notebook.
+
+
+
+
+Leyendo §1-5 de GUIA.md:
+
+Está cubierto:
+
+✓ Problema y alcance (§1)
+✓ Formulación matemática: notación, programa binario, QAP, delta de swap (§2)
+✓ Datos → parámetros (§3)
+✓ Métricas de afinidad (§4)
+✓ Evaluación: ruteo, covariante cobertura, métricas (§5)
+Falta:
+
+Estrategia general de optimización: no hay sección que diga "cómo vamos a resolver esto" (baselines → local search → afinidad-aware). La formulación es pasiva; no conecta con "métodos".
+
+Taxonomía de métodos: qué define un "baseline" vs "heurística" vs "metaheurística". Por ejemplo:
+
+CurrentSlotting = baseline (sin optimización)
+DemandGreedy = baseline constructivo (greedy sin afinidad)
+LocalSearch = heurística (itera swaps)
+ClusteringThenZones = heurística con afinidad
+Rol de λ (lambda): aparece en la fórmula pero no hay discusión:
+
+¿Cómo elegir λ?
+¿Se experimenta? ¿Se fija?
+¿Diferente λ para objetivo surrogate vs evaluación?
+Relación objetivo-método: no está clara:
+
+¿Qué métodos minimizan C(x) vs otros parámetros?
+¿Por qué DemandGreedy no toca λ?
+¿El evaluador usa el objetivo o es independiente?
+Conceptos faltantes en la formulación:
+
+No hay mención explícita de "construcción inicial" (¿cómo se genera la solución seed?)
+No hay claridad sobre "movimientos elementales" (swap es uno; ¿hay otros?)
+No hay definición de "vecindario" o "espacio de búsqueda"
+Mi sugerencia: agregar una sección 6 (entre formulación y arquitectura):
+
+§6 Estrategia de resolución
+
+Caracterización del problema (QAP NP-hard → heurísticas inevitables)
+Taxonomía de métodos (baselines, constructivos, búsqueda local, afinidad-aware)
+Rol de λ: por qué es parámetro experimental, rango sugerido
+Movimientos elementales: swap como operador base
+Flujo de búsqueda: seed → movimientos → evaluación incremental
+¿Escribo esa sección para GUIA.md o prefieres arrancar directo con DemandGreedy?
+
+
+
