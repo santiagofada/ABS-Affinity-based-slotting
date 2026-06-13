@@ -14,9 +14,9 @@ cronograma, bibliografía) y [Resumen y punto de partida.md](Resumen%20y%20punto
 
 **Índice**
 
-- Parte A — Problema y modelo: §1 alcance · §2 formulación · §3 datos→modelo · §4 afinidad · §5 evaluación
-- Parte B — Arquitectura: §6 principios · §7 capas · §8 contratos · §9 modularidad · §10 convenciones · §11 mapa del paquete · §12 decisiones
-- Parte C — Estado y plan: §13 estado · §14 roadmap · §15 abierto/futuro · §16 operación · §17 glosario · §18 referencias
+- Parte A — Problema y modelo: 1 alcance · 2 formulación · 3 datos→modelo · 4 afinidad · 5 evaluación
+- Parte B — Arquitectura: 6 principios · 7 capas · 8 contratos · 9 modularidad · 10 convenciones · 11 estructura del paquete · 12 decisiones
+- Parte C — Estado y plan: 13 estado · 14 roadmap · 15 abierto/futuro · 16 operación · 17 glosario · 18 referencias
 
 ---
 
@@ -105,7 +105,7 @@ $$
 Esta es la forma de **Koopmans–Beckmann** del **Quadratic Assignment Problem
 (QAP)** con término lineal. El QAP es **NP-hard** y difícil incluso para instancias
 moderadas; no admite resolución exacta a la escala de este problema. De ahí la
-estrategia por baselines + heurísticas (§14).
+estrategia por baselines + heurísticas (sección 14).
 
 ### 2.4 Escala y consecuencias computacionales
 
@@ -115,9 +115,9 @@ entradas; evaluación completa del término cuadrático $O(n^2)$. Dos consecuenc
 diseño, ambas adoptadas:
 
 1. **Afinidad dispersa.** $a_{ij}$ se almacena como matriz **CSR** y se restringe a
-   los vínculos más fuertes (top-$k$ por SKU, §4.2): aristas de $O(n^2)$ a $O(nk)$.
+   los vínculos más fuertes (top-$k$ por SKU, sección 4.2): aristas de $O(n^2)$ a $O(nk)$.
 2. **Evaluación incremental de movimientos.** La búsqueda local no recomputa
-   $C(\pi)$ sino su **delta** ante un intercambio (§2.5).
+   $C(\pi)$ sino su **delta** ante un intercambio (sección 2.5).
 
 ### 2.5 Delta de costo de un intercambio (swap)
 
@@ -167,7 +167,7 @@ SKUs ubicados, 3.000 ubicaciones vacías, 1.000 bays + dock.
 | $f_i$ | `picking_events` (train) | conteo de líneas de pick por SKU ([demand/sku_demand.py](src/abs_affinity_based_slotting/demand/sku_demand.py)) |
 | $c_\ell$ | `distances` | distancia bay($\ell$)→dock ([warehouse/costs.py](src/abs_affinity_based_slotting/warehouse/costs.py)) |
 | $D_{\ell k}$ | `distances` | $D_{\ell k} = \text{dist}(\text{bay}(\ell),\text{bay}(k))$ ([warehouse/distances.py](src/abs_affinity_based_slotting/warehouse/distances.py)) |
-| $a_{ij}$ | `picking_events` (train) | co-ocurrencia por batch → métrica de afinidad (§4) |
+| $a_{ij}$ | `picking_events` (train) | co-ocurrencia por batch → métrica de afinidad (sección 4) |
 
 La aproximación a nivel bay refleja que el dato de distancia es bay-a-bay y que el
 viaje intra-bay no está modelado; ítems en la misma bay quedan a distancia 0.
@@ -207,7 +207,7 @@ de métrica es una **variable de diseño experimental**, no una constante del pr
 
 Por cada SKU se conservan sólo sus $k$ vecinos de mayor afinidad, con umbral mínimo
 de soporte $n_{ij}\ge\tau$ para descartar ruido. Reduce las aristas a $O(nk)$ y
-descarta correlaciones débiles que aportan poco a la solución y mucho al costo (§2.5).
+descarta correlaciones débiles que aportan poco a la solución y mucho al costo (sección 2.5).
 
 ## 5. Metodología de evaluación
 
@@ -254,7 +254,7 @@ hacerse trampa al solitario.
 
 Toda asignación debe ubicar el **100%** de los SKUs que pueden aparecer en test.
 Esto se garantiza por construcción tomando como universo **todos los SKUs ocupados
-en `initial_stock`** (§12), dado que todo SKU pickeado pertenece al stock. La
+en `initial_stock`** (sección 12), dado que todo SKU pickeado pertenece al stock. La
 cobertura no es una *política* del evaluador sino un **invariante**: un SKU de test
 sin ubicar es un error y el evaluador lanza excepción en lugar de enmascararlo
 ([evaluation/evaluator.py](src/abs_affinity_based_slotting/evaluation/evaluator.py)).
@@ -278,7 +278,7 @@ para los 400 batches de test.
    tomadas (p. ej. el universo de SKUs es parámetro del builder, no hardcodeado).
 2. **Un solo contrato por rol.** Todos los métodos comparten interfaz; todas las
    soluciones tienen la misma forma; un solo evaluador juzga a todos.
-3. **`objective` ≠ `evaluator`** (§5.2): surrogate de train vs simulación de test.
+3. **`objective` ≠ `evaluator`** (sección 5.2): surrogate de train vs simulación de test.
 4. **Inmutabilidad de los datos del problema.** La `SlottingInstance` es de solo
    lectura; los métodos producen `Assignment`, nunca mutan la instancia.
 5. **Reproducibilidad.** Sin estado global oculto; rutas en `config.py`; artefactos
@@ -370,8 +370,8 @@ forma uniforme.
 
 ### 8.4 `objective` — función de costo a optimizar (pendiente)
 
-Implementa $C(\pi)$ de §2.3 y el delta de §2.5
-([slotting/objective.py](src/abs_affinity_based_slotting/slotting/objective.py)):
+Implementa $C(\pi)$ de la sección 2.3 y el delta de la sección 2.5
+(pendiente — vivirá en `heuristics/` dado que solo lo usan las heurísticas):
 
 ```python
 def slotting_cost(assignment, instance, *, lam: float) -> float
@@ -396,7 +396,7 @@ class Evaluator:
     def evaluate(self, assignment: Assignment, picking_test) -> Metrics: ...
 ```
 
-Implementa §5: re-ruteo snake por batch, costo de ruta, agregación, invariante de
+Implementa la sección 5: re-ruteo snake por batch, costo de ruta, agregación, invariante de
 cobertura. Independiente del método que generó la asignación.
 
 ## 9. Modularidad: contrato + registro
@@ -417,7 +417,7 @@ class ABCFrequency:
 |---|---|---|---|
 | Métodos | `SlottingMethod.solve(instance) → Assignment` | `method_registry` | [methods/base.py](src/abs_affinity_based_slotting/methods/base.py) |
 | Afinidad | `AffinityBuilder.build(cooccurrence, support, N) → csr` | `affinity_registry` | [demand/affinity.py](src/abs_affinity_based_slotting/demand/affinity.py) |
-| Clustering | `ClusteringStrategy.cluster(instance) → labels` | `clustering_registry` | [clustering.py](src/abs_affinity_based_slotting/clustering.py) |
+| Clustering | `ClusteringStrategy.cluster(instance) → labels` | `clustering_registry` | [clustering/base.py](src/abs_affinity_based_slotting/clustering/base.py) |
 
 ## 10. Convenciones
 
@@ -432,48 +432,61 @@ class ABCFrequency:
 - **API pública:** cada subpaquete la expone en su `__init__.py`.
 - **Notebooks:** sólo exploración y figuras; la lógica vive en `src/`.
 
-## 11. Mapa del paquete
+## 11. Estructura del paquete (`src/`)
+
+Todo el código vive en `src/abs_affinity_based_slotting/`. Cada subcarpeta es una
+etapa del pipeline (numeradas 01-07 en orden de ejecucion) y su `__init__.py`
+reune lo que el subpaquete expone. Estado `[hecho]` / `[pendiente]`:
 
 ```
 src/abs_affinity_based_slotting/
-├── config.py            rutas, DOCK, conversión pulgadas<->metros            [hecho]
-├── registry.py          Registry genérico (nombre -> implementación)         [hecho]
-├── clustering.py        contrato ClusteringStrategy + registro               [hecho]
-├── data/
-│   ├── loaders.py       lectura de data/raw (WarehouseDataLoader)            [hecho]
-│   ├── schemas.py       validación de columnas                               [hecho]
-│   ├── io.py            read/write de artefactos processed                   [hecho]
-│   └── split.py         split temporal train/test a nivel batch              [hecho]
-├── demand/
-│   ├── sku_demand.py    demanda por SKU desde picking                        [hecho]
-│   ├── affinity.py      contrato AffinityBuilder + registro                  [hecho]
-│   │                    (métricas jaccard/cosine/lift)                       [pendiente]
-│   ├── cooccurrence.py  pares de SKU coocurrentes por batch                  [pendiente]
-│   └── merchants.py     estructura/afinidad por merchant                     [pendiente]
-├── warehouse/
-│   ├── locations.py     locations desde initial_stock (+ is_empty)           [hecho]
-│   ├── distances.py     matriz de distancias entre bays / al dock           [hecho]
-│   └── costs.py         costo de acceso por location                         [hecho]
-├── slotting/
-│   ├── instance.py      SlottingInstance (numérico, inmutable)               [hecho]
-│   ├── build.py         build_instance: tablas processed -> instancia        [hecho]
-│   ├── assignment.py    Assignment (solución)                                [hecho]
-│   └── objective.py     función de costo C(π) + delta de swap                [pendiente]
-├── methods/
-│   ├── base.py          contrato SlottingMethod + registro                   [hecho]
-│   ├── current.py       baseline: slotting actual + CurrentSlotting          [hecho]
-│   ├── abc.py           baseline: frecuencia / ABC                           [pendiente]
-│   ├── merchant.py      baseline: agrupado por merchant                      [pendiente]
-│   ├── swaps.py         heurística: búsqueda local por swaps                 [pendiente]
-│   ├── clustering.py    heurística: clustering en dos etapas                 [pendiente]
-│   └── anchors.py       heurística: productos ancla                          [pendiente]
-├── evaluation/
-│   ├── routes.py        costo de recorrido de un batch                       [hecho]
-│   ├── metrics.py       Metrics + agregaciones                               [hecho]
-│   └── evaluator.py     Evaluator (orquesta sobre test)                      [hecho]
-└── plotting.py          figuras para el documento                            [pendiente]
-
-scripts/build_inputs.py  genera data/processed/*                              [hecho]
+├── __init__.py          raiz del paquete                              [hecho]
+├── config.py            rutas, DOCK y conversion de unidades          [hecho]
+├── registry.py          mapea nombre -> implementacion (modularidad)  [hecho]
+│
+├── 01 data/   ── objetivo: leer el historial crudo y separarlo en train/test
+│   ├── __init__.py      interfaz del subpaquete                       [hecho]
+│   ├── loaders.py       carga los 5 parquets crudos                   [hecho]
+│   ├── schemas.py       valida las columnas de cada tabla             [hecho]
+│   ├── io.py            lee/escribe artefactos derivados              [hecho]
+│   └── split.py         corta train/test por batch (sin fuga)          [hecho]
+│
+├── 02 demand/   ── objetivo: derivar la demanda f y la afinidad a desde train
+│   ├── __init__.py      interfaz del subpaquete                       [hecho]
+│   ├── sku_demand.py    demanda f por SKU                             [hecho]
+│   ├── cooccurrence.py  cuenta pares co-ocurrentes por batch          [hecho]
+│   └── affinity.py      contrato + metricas cooccurrence y jaccard    [hecho]
+│                        metricas cosine/lift                     [pendiente]
+│
+├── 03 warehouse/   ── objetivo: describir la geometria del deposito (c, D)
+│   ├── __init__.py      interfaz del subpaquete                       [hecho]
+│   ├── locations.py     ubicaciones desde el stock inicial            [hecho]
+│   ├── distances.py     distancias entre bays y al dock               [hecho]
+│   └── costs.py         costo de acceso c de cada ubicacion           [hecho]
+│
+├── 04 slotting/   ── objetivo: definir el problema y representar una solucion
+│   ├── __init__.py      interfaz del subpaquete                       [hecho]
+│   ├── instance.py      datos del problema (numerico, inmutable)      [hecho]
+│   ├── build.py         arma la instancia desde las tablas            [hecho]
+│   └── assignment.py    representa la solucion; swap en O(1)          [hecho]
+│
+├── 05 clustering/   ── objetivo: agrupar SKUs, una etiqueta entera por SKU
+│   ├── __init__.py      interfaz del subpaquete                       [hecho]
+│   ├── base.py          contrato ClusteringStrategy y registro        [hecho]
+│   ├── abc.py           clases A/B/C por participacion de demanda      [hecho]
+│   ├── merchant.py      una clase por vendor                          [hecho]
+│   └── affinity.py      componentes conexas del grafo (top-k)         [hecho]
+│
+├── 06 methods/   ── objetivo: resolver el problema y producir un Assignment
+│   ├── __init__.py      interfaz del subpaquete                       [hecho]
+│   ├── base.py          contrato SlottingMethod y method_registry     [hecho]
+│   └── current.py       baseline: slotting actual (snapshot)          [hecho]
+│
+└── 07 evaluation/   ── objetivo: medir una asignacion sobre test (el juez)
+    ├── __init__.py      interfaz del subpaquete                       [hecho]
+    ├── routes.py        costo de un recorrido (orden snake)           [hecho]
+    ├── metrics.py       metricas agregadas (media, mediana, p95)      [hecho]
+    └── evaluator.py     orquesta el calculo sobre test                [hecho]
 ```
 
 ## 12. Decisiones de diseño registradas
@@ -529,10 +542,10 @@ experimentos** que recorra `method_registry`, evalúe y tabule resultados.
 
 **Optimización pendiente (núcleo de la tesis):**
 
-- *Afinidad:* implementar los `AffinityBuilder` (co-ocurrencia, Jaccard, coseno,
-  lift) y la dispersión top-$k$ (§4).
-- *Objetivo:* `objective.py` con $C(\pi)$ y el delta $O(k)$ (§2.5).
-- *Baselines:* `abc` (óptimo del término lineal, $O(n\log n)$), `merchant`.
+- *Afinidad:* co-ocurrencia y Jaccard hechos; pendiente coseno/lift y top-$k$.
+- *Baselines:* `abc`, `merchant`, `affinity_greedy` (pendiente).
+- *Objetivo:* $C(\pi)$ y delta de swap para las heurísticas (pendiente).
+- *Heurísticas:* swaps, two-stage clustering, anchors (pendiente).
 - *Heurísticas:* `swaps` (búsqueda local con delta incremental), `clustering` (dos
   etapas: agrupar afines → ubicar clusters en zonas → resolver dentro), `anchors`
   (ubicar SKUs de alta demanda/conectividad y rodearlos de sus vecinos afines).

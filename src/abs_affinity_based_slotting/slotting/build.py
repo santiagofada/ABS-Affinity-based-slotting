@@ -19,6 +19,7 @@ def build_instance(
     location_costs: pd.DataFrame,
     bay_distance: pd.DataFrame,
     *,
+    initial_stock: pd.DataFrame | None = None,
     skus: np.ndarray | pd.Index | None = None,
     demand_metric: str = "pick_lines",
     cost_col: str = "distance_to_dock_in",
@@ -35,6 +36,10 @@ def build_instance(
         Per-location table (columns ``location_id``, ``bay_id`` and ``cost_col``).
     bay_distance:
         Symmetric bay-by-bay distance matrix, indexed and columned by bay id.
+    initial_stock:
+        Initial stock table (for merchant assignment). If provided, merchant comes
+        from here (covers all SKUs); otherwise from sku_demand (may have NaN for
+        SKUs not in train).
     skus:
         SKU universe to place. Defaults to every SKU in ``sku_demand``. SKUs in
         the universe without recorded demand get demand 0.
@@ -49,7 +54,12 @@ def build_instance(
     demand = (
         demand_by_sku[demand_metric].reindex(sku_ids, fill_value=0).to_numpy(dtype=float)
     )
-    merchant_ids = demand_by_sku["merchant_account_id"].reindex(sku_ids).to_numpy()
+
+    if initial_stock is not None:
+        merchant_by_sku = initial_stock.drop_duplicates(subset=["sku"]).set_index("sku")["merchant_account_id"]
+        merchant_ids = merchant_by_sku.reindex(sku_ids).to_numpy()
+    else:
+        merchant_ids = demand_by_sku["merchant_account_id"].reindex(sku_ids).to_numpy()
 
     # Bay order is defined by the distance matrix; locations map into it.
     bay_ids = bay_distance.index.to_numpy()
@@ -80,4 +90,49 @@ def build_instance(
         bay_distance=bay_matrix,
         affinity=affinity,
         merchant_ids=merchant_ids,
+    )
+
+
+def build_instance_canonical(
+    picking_train: pd.DataFrame,
+    initial_stock: pd.DataFrame,
+    distances: pd.DataFrame,
+    *,
+    affinity_metric: str = "jaccard",
+) -> SlottingInstance:
+    """Build the canonical problem instance for the entire SKU universe.
+
+    Produces a SlottingInstance covering all 27k occupied SKUs:
+    - Universe: all SKUs in initial_stock
+    - Demand f: from picking_train (cold-start SKUs get f=0)
+    - Merchant: from initial_stock (complete coverage)
+    - Affinity A: co-occurrence from picking_train, aligned to the universe
+    - Warehouse (c, D): from initial_stock and distances
+
+    This is the single entry point for building the canonical problem.
+    """
+    from ..warehouse import (
+        occupied_locations,
+        build_location_costs,
+        build_bay_distance_matrix,
+    )
+    from ..demand import build_cooccurrence, affinity_registry, build_sku_demand
+
+    universe = occupied_locations(initial_stock)["sku"].to_numpy()
+
+    co = build_cooccurrence(picking_train, skus=universe)
+    A = affinity_registry.get(affinity_metric)().build(
+        co.matrix, co.support, co.n_batches
+    )
+    sku_demand = build_sku_demand(picking_train)
+    location_costs = build_location_costs(initial_stock, distances)
+    bay_distance = build_bay_distance_matrix(distances)
+
+    return build_instance(
+        sku_demand,
+        location_costs,
+        bay_distance,
+        initial_stock=initial_stock,
+        skus=universe,
+        affinity=A,
     )

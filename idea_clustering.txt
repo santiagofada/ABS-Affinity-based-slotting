@@ -1,0 +1,21 @@
+Resultado honesto:
+
+Agrupador	            Grupos	Tamaños
+ABC (0.8, 0.95)	        3	    A=1.789, B=6.783, C=6.982
+Merchant	            10	    ~1.500 c/u
+Affinity (cualquier k)	1	    todo junto
+
+
+ABC y merchant andan perfecto. Pero el agrupador por afinidad colapsa en un único grupo gigante, incluso con k=3. Era el riesgo que anticipé: el grafo está tan conectado que componentes conexas mete todo en una sola componente — basta una cadena de enlaces para unir a todos.
+
+El problema es de algoritmo: componentes conexas es la herramienta equivocada para este grafo. No encuentra comunidades densas, solo conectividad transitiva. Hay que cambiar el criterio. Opciones reales:
+
+Detección de comunidades (Louvain) — el estándar en la literatura de grafos. Encuentra subgrupos densamente conectados, no colapsa. Requiere dependencia (networkx + python-louvain, o igraph). Es lo más riguroso para la tesis.
+
+Top-k mutuo + componentes conexas — solo se mantiene la arista i-j si j está en el top-k de i y i está en el top-k de j. Mucho más esparso, sin dependencias. Puede funcionar pero es ad-hoc.
+
+Umbral de afinidad — solo aristas con Jaccard > τ. Requiere tunear τ y puede seguir colapsando.
+
+Mi recomendación: Louvain (opción 1). Es lo que un tribunal de tesis esperaría ver para "agrupar por afinidad", maneja pesos, y da grupos balanceados. La opción 2 es el plan B sin dependencias.
+
+ABC y merchant ya están y son correctos. ¿Con qué resolvemos el de afinidad?
