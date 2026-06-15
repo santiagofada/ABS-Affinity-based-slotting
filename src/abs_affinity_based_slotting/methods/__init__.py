@@ -2,6 +2,7 @@ from .base import SlottingMethod, method_registry
 from .current import CurrentSlotting, current_assignment
 from .demand_greedy import DemandGreedySlotting
 from .linear_assignment import LinearAssignmentSlotting
+from .local_search import AffinityPairSearch, LocalSearchSlotting
 
 __all__ = [
     "SlottingMethod",
@@ -10,4 +11,6 @@ __all__ = [
     "current_assignment",
     "DemandGreedySlotting",
     "LinearAssignmentSlotting",
+    "LocalSearchSlotting",
+    "AffinityPairSearch",
 ]
