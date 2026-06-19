@@ -5,6 +5,7 @@ from .affinity import (
     affinity_registry,
 )
 from .cooccurrence import Cooccurrence, build_cooccurrence
+from .filter import AffinityFilter, MutualTopKFilter, ThresholdFilter, TopKFilter, filter_registry
 from .sku_demand import build_sku_demand
 
 __all__ = [
@@ -15,4 +16,9 @@ __all__ = [
     "CooccurrenceAffinity",
     "JaccardAffinity",
     "affinity_registry",
+    "AffinityFilter",
+    "TopKFilter",
+    "ThresholdFilter",
+    "MutualTopKFilter",
+    "filter_registry",
 ]

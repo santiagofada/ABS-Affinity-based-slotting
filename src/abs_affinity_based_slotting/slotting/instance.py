@@ -113,6 +113,7 @@ class SlottingInstance:
         self._validate_ids()
         self._validate_shapes()
         self._validate_values()
+        self._validate_affinity()
 
     def _validate_ids(self) -> None:
         if len(set(self.sku_ids)) != len(self.sku_ids):
@@ -191,6 +192,22 @@ class SlottingInstance:
 
         if self.location_bay.max(initial=0) >= self.n_bays:
             raise ValueError("location_bay contains indexes outside bay_ids.")
+
+    def _validate_affinity(self) -> None:
+        """Affinity must be symmetric (a_ij = a_ji).
+
+        The QAP model assumes a symmetric affinity, and swap_delta exploits it
+        (it sums one direction and doubles). An asymmetric matrix would make the
+        incremental cost silently disagree with the full objective, so we reject
+        it at construction instead of computing wrong deltas later.
+        """
+        difference = self.affinity - self.affinity.T
+        if difference.nnz > 0 and np.abs(difference.data).max() > 1e-9:
+            raise ValueError(
+                "affinity must be symmetric (a_ij = a_ji); got an asymmetric "
+                "matrix. Symmetrize it (e.g. a top-k filter that unions or "
+                "intersects with its transpose) before building the instance."
+            )
 
     def _build_indexes(self) -> None:
         sku_to_idx = {sku: idx for idx, sku in enumerate(self.sku_ids)}

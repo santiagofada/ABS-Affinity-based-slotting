@@ -8,7 +8,6 @@ evaluator replays held-out batches with a route model.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Hashable
 
 import numpy as np
@@ -238,11 +237,21 @@ def _symmetric_sparse_swap_quadratic_delta(
     """
     affinity = instance.affinity.tocsr()
 
-    neighbor_indices = set(_neighbor_indices(affinity, sku_a_idx)) | set(
-        _neighbor_indices(affinity, sku_b_idx)
-    )
-    neighbor_indices.discard(sku_a_idx)
-    neighbor_indices.discard(sku_b_idx)
+    # We need a_ak and a_bk for every neighbor k. The naive way is scalar indexing
+    # affinity[a, k] inside the loop, but a CSR matrix stores only the nonzero
+    # entries of each row as parallel (column, value) lists, so affinity[a, k] has
+    # to search row a's column list on every single access. With ~250k swaps per
+    # pass and ~10 neighbors each, that search runs millions of times and is what
+    # makes local search hang -- despite the function being O(degree) on paper.
+    #
+    # Fix: read each row's (column, value) pairs ONCE into a plain dict, so each
+    # later lookup row_a[k] is a true O(1) hash access instead of a row scan.
+    row_a = _row_as_dict(affinity, sku_a_idx)
+    row_b = _row_as_dict(affinity, sku_b_idx)
+
+    # Neighbors that matter are those with nonzero affinity to a or b (the rest
+    # contribute a_ak - a_bk = 0). a and b themselves are excluded.
+    neighbor_indices = (row_a.keys() | row_b.keys()) - {sku_a_idx, sku_b_idx}
 
     if not neighbor_indices:
         return 0.0
@@ -250,23 +259,35 @@ def _symmetric_sparse_swap_quadratic_delta(
     quadratic_delta = 0.0
 
     for neighbor_idx in neighbor_indices:
+        # Where does neighbor k currently sit? We need its location to measure how
+        # the a<->b swap changes the distance between k and each of them.
         neighbor_sku_id = instance.sku_id(neighbor_idx)
         neighbor_location_idx = instance.location_index(
             assignment.location_of(neighbor_sku_id)
         )
 
+        # After the swap, a sits where b was. distance_change is how much closer (or
+        # farther) k ends up from that slot: d[x_b, x_k] - d[x_a, x_k].
         distance_change = (
             instance.distance_between_location_indices(loc_b_idx, neighbor_location_idx)
             - instance.distance_between_location_indices(loc_a_idx, neighbor_location_idx)
         )
 
-        affinity_change = affinity[sku_a_idx, neighbor_idx] - affinity[sku_b_idx, neighbor_idx]
-        quadratic_delta += float(affinity_change) * distance_change
+        # a_ak - a_bk; a neighbor absent from a row means its affinity there is 0.
+        affinity_change = row_a.get(neighbor_idx, 0.0) - row_b.get(neighbor_idx, 0.0)
+        quadratic_delta += affinity_change * distance_change
 
+    # Factor 2: the affinity matrix is symmetric, so each pair (a, k) is also
+    # counted as (k, a). We summed one direction and double it.
     return float(2.0 * quadratic_delta)
 
 
-def _neighbor_indices(matrix, row: int) -> Iterable[int]:
-    """Yield nonzero column indices (neighbors) for one CSR row."""
+def _row_as_dict(matrix, row: int) -> dict[int, float]:
+    """Return {column index: value} for one CSR row's nonzero entries.
+
+    Reading the row's slice of ``indices`` and ``data`` once and zipping them into
+    a dict turns repeated affinity lookups from O(row length) row scans into O(1)
+    hash accesses.
+    """
     start, end = matrix.indptr[row], matrix.indptr[row + 1]
-    return matrix.indices[start:end]
+    return dict(zip(matrix.indices[start:end], matrix.data[start:end]))
