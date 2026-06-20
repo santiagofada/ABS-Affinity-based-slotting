@@ -50,3 +50,5 @@ conda-meta/
 # Temporary files
 tmp/
 temp/
+# Local secrets
+.env

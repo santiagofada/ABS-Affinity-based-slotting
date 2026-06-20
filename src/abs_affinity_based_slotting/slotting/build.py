@@ -136,3 +136,44 @@ def build_instance_canonical(
         skus=universe,
         affinity=A,
     )
+
+
+def restrict_instance(
+    instance: SlottingInstance,
+    sku_indices: np.ndarray,
+    location_indices: np.ndarray,
+) -> SlottingInstance:
+    """Return a sub-instance over a subset of SKUs and locations.
+
+    Used by the bi-level method to turn each cluster's zone into a standalone
+    instance, so any SlottingMethod can solve it unchanged. The bay layout
+    (``bay_ids``, ``bay_distance``) is kept whole; only SKUs and locations are
+    subset, and the affinity is the corresponding symmetric submatrix.
+
+    Parameters
+    ----------
+    instance : SlottingInstance
+    sku_indices : np.ndarray
+        Indices of the SKUs to keep.
+    location_indices : np.ndarray
+        Indices of the locations to keep (must be at least as many as SKUs).
+    """
+    sku_indices = np.asarray(sku_indices)
+    location_indices = np.asarray(location_indices)
+
+    sub_affinity = instance.affinity[sku_indices][:, sku_indices]
+    merchant = (
+        None if instance.merchant_ids is None else instance.merchant_ids[sku_indices]
+    )
+
+    return SlottingInstance(
+        sku_ids=instance.sku_ids[sku_indices],
+        location_ids=instance.location_ids[location_indices],
+        bay_ids=instance.bay_ids,
+        demand=instance.demand[sku_indices],
+        location_cost=instance.location_cost[location_indices],
+        location_bay=instance.location_bay[location_indices],
+        bay_distance=instance.bay_distance,
+        affinity=sub_affinity,
+        merchant_ids=merchant,
+    )

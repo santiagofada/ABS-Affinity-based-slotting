@@ -47,10 +47,33 @@ Esta función corresponde a un **QAP** (Quadratic Assignment Problem) en su form
 de Koopmans-Beckmann, un problema NP-hard que no admite resolución exacta a la
 escala de este trabajo. Con unos 27.000 productos y 30.000 ubicaciones, una
 formulación binaria tendría del orden de 8·10⁸ variables y la afinidad densa unas
-7·10⁸ entradas. De ahí que la estrategia se base en baselines y heurísticas, con
-dos decisiones de diseño que hacen tratable el problema: la afinidad se almacena
-**dispersa** (solo los vínculos fuertes) y los métodos de búsqueda evalúan cada
-movimiento de forma **incremental**, sin recomputar el costo completo.
+7·10⁸ entradas.
+
+## Estrategia de resolución
+
+El QAP global no se resuelve de forma exacta: es intratable a esta escala. La
+estrategia es **resolver un problema similar y tratable**, obtenido mediante dos
+tipos de decisiones heurísticas de modelado:
+
+- **Descomposición (bi-nivel).** En vez de un QAP de 27.000 productos, se agrupan
+  los productos (clustering) y el problema se parte en dos: (1) ubicar cada grupo
+  en una zona del depósito y (2) ubicar los productos dentro de cada zona. Cada
+  subproblema es mucho más chico.
+- **Truncado (top-k).** Se conservan solo los vínculos de afinidad más fuertes, lo
+  que reduce el tamaño del término cuadrático.
+
+Sobre ese problema reducido **sí se optimiza con solvers**: asignación lineal
+exacta (Hungarian) y búsqueda local para los subproblemas a escala. Un solver de
+optimización exacta (Gurobi) queda reservado para instancias chicas, como **óptimo
+de referencia** contra el cual medir el *gap* de las heurísticas — no como
+resolvedor del problema global.
+
+Cómo construir cada componente (afinidad, distancias, demanda, costos), cómo
+agrupar y truncar, y qué heurística usar son **variables de diseño experimental**
+que se varían y comparan (ver [bloques.md](bloques.md)). Dos decisiones de
+implementación sostienen el enfoque: la afinidad se almacena **dispersa** y los
+movimientos de búsqueda se evalúan de forma **incremental**, sin recomputar el
+costo completo.
 
 ## Alcance y simplificaciones
 
@@ -184,6 +207,9 @@ src/abs_affinity_based_slotting/
 - **[bloques.md](bloques.md)** — los componentes intercambiables (afinidad,
   filtro, clustering, método), su mecanismo de composición mediante *registries*,
   y el diseño del método bi-nivel.
+- **[diseno-optimizacion.md](diseno-optimizacion.md)** — las alternativas de diseño
+  del método (descomposición, Problema 1 y 2, afinidad inter-cluster, clustering),
+  con ventajas, desventajas y la configuración elegida.
 
 ## Glosario
 

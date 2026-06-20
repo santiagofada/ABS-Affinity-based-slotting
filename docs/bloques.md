@@ -197,6 +197,17 @@ estrategia del registry (merchant, abc, affinity) se integre sin modificaciones:
 TwoStageSlotting(clustering=clustering_registry.get("affinity")())
 ```
 
+Cómo se resuelve cada subproblema depende de su tamaño:
+
+- **Nivel superior** (pocos grupos): instancia chica, resoluble casi exacto por
+  búsqueda local, o de forma exacta con un solver (Gurobi) para fijar el óptimo de
+  referencia.
+- **Nivel inferior** (dentro de cada zona): si solo pesa la demanda (λ=1), es una
+  asignación lineal exacta (Hungarian, `scipy.linear_sum_assignment`); con afinidad,
+  búsqueda local. Las zonas chicas también admiten el solver exacto.
+
 Este enfoque reduce un QAP de 27.000 productos a un QAP de pocos grupos más un
-conjunto de subproblemas independientes de menor tamaño. Constituye el aporte
-central del trabajo.
+conjunto de subproblemas independientes de menor tamaño, cada uno resoluble con la
+herramienta adecuada a su escala. Constituye el aporte central del trabajo: la
+descomposición es lo que vuelve aplicable la optimización donde el QAP global no lo
+permite.

@@ -50,8 +50,25 @@ Restringida a las $n$ ubicaciones efectivamente utilizadas, una solución factib
 asigna a cada producto una única ubicación, y el costo adopta la forma de
 **Koopmans-Beckmann** del **Quadratic Assignment Problem (QAP)** con término
 lineal. El QAP es **NP-hard** y resulta intratable de forma exacta incluso para
-instancias moderadas, lo que descarta su resolución directa a esta escala y
-motiva la estrategia de baselines y heurísticas.
+instancias moderadas, lo que descarta su resolución directa a esta escala.
+
+## Estrategia de resolución
+
+Dado que el QAP global no se resuelve exacto, el trabajo resuelve un **problema
+similar y tratable**, construido con dos decisiones heurísticas de modelado:
+
+- **Descomposición (bi-nivel):** agrupar los productos y partir el problema en
+  ubicar grupos en zonas (nivel superior) y ubicar productos dentro de cada zona
+  (nivel inferior). Cada subproblema es de tamaño mucho menor.
+- **Truncado (top-$k$):** conservar solo los vínculos de afinidad más fuertes,
+  reduciendo el término cuadrático.
+
+Sobre los subproblemas resultantes se optimiza con solvers: asignación lineal
+exacta (Hungarian) cuando solo pesa la demanda, y búsqueda local con la afinidad.
+Un solver de optimización exacta (Gurobi) se reserva para instancias chicas, donde
+provee el **óptimo de referencia** que permite medir el *gap* de las heurísticas.
+El QAP exacto no es, entonces, el resolvedor del problema, sino la vara de calidad
+en la escala donde es alcanzable.
 
 ## Escala y consecuencias
 
