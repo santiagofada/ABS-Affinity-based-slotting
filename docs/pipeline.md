@@ -35,7 +35,7 @@ flowchart TD
     SOL --> EV["Evaluator"]
     CO --> EV
     DI --> EV
-    EV --> MET["Metrics"]
+    EV --> MET["RouteMetrics"]
 ```
 
 Principio rector: **la demanda y la afinidad se construyen únicamente con train; el
@@ -114,7 +114,7 @@ una solución.
 
 **`SlottingInstance`** — los datos del problema, ya en forma numérica e inmutable.
 Contiene `f`, `c`, `D`, `A` y los identificadores de productos, ubicaciones y
-bays. La construye `build_instance` (o `build_instance_canonical`, que encadena
+bays. La construye `build_instance` (o `build_full_instance`, que encadena
 los pasos de demand/ y warehouse/ en una sola llamada). En su construcción
 **valida** la consistencia de los datos (dimensiones, ausencia de NaN, simetría de
 la afinidad, entre otros): ante cualquier inconsistencia falla de inmediato, en
@@ -126,7 +126,7 @@ búsqueda local.
 
 **`objective`** — la medición de una asignación:
 - `slotting_cost` calcula el costo total `C = λ·L + (1-λ)·Q`.
-- `swap_delta` calcula la **variación** de costo al intercambiar dos productos sin
+- `swap_cost_delta` calcula la **variación** de costo al intercambiar dos productos sin
   recomputar la suma completa. Esta evaluación incremental es lo que vuelve viable
   la búsqueda local.
 
@@ -146,7 +146,7 @@ que permite tratarlos de forma uniforme. Disponibles actualmente:
   ordenadas por costo. Ignora la afinidad (equivale a λ=1). Simple pero competitivo.
 - `linear_assignment` — resuelve de forma exacta el caso λ=1 (asignación lineal,
   algoritmo húngaro). Sirve como validación y cota frente al greedy.
-- `local_search` — parte de una solución inicial y la mejora intercambiando pares
+- `swap_search` — parte de una solución inicial y la mejora intercambiando pares
   de productos mientras el costo disminuya. Es el primer método que aprovecha la
   afinidad.
 
@@ -174,7 +174,7 @@ que permite tratarlos de forma uniforme. Disponibles actualmente:
   entre estrategias sea consistente. Picks en la misma bay no agregan distancia.
 - Previo a medir, verifica el **invariante de cobertura**: todo producto presente
   en test debe estar ubicado. Un producto sin ubicar genera un error explícito.
-- `Metrics` resume los recorridos de todos los batches: total, media, mediana y
+- `RouteMetrics` resume los recorridos de todos los batches: total, media, mediana y
   percentil 95.
 
 El evaluador es **independiente del método** que generó la asignación, lo que
@@ -193,7 +193,7 @@ SlottingInstance   (el problema)   →   construido por slotting/build
 Assignment         (la solución)   →   producido por methods/
       │
       ▼  evaluador.evaluate
-Metrics            (el veredicto)   →   producido por evaluation/
+RouteMetrics            (el veredicto)   →   producido por evaluation/
 ```
 
 Mientras un componente respete su contrato (recibir una instancia, devolver una

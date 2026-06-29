@@ -17,7 +17,7 @@ import pandas as pd
 from ..config import DOCK
 from ..slotting import Assignment
 from ..warehouse import build_bay_distance_matrix
-from .metrics import Metrics, summarize
+from .metrics import RouteMetrics, summarize_route_costs
 from .routes import route_distance, snake_order
 
 
@@ -71,7 +71,7 @@ class Evaluator:
         *,
         batch_col: str = "batch_id",
         sku_col: str = "sku",
-    ) -> Metrics:
+    ) -> RouteMetrics:
         missing = set(picking_test[sku_col].unique()) - set(assignment.skus)
         if missing:
             raise ValueError(
@@ -83,7 +83,7 @@ class Evaluator:
             self._batch_cost(group[sku_col].unique(), assignment)
             for _, group in picking_test.groupby(batch_col, sort=False)
         ]
-        return summarize(costs)
+        return summarize_route_costs(costs)
 
     def _batch_cost(self, skus: np.ndarray, assignment: Assignment) -> float:
         bays = np.fromiter(

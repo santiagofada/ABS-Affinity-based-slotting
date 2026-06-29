@@ -1,6 +1,7 @@
 from .affinity import (
     AffinityBuilder,
     CooccurrenceAffinity,
+    CosineAffinity,
     JaccardAffinity,
     affinity_registry,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "build_cooccurrence",
     "AffinityBuilder",
     "CooccurrenceAffinity",
+    "CosineAffinity",
     "JaccardAffinity",
     "affinity_registry",
     "AffinityFilter",

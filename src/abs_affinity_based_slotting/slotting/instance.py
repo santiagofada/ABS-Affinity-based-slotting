@@ -196,7 +196,7 @@ class SlottingInstance:
     def _validate_affinity(self) -> None:
         """Affinity must be symmetric (a_ij = a_ji).
 
-        The QAP model assumes a symmetric affinity, and swap_delta exploits it
+        The QAP model assumes a symmetric affinity, and swap_cost_delta exploits it
         (it sums one direction and doubles). An asymmetric matrix would make the
         incremental cost silently disagree with the full objective, so we reject
         it at construction instead of computing wrong deltas later.

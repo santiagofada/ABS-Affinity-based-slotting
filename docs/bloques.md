@@ -27,13 +27,13 @@ flowchart TD
     GEO --> INST
 
     CR["clustering_registry"] --> CL["estrategia<br/>(merchant, abc, affinity)"]
-    MR["method_registry"] --> M["método<br/>(demand_greedy, local_search, ...)"]
+    MR["method_registry"] --> M["método<br/>(demand_greedy, swap_search, ...)"]
     INST --> M
     CL --> M
 
     M --> ASG["Assignment"]
     ASG --> EV["Evaluator"]
-    EV --> MET["Metrics"]
+    EV --> MET["RouteMetrics"]
 ```
 
 ---
@@ -99,13 +99,11 @@ Particiona el universo de productos en grupos. Devuelve una etiqueta por product
 | Nombre | Criterio de agrupamiento | Nº de grupos |
 |--------|--------------------------|--------------|
 | `merchant` | vendor | ~10 |
-| `abc` | tier de demanda (A/B/C) | 3 |
-| `affinity` | componentes conexas de la matriz de afinidad | variable |
+| `demand_class` | tier de demanda (A/B/C) | 3 |
 
 El clustering seleccionado **condiciona el comportamiento** del método bi-nivel:
-con `affinity` o `merchant` los grupos presentan afinidad interna alta (una zona
-compacta resulta adecuada); con `abc` representan tiers de rotación (zonificación
-clásica de almacén). Constituye una variable de diseño experimental.
+`merchant` agrupa por vendor (criterio operativo) y `demand_class` por tier de
+rotación (zonificación clásica de almacén). Es una variable de diseño experimental.
 
 ### 4. Método (`method_registry`) — producir la solución
 
@@ -116,7 +114,7 @@ Toma la instancia y devuelve una asignación.
 | `current` | baseline (slotting vigente) | no |
 | `demand_greedy` | baseline constructivo | no |
 | `linear_assignment` | exacto para λ=1 | no |
-| `local_search` | heurística de intercambios | sí |
+| `swap_search` | heurística de intercambios | sí |
 
 ---
 
@@ -136,7 +134,7 @@ instance = build_instance(sku_demand, loc_costs, bay_distance,
                           initial_stock=stock, skus=universe, affinity=A)
 
 # 4. metodo
-method = method_registry.get("local_search")(lam=0.3)
+method = method_registry.get("swap_search")(lam=0.3)
 assignment = method.solve(instance)
 
 # 5. evaluacion
@@ -152,7 +150,7 @@ cambiar un nombre o un parámetro.
 
 Conviene distinguir con precisión dos medidas que suelen confundirse:
 
-| | Objetivo (`slotting_cost`) | Evaluador (`Metrics`) |
+| | Objetivo (`slotting_cost`) | Evaluador (`RouteMetrics`) |
 |---|---|---|
 | Propósito | guiar la búsqueda de los métodos | reportar el resultado |
 | Datos | demanda y afinidad de **train** | recorridos sobre **test** |
@@ -191,10 +189,10 @@ Fundamento:
   dock, dimensionados según el tamaño de cada grupo.
 
 El método tomará el `ClusteringStrategy` como parámetro, de modo que cualquier
-estrategia del registry (merchant, abc, affinity) se integre sin modificaciones:
+estrategia del registry (merchant, demand_class) se integre sin modificaciones:
 
 ```python
-TwoStageSlotting(clustering=clustering_registry.get("affinity")())
+BiLevelSlotting(clustering=clustering_registry.get("merchant")())
 ```
 
 Cómo se resuelve cada subproblema depende de su tamaño:

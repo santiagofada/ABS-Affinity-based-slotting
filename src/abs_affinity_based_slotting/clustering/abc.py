@@ -8,8 +8,8 @@ from ..slotting import SlottingInstance
 from .base import clustering_registry
 
 
-@clustering_registry.register("abc")
-class ABCClustering:
+@clustering_registry.register("demand_class")
+class DemandClassClustering:
     """Group SKUs into demand classes (the classic Pareto A/B/C analysis).
 
     SKUs are ranked by demand descending; class boundaries are drawn where the
@@ -21,7 +21,7 @@ class ABCClustering:
     The number of classes equals ``len(thresholds) + 1``.
     """
 
-    name = "abc"
+    name = "demand_class"
 
     def __init__(self, thresholds: tuple[float, ...] = (0.8, 0.95)):
         self.thresholds = np.asarray(thresholds, dtype=float)

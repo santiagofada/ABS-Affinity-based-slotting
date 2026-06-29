@@ -131,6 +131,7 @@ def assign_locations_to_clusters(
     instance: SlottingInstance,
     aggregation: ClusterAggregation,
     *,
+    location_cost: np.ndarray | None = None,
     output: bool = False,
 ) -> list[np.ndarray]:
     """Problem 1: assign to each cluster the set of locations it will occupy.
@@ -154,6 +155,12 @@ def assign_locations_to_clusters(
     instance : SlottingInstance
     aggregation : ClusterAggregation
         Cluster-level demand and sizes (from ``aggregate_clusters``).
+    location_cost : np.ndarray | None
+        Per-location cost the assignment ranks locations by (aligned with
+        ``instance.location_ids``). Default: distance to dock
+        (``instance.location_cost``), which yields cost bands. Passing the
+        position along the pick path (snake order) instead yields spatially
+        compact, contiguous zones.
     output : bool
         Whether the solver prints its log.
 
@@ -168,9 +175,13 @@ def assign_locations_to_clusters(
     n_locations = instance.n_locations
     n_clusters = aggregation.n_clusters
 
-    # cost_of_giving[l, c] = demand[c] * cost[l]: penalizes giving an expensive
-    # location to a high-demand cluster.
-    cost_of_giving = np.outer(instance.location_cost, aggregation.demand)
+    value = (
+        instance.location_cost if location_cost is None else np.asarray(location_cost)
+    )
+
+    # cost_of_giving[l, c] = demand[c] * value[l]: penalizes giving a costly (far,
+    # or late in the pick path) location to a high-demand cluster.
+    cost_of_giving = np.outer(value, aggregation.demand)
 
     env = make_solver_env()
     model = gp.Model("location_assignment", env=env)
@@ -192,8 +203,8 @@ def assign_locations_to_clusters(
     return [np.flatnonzero(assigned[:, c]) for c in range(n_clusters)]
 
 
-@method_registry.register("two_stage")
-class TwoStageSlotting:
+@method_registry.register("bilevel")
+class BiLevelSlotting:
     """Bi-level slotting, fully composable.
 
     Solves the two optimization problems, each with a plug-in piece:
@@ -201,7 +212,7 @@ class TwoStageSlotting:
     - Problem 1: assign locations to clusters (``assign_locations_to_clusters``).
     - Problem 2: for each cluster, solve its zone as a standalone sub-instance
       with ``zone_solver`` — any SlottingMethod (exact, linear_assignment,
-      local_search, ...). Clusters are independent.
+      swap_search, ...). Clusters are independent.
 
     Every block is a choice: the affinity A and geometry are fixed when the
     instance is built; the grouping and the per-zone solver are passed here.
@@ -212,20 +223,27 @@ class TwoStageSlotting:
         Strategy that groups SKUs (any from clustering_registry).
     zone_solver : SlottingMethod
         Method used to solve each cluster's zone (any from method_registry).
+    location_cost : np.ndarray | None
+        Per-location cost passed to Problem 1 (aligned with
+        ``instance.location_ids``). Default: distance to dock (cost bands).
+        Pass the pick-path position (snake order) for compact zones.
     """
 
-    name = "two_stage"
+    name = "bilevel"
 
-    def __init__(self, clustering, zone_solver):
+    def __init__(self, clustering, zone_solver, *, location_cost=None):
         self.clustering = clustering
         self.zone_solver = zone_solver
+        self.location_cost = location_cost
 
     def solve(self, instance: SlottingInstance) -> Assignment:
         labels = self.clustering.cluster(instance)
         aggregation = aggregate_clusters(instance, labels)
 
         # Problem 1: best locations per cluster.
-        zones = assign_locations_to_clusters(instance, aggregation)
+        zones = assign_locations_to_clusters(
+            instance, aggregation, location_cost=self.location_cost
+        )
 
         # Problem 2: solve each cluster's zone as an independent sub-instance.
         mapping: dict = {}

@@ -88,19 +88,20 @@ distintos, su proximidad no se optimiza.
 
 ## 6. Qué clustering define las zonas
 
-El clustering es la perilla que determina qué productos comparten zona. Es una
-variable experimental, pero su calidad condiciona todo el método (§5).
+El clustering determina qué productos comparten zona. El plan es agrupar por
+**vendor** (`merchant`): es el criterio operativo del problema. `demand_class`
+(tiers de rotación A/B/C) queda como alternativa.
 
-| Clustering | Agrupa por | Observación |
+| Clustering | Agrupa por | Nota |
 |---|---|---|
-| `merchant` | vendor | ~10 grupos balanceados; pero ~87% de la afinidad es inter-cluster (no agrupa copicking) |
-| `abc` | tier de demanda | 3 grupos; sin estructura de afinidad |
-| `affinity` (componentes conexas) | conectividad del grafo de afinidad | **degenerado**: un componente gigante (~15.500) + miles de singletons |
-| comunidades (Louvain, top-k+CC) | comunidades de afinidad | **[abierto]** — pendiente; es lo que daría clusters con afinidad interna alta |
+| `merchant` | vendor | ~10 grupos balanceados; el agrupamiento dado |
+| `demand_class` | tier de demanda (A/B/C) | 3 grupos; zonificación clásica de rotación |
 
-El cuello de botella real: ningún clustering actual produce grupos con afinidad
-interna alta. Conseguir comunidades de afinidad de tamaño razonable es lo que haría
-rendir al bi-nivel.
+La afinidad **no se explota eligiendo el clustering**, sino **dentro de cada zona**
+de vendor (el QAP del Problema 2). Se evaluó un clustering por componentes conexas
+de la afinidad, pero resultó degenerado (un componente gigante de ~15.500 + miles
+de singletons), y la detección de comunidades quedó descartada: el agrupamiento es
+por vendor, y la afinidad se resuelve en el nivel inferior.
 
 ---
 
@@ -108,13 +109,15 @@ rendir al bi-nivel.
 
 ```
 Achicar:     bi-nivel + truncado top-k
-Problema 1:  transporte lineal (demanda agregada)        -> exacto
+Problema 1:  transporte lineal -> exacto
+               costo = posicion en recorrido (snake) -> zonas compactas
 Problema 2:  QAP por cluster, en paralelo
-               cluster chico  -> Gurobi exacto
+               cluster chico  -> exacto (Gurobi)
                cluster grande -> busqueda por swaps
 Afinidad inter-cluster: descartada (solo intra, via Problema 2)
-Clustering:  variable experimental (pendiente: comunidades de afinidad)
+Clustering:  vendor (merchant); demand_class como alternativa
 ```
 
-Decisiones pendientes: cómo resolver el Problema 1 (§3), el umbral chico/grande del
-Problema 2 (§4), y el clustering de comunidades (§6).
+Decisiones pendientes: el umbral chico/grande del Problema 2 (§4), y validar si la
+afinidad intra-vendor (Problema 2 con búsqueda por swaps) mejora las rutas frente a
+la colocación por demanda.

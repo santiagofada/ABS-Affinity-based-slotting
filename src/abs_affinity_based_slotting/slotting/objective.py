@@ -67,7 +67,7 @@ def slotting_cost(
     return lam * linear + (1.0 - lam) * quadratic
 
 
-def swap_delta(
+def swap_cost_delta(
     assignment: Assignment,
     instance: SlottingInstance,
     sku_a: SkuId,

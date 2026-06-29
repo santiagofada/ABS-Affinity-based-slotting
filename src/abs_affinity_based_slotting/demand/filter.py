@@ -74,7 +74,7 @@ class TopKFilter:
     j's top-k. The kept value is the original (symmetric) affinity.
 
     Symmetry is required: the QAP affinity matrix must satisfy a_ij = a_ji, and
-    swap_delta relies on it. A raw row-wise top-k is directional and would break
+    swap_cost_delta relies on it. A raw row-wise top-k is directional and would break
     that invariant, so symmetrization is part of the filter, not optional.
 
     For the stricter intersection variant (edge survives only if mutual), see

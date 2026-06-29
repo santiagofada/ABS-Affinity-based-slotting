@@ -9,7 +9,7 @@ import numpy as np
 
 
 @dataclass(frozen=True)
-class Metrics:
+class RouteMetrics:
     n_batches: int
     total_distance: float
     mean_batch_distance: float
@@ -18,16 +18,16 @@ class Metrics:
     runtime_seconds: float | None = None  # method solve time, set by the caller
 
 
-def summarize(
+def summarize_route_costs(
     batch_costs: Sequence[float] | np.ndarray,
     *,
     runtime_seconds: float | None = None,
-) -> Metrics:
+) -> RouteMetrics:
     """Summarize a collection of per-batch route costs."""
     costs = np.asarray(batch_costs, dtype=float)
     if costs.size == 0:
-        return Metrics(0, 0.0, 0.0, 0.0, 0.0, runtime_seconds)
-    return Metrics(
+        return RouteMetrics(0, 0.0, 0.0, 0.0, 0.0, runtime_seconds)
+    return RouteMetrics(
         n_batches=int(costs.size),
         total_distance=float(costs.sum()),
         mean_batch_distance=float(costs.mean()),

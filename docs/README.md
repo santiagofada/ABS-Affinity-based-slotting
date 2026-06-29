@@ -176,13 +176,12 @@ src/abs_affinity_based_slotting/
 │   ├── instance.py      SlottingInstance (datos, inmutable, validado)
 │   ├── build.py         construye la instancia desde las tablas
 │   ├── assignment.py    Assignment (solucion; swap en O(1))
-│   └── objective.py     slotting_cost y swap_delta
+│   └── objective.py     slotting_cost y swap_cost_delta
 │
 ├── clustering/          agrupar productos (una etiqueta por producto)
 │   ├── base.py          contrato ClusteringStrategy + clustering_registry
 │   ├── abc.py           clases A/B/C por demanda
-│   ├── merchant.py      una clase por vendor
-│   └── affinity.py      componentes conexas de la afinidad
+│   └── merchant.py      una clase por vendor
 │
 ├── methods/             resolver: producir un Assignment
 │   ├── base.py          contrato SlottingMethod + method_registry

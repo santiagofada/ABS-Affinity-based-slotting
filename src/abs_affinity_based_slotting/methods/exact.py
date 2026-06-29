@@ -23,8 +23,8 @@ from ..slotting import Assignment, SlottingInstance
 from .base import method_registry
 
 
-@method_registry.register("exact")
-class ExactSlotting:
+@method_registry.register("exact_qap")
+class ExactQAPSlotting:
     """Exact solver for the full λ·L + (1-λ)·Q objective.
 
     Intended for small instances and for the subproblems of the bi-level
@@ -44,7 +44,7 @@ class ExactSlotting:
         Whether the solver prints its log.
     """
 
-    name = "exact"
+    name = "exact_qap"
 
     def __init__(
         self,

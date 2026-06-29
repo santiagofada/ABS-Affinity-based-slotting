@@ -78,15 +78,34 @@ class JaccardAffinity:
         return csr_matrix((scores, (coo.row, coo.col)), shape=cooccurrence.shape)
 
 
+@affinity_registry.register("cosine")
+class CosineAffinity:
+    """Cosine affinity between SKUs.
+
+    Treats each SKU as a binary incidence vector over batches and measures the
+    cosine of the angle between two such vectors:
+
+        a_ij = n_ij / sqrt(s_i * s_j)
+
+    Normalizing by the geometric mean of the supports makes it less sensitive
+    than Jaccard to individually frequent SKUs. Symmetric, in [0, 1], computed
+    only on the nonzero co-occurrence entries to preserve sparsity.
+    """
+
+    name = "cosine"
+
+    def build(self, cooccurrence, support, n_batches) -> csr_matrix:
+        coo = cooccurrence.tocoo()
+        n_ij = coo.data.astype(float)
+        denom = np.sqrt(support[coo.row].astype(float) * support[coo.col].astype(float))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            scores = np.where(denom > 0, n_ij / denom, 0.0)
+        return csr_matrix((scores, (coo.row, coo.col)), shape=cooccurrence.shape)
+
+
 # ---------------------------------------------------------------------------
 # Metricas candidatas a implementar
 # ---------------------------------------------------------------------------
-#
-# Cosine:
-#   a_ij = n_ij / sqrt(s_i * s_j)
-#   Interpreta cada SKU como un vector binario en el espacio de batches.
-#   Normaliza por la raiz del producto de soportes; menos sensible que Jaccard
-#   a SKUs muy frecuentes.
 #
 # Lift (confianza relativa):
 #   a_ij = (n_ij / N) / ((s_i / N) * (s_j / N))  =  n_ij * N / (s_i * s_j)

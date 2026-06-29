@@ -93,7 +93,7 @@ def build_instance(
     )
 
 
-def build_instance_canonical(
+def build_full_instance(
     picking_train: pd.DataFrame,
     initial_stock: pd.DataFrame,
     distances: pd.DataFrame,
