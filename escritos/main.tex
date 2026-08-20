@@ -1,0 +1,265 @@
+%\documentclass[spanish,a4paper,11pt,oneside,links]{report}
+\documentclass[spanish,a4paper,oneside,10pt,openright]{book}
+\usepackage{graphicx}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-tabla]{babel}
+\usepackage[Algoritmo]{algorithm}
+\usepackage{algpseudocode}
+\usepackage{url}
+\usepackage{fancyhdr}
+\usepackage{epstopdf}
+\usepackage{minted}
+\usepackage{csquotes}
+\usepackage{rotating}
+\usepackage{etoolbox}
+\usepackage{zref-xr}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage[authoryear,round,longnamesfirst]{natbib}
+\usepackage{multicol}
+\usepackage{spverbatim}
+\usepackage[pdf]{graphviz}
+\usepackage{dirtree}
+\usepackage{tabularx}
+    \newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\usepackage{emptypage}
+\usepackage[acronym,shortcuts,xindy]{glossaries}
+\usepackage{markdown}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{changepage}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{datetime}
+
+\newcommand{\capitalmonthname}[1]{%
+  \ifcase#1\or
+    Enero\or Febrero\or Marzo\or Abril\or Mayo\or Junio\or
+    Julio\or Agosto\or Septiembre\or Octubre\or Noviembre\or Diciembre
+  \fi
+}
+
+\newdateformat{monthyeardate}{%
+  \capitalmonthname{\THEMONTH}, \THEYEAR}
+
+\input{conf}
+
+\setlength{\headheight}{13.07225pt}
+
+% wide page for side by side figures, tables, etc
+\newlength{\offsetpage}
+\setlength{\offsetpage}{1.0cm}
+\newenvironment{widepage}{\begin{adjustwidth}{-\offsetpage}{-\offsetpage}%
+    \addtolength{\textwidth}{2\offsetpage}}%
+{\end{adjustwidth}}
+
+\newtheorem{definition}{Definición}
+
+\renewcommand{\listalgorithmname}{Índice de Algoritmos}
+
+\addto\extrasspanish{
+    \renewcommand{\sectionautorefname}{Sec.}
+}
+
+
+\DeclareMathOperator*{\argmax}{arg\,max}  % in your preamble
+\DeclareMathOperator*{\argmin}{arg\,min}  % in your preamble
+
+\DeclareMathOperator*{\minimize}{minimize}
+\DeclareMathOperator*{\maximize}{maximize}
+
+\makeglossaries
+
+\input{acronimos}
+
+\lhead[]{\rightmark}
+\chead[]{}
+\rhead[\leftmark]{}
+\renewcommand{\headrulewidth}{0.5pt}
+
+\fancypagestyle{plain}{
+\fancyhead[L]{}
+\fancyhead[C]{}
+\fancyhead[R]{}
+\renewcommand{\headrulewidth}{0pt}
+}
+
+\pagestyle{fancy}
+
+\widowpenalty 10000
+\clubpenalty 10000
+
+% AGREGAGO POR JUAN =====================================================
+% COMANDOS DE CORRECCION
+\newcommand{\jbc}[1]{{\color{olive} #1 (JBC)\ }}
+
+\newcommand{\rev}[1]{{\color{blue} #1\ }}
+
+\newcommand{\citeme}[1]{{\color{red}{¡¡CITEME: #1!!}}}
+\newcommand{\completar}[1]{{\color{red!75}{Completar: #1}}}
+
+\renewcommand{\listingscaption}{Algoritmo}
+\renewcommand{\listoflistingscaption}{Lista de algoritmos}
+
+%\usemintedstyle{algol_nu}
+%https://pygments.org/styles/
+
+\setminted{
+    breaklines=true
+}
+
+\renewcommand{\listingscaption}{Código}
+\renewcommand{\thelisting}{\thesection.\arabic{listing}}
+\preto\section{\setcounter{listing}{0}}
+
+\begin{document}
+
+
+\input{./00_tapa/tapa.tex} \cleardoublepage
+
+
+\pagenumbering{gobble}
+Certifico que el trabajo incluido en este documento es el resultado de tareas de investigación
+originales y que no ha sido presentado para optar a un título en ninguna otra
+Universidad o Institución.
+
+\vspace{3cm}
+\begin{flushright}
+\authorname
+\end{flushright}
+\cleardoublepage
+
+% RECONOCIMIENTS + AGRADECIMIENTOS ============================================
+
+%\chapter*{Reconocimientos}
+%\pagenumbering{Roman} % para comenzar la numeracion de paginas en numeros romanos
+%\addcontentsline{toc}{chapter}{Reconocimientos} % si queremos que aparezca en el índice
+%\markboth{RECONOCIMIENTOS}{RECONOCIMIENTOS} % encabezado
+%Esta Tesis fue desarrollada gracias a la ayuda económica de ...
+
+
+%\phantom{p. 1}
+\clearpage
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
+\chapter*{Agradecimientos} % si no queremos que añada la palabra "Capitulo"
+\pagenumbering{Roman} % para comenzar la numeracion de paginas en numeros romanos
+\addcontentsline{toc}{chapter}{Agradecimientos} % si queremos que aparezca en el índice
+\markboth{AGRADECIMIENTOS}{AGRADECIMIENTOS} % encabezado
+\input{./01_agradecimientos/agradecimientos.tex}
+
+% ABSTRACT ====================================================================
+
+\phantom{p. 1}
+\clearpage
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
+\chapter*{Resumen} % si no queremos que añada la palabra "Capitulo"
+\addcontentsline{toc}{chapter}{Resumen} % si queremos que aparezca en el índice
+\markboth{RESUMEN}{RESUMEN} % encabezado
+\input{./02_resumen/resumen_es.tex}
+
+\phantom{p. 1}
+\clearpage
+\thispagestyle{empty}
+
+\chapter*{Abstract} % si no queremos que añada la palabra "Capitulo"
+\addcontentsline{toc}{chapter}{Abstract} % si queremos que aparezca en el índice
+\markboth{ABSTRACT}{ABSTRACT} % encabezado
+\input{./02_resumen/resumen_en.tex}
+
+\clearpage
+\phantom{p. 1}
+\thispagestyle{empty}
+
+
+
+% GLOSARIO=====================================================================
+
+\renewcommand*\glspostdescription{\dotfill}
+\setlength{\glslistdottedwidth}{1\textwidth}
+\setlength{\glsdescwidth}{0.89\textwidth}
+\markboth{Glosario}{Glosario} % encabezado
+%\glsaddall
+\printglossary[type=\acronymtype,title=Glosario]
+\addcontentsline{toc}{chapter}{Glosario}
+
+
+% CONTENIDOS ==================================================================
+\phantom{p. 1}
+\clearpage
+
+\tableofcontents % indice de contenidos
+
+\phantom{p. 1}
+\clearpage
+\thispagestyle{empty}
+\phantom{p. 2}
+\clearpage
+
+% FIGURES =====================================================================
+
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Índice de figuras} % para que aparezca en el indice de contenidos
+\listoffigures % indice de figuras
+
+\phantom{p. 1}
+\clearpage
+\thispagestyle{empty}
+\phantom{p. 1}
+\clearpage
+
+% TABLES ======================================================================
+
+% \cleardoublepage
+% \addcontentsline{toc}{chapter}{Índice de tablas} % para que aparezca en el indice de contenidos
+% \listoftables % indice de tablas
+
+% pagina en blanco
+\newpage
+
+\cleardoublepage
+\renewcommand\listoflistingscaption{Índice de códigos}
+\listoflistings % Now typeset the list
+\addcontentsline{toc}{chapter}{Índice de código} % para que aparezca en el indice de contenidos
+
+% pagina en blanco
+\newpage
+\pagenumbering{arabic}
+\phantom{p. 1}
+\clearpage
+
+
+% CONTENT =====================================================================
+
+
+\input{./03_intro/intro.tex} \cleardoublepage % 3 pag
+\input{./04_antecedentes/antecedentes.tex} \cleardoublepage % 30 - 40 pag
+% \input{./05_implementacion/05_implementacion.tex} \cleardoublepage % 10
+% \input{./06_resultados/06_resultados.tex} \cleardoublepage % ~5
+\input{./07_conclu/conclu.tex} \cleardoublepage
+
+
+% APENDICES====================================================================
+
+
+% \appendix
+
+
+
+% BIBLIOGRAFIA ================================================================
+
+\phantom{p. 1}
+\clearpage
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Bibliografía}
+\bibliographystyle{apalike}
+\bibliography{tesis}
+
+
+\end{document}
