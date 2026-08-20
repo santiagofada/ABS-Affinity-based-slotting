@@ -47,6 +47,7 @@ conda-meta/
 *.toc
 *.lof
 *.lot
+*.lol
 *.bbl
 *.blg
 *.fls
