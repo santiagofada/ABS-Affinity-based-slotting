@@ -1,0 +1,64 @@
+name: tesis
+
+# Compila escritos/ y commitea docs/tesis.pdf, para que el PDF del repo este
+# siempre al dia sin depender de que alguien corra make tesis a mano.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "escritos/**"
+      - ".github/workflows/tesis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tesis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # El contenedor corre como root sobre un checkout de otro uid.
+      - name: Marcar el repo como seguro
+        run: git config --global --add safe.directory '*'
+
+      # pygments lo necesita minted; dot lo necesita el paquete graphviz.
+      # No vienen en la imagen de texlive.
+      - name: Dependencias externas
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends python3-pygments graphviz
+
+      - name: Compilar
+        working-directory: escritos
+        run: latexmk -pdf -shell-escape -interaction=nonstopmode -halt-on-error main.tex
+
+      # Queda descargable desde la pagina del run aunque falle el commit.
+      - name: Subir PDF como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesis
+          path: escritos/main.pdf
+
+      - name: Publicar en docs/
+        run: |
+          mkdir -p docs
+          cp escritos/main.pdf docs/tesis.pdf
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/tesis.pdf
+          if git diff --staged --quiet; then
+            echo "El PDF no cambio, no hay nada que commitear."
+          else
+            git commit -m "build: actualizar docs/tesis.pdf [skip ci]"
+            git push
+          fi
