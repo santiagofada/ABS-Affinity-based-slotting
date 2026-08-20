@@ -40,6 +40,41 @@ conda-meta/
 
 
 
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.glo
+*.gls
+*.glg
+*.acn
+*.acr
+*.alg
+*.ist
+*.xdy
+_minted-*/
+
+# El PDF compilado dentro de escritos/ es build local: no se versiona ni va a
+# Overleaf. El entregable para GitHub es docs/tesis.pdf (ver Makefile: make tesis).
+escritos/output/
+escritos/main.pdf
+
+# Snapshots de Overleaf (usar el remote git, no el zip)
+*.zip
+
+# Bibliografia bajada de editoriales: con copyright y pesada. Las citas van en
+# el .bib, los PDFs quedan solo en local.
+papers/
+
+
 # IDEs / editors
 .vscode/
 .idea/

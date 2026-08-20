@@ -206,6 +206,10 @@ src/abs_affinity_based_slotting/
 - **[bloques.md](bloques.md)** — los componentes intercambiables (afinidad,
   filtro, clustering, método), su mecanismo de composición mediante *registries*,
   y el diseño del método bi-nivel.
+- **[plan-de-trabajo.md](plan-de-trabajo.md)** — qué está hecho, qué falta, en qué orden y
+  con qué plazos. Incluye el pedido de datos a ShipHero.
+- **[estado-del-arte.md](estado-del-arte.md)** — la literatura relevante: dónde se ubica
+  el problema, cuándo la afinidad paga y cuándo no, y los huecos que este trabajo ataca.
 - **[diseno-optimizacion.md](diseno-optimizacion.md)** — las alternativas de diseño
   del método (descomposición, Problema 1 y 2, afinidad inter-cluster, clustering),
   con ventajas, desventajas y la configuración elegida.
