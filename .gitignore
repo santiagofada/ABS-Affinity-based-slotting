@@ -74,6 +74,10 @@ escritos/main.pdf
 # Bibliografia bajada de editoriales: con copyright y pesada. Las citas van en
 # el .bib, los PDFs quedan solo en local.
 papers/
+lectura/
+
+# Referencias de estilo.
+Extras/
 
 
 # IDEs / editors
