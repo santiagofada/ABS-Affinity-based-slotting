@@ -1,4 +1,4 @@
-%\documentclass[spanish,a4paper,11pt,oneside,links]{report}
+º%\documentclass[spanish,a4paper,11pt,oneside,links]{report}
 \documentclass[spanish,a4paper,oneside,10pt,openright]{book}
 \usepackage{graphicx}
 \usepackage{amsmath,amsfonts,amssymb}
@@ -205,6 +205,27 @@ Esta Tesis fue desarrollada gracias a la ayuda económica de ...
 \thispagestyle{empty}
 \phantom{p. 1}
 \clearpage
+<<<<<<< HEAD:escritos/main.tex
+=======
+
+% TABLES ======================================================================
+
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Índice de tablas} % para que aparezca en el indice de contenidos
+\listoftables % indice de tablas
+\completar{todo esto tiene sentido?, si lo tiene no seria mejor que este al final}
+
+% pagina en blanco
+\newpage
+
+\cleardoublepage
+\renewcommand\listoflistingscaption{Índice de códigos}
+\listoflistings % Now typeset the list
+\addcontentsline{toc}{chapter}{Índice de código} % para que aparezca en el indice de contenidos
+
+% pagina en blanco
+\newpage
+>>>>>>> 72ff493 (Squashed 'escritos/' changes from 5cf6cef..315a53c):main.tex
 \pagenumbering{arabic}
 
 
