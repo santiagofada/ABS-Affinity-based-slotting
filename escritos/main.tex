@@ -32,6 +32,11 @@
 \usepackage{tcolorbox}
 \usepackage{listings}
 \usepackage{datetime}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{subcaption}
 
 \newcommand{\capitalmonthname}[1]{%
   \ifcase#1\or
@@ -132,11 +137,11 @@ Universidad o Institución.
 
 % RECONOCIMIENTS + AGRADECIMIENTOS ============================================
 
-%\chapter*{Reconocimientos}
-%\pagenumbering{Roman} % para comenzar la numeracion de paginas en numeros romanos
-%\addcontentsline{toc}{chapter}{Reconocimientos} % si queremos que aparezca en el índice
-%\markboth{RECONOCIMIENTOS}{RECONOCIMIENTOS} % encabezado
-%Esta Tesis fue desarrollada gracias a la ayuda económica de ...
+\chapter*{Reconocimientos}
+\pagenumbering{Roman} % para comenzar la numeracion de paginas en numeros romanos
+\addcontentsline{toc}{chapter}{Reconocimientos} % si queremos que aparezca en el índice
+\markboth{RECONOCIMIENTOS}{RECONOCIMIENTOS} % encabezado
+Esta Tesis fue desarrollada gracias a la ayuda económica de ...
 
 
 %\phantom{p. 1}
@@ -179,16 +184,7 @@ Universidad o Institución.
 
 
 
-% GLOSARIO=====================================================================
-
-\renewcommand*\glspostdescription{\dotfill}
-\setlength{\glslistdottedwidth}{1\textwidth}
-\setlength{\glsdescwidth}{0.89\textwidth}
-\markboth{Glosario}{Glosario} % encabezado
-%\glsaddall
-\printglossary[type=\acronymtype,title=Glosario]
-\addcontentsline{toc}{chapter}{Glosario}
-
+% GLOSARIO: movido al final de la tesis, junto a los indices de figuras y tablas
 
 % CONTENIDOS ==================================================================
 \phantom{p. 1}
@@ -202,38 +198,14 @@ Universidad o Institución.
 \phantom{p. 2}
 \clearpage
 
-% FIGURES =====================================================================
+% INDICES DE FIGURAS Y TABLAS: movidos al final de la tesis
 
-\cleardoublepage
-\addcontentsline{toc}{chapter}{Índice de figuras} % para que aparezca en el indice de contenidos
-\listoffigures % indice de figuras
-
-\phantom{p. 1}
-\clearpage
+% pagina en blanco, sin numero ni encabezado
+\newpage
 \thispagestyle{empty}
 \phantom{p. 1}
 \clearpage
-
-% TABLES ======================================================================
-
-\cleardoublepage
-\addcontentsline{toc}{chapter}{Índice de tablas} % para que aparezca en el indice de contenidos
-\listoftables % indice de tablas
-\completar{todo esto tiene sentido?, si lo tiene no seria mejor que este al final}
-
-% pagina en blanco
-\newpage
-
-\cleardoublepage
-\renewcommand\listoflistingscaption{Índice de códigos}
-\listoflistings % Now typeset the list
-\addcontentsline{toc}{chapter}{Índice de código} % para que aparezca en el indice de contenidos
-
-% pagina en blanco
-\newpage
 \pagenumbering{arabic}
-\phantom{p. 1}
-\clearpage
 
 
 % CONTENT =====================================================================
@@ -262,5 +234,29 @@ Universidad o Institución.
 \bibliographystyle{apalike}
 \bibliography{tesis}
 
+
+% INDICES Y GLOSARIO ==========================================================
+% Al final para que la lectura arranque antes; si molestan, comentar.
+
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Índice de figuras}
+\listoffigures
+
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Índice de tablas}
+\listoftables
+
+% \cleardoublepage
+% \renewcommand\listoflistingscaption{Índice de códigos}
+% \listoflistings
+% \addcontentsline{toc}{chapter}{Índice de código}
+
+\cleardoublepage
+\renewcommand*\glspostdescription{\dotfill}
+\setlength{\glslistdottedwidth}{1\textwidth}
+\setlength{\glsdescwidth}{0.89\textwidth}
+\markboth{Glosario}{Glosario}
+\printglossary[type=\acronymtype,title=Glosario]
+\addcontentsline{toc}{chapter}{Glosario}
 
 \end{document}
