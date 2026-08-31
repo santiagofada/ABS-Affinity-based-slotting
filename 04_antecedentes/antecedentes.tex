@@ -1,4 +1,92 @@
 \chapter{Antecedentes}
 \label{chapter:antecedentes}
 
-\completar{Desde el fenómeno hasta lo que se quiere hacer, todo lo que se vaya a usar en la tesis tiene que ir en esta sección: Técnicas, contexto TODO}
+Este capítulo presenta los antecedentes necesarios para situar el problema abordado en este trabajo, desde la evolución de los sistemas de almacenamiento hasta las técnicas actuales de asignación de ubicaciones.
+Comienza por la historia, comenzando con el almacén que solo custodiaba mercadería, hasta el \emph{warehouse} moderno que despacha miles de pedidos por día, y desde ahí baja a las operaciones que ocurren puertas adentro, con el foco puesto en el \emph{picking}.
+Sobre ese terreno entra después la literatura sobre asignación de ubicaciones y sobre el uso de la afinidad entre productos, que es la que termina señalando los huecos que este trabajo está en posición de atacar.
+Todo lo que sigue habla de centros de distribución en general, mientras que el que se estudió y los datos de los que utilizaron se describen en el Capítulo~\completar{ref al capitulo del warehouse propio cuando exista}.
+
+
+
+
+\section{Evolución de los depósitos y centros de distribución}
+
+
+Durante buena parte de su historia, un depósito fue principalmente un lugar donde la mercadería esperaba.
+
+Los productos llegaban, se almacenaban y permanecían allí hasta que fueran necesarios. Esto permitía producir en un momento y vender en otro, algo especialmente importante cuando la demanda se concentraba en ciertas épocas del año. Un fabricante de juguetes, por ejemplo, podía producir durante varios meses y acumular stock para responder al aumento de ventas durante Navidad. Al mismo tiempo, mantener inventario daba cierto margen frente a cambios inesperados en la demanda.
+En ese contexto, la principal preocupación era encontrar espacio para guardar la mercadería y aprovecharlo bien. Como los productos se movían con menos frecuencia, la ubicación exacta de cada uno dentro del depósito tenía una importancia mucho menor que la que tiene en una operación moderna.
+
+
+Ese equilibrio empezó a cambiar a medida que crecieron los volúmenes de producción y de mercadería almacenada. Ya no alcanzaba con disponer de espacio suficiente, también era necesario mover los productos dentro del depósito de forma cada vez más eficiente. Así, el problema comenzó a desplazarse 
+desde dónde guardar la mercadería hacia cómo manipularla y transportarla \citeme{historia de la logistica y la produccion en masa}.
+
+La respuesta llegó por el lado de la estandarización, con la difusión de la carga unitaria a mediados del siglo~XX.
+Un \emph{pallet} es una plataforma de medidas normalizadas sobre la que se apila mercadería para manipularla como un bloque único, y su adopción masiva, junto con la del montacargas, convirtió el movimiento de mercadería en una operación mecanizable y previsible.
+Esta forma de manipular la mercadería también consolidó durante décadas una operación pensada alrededor de grandes unidades de carga, algo que cambiaría profundamente con la expansión del comercio electrónico.
+
+Sobre esa base material se constituyó la logística como disciplina durante la segunda mitad del siglo.
+Lo que hasta entonces eran actividades sueltas, almacenar, transportar, reponer, empezó a tratarse como un sistema con objetivos propios y costos medibles.
+
+El giro decisivo, sin embargo, fue conceptual antes que tecnológico, y vino con la difusión de las filosofías de producción ajustada a partir de los años setenta.
+Mantener grandes cantidades de inventario también tiene un costo, el mismo ocupa espacio, requiere recursos para su almacenamiento y queda expuesto a roturas, deterioro u obsolescencia. Por eso, el almacenamiento comenzó a verse no solo como un respaldo frente a la incertidumbre, sino también como capital inmovilizado y como una fuente de costos.
+
+Las consecuencias para lo que aquí importa son dos.
+Por un lado el depósito dejó de ser un lugar donde la mercadería descansa y pasó a ser uno donde circula, lo que vuelve al movimiento interno un costo mucho mas importante en lugar de una externalidad menor.
+Por otro lado, al aumentar la frecuencia de los movimientos, comenzó a cobrar importancia una característica hasta entonces menos relevante para organizar el espacio, qué productos se solicitaban con mayor frecuencia. Esa información podía utilizarse para ubicar los artículos de mayor rotación en posiciones más convenientes.
+
+El resultado de ese proceso es el centro de distribución, que se distingue del almacén tradicional menos por su tamaño que por aquello que mide.
+Un almacén se evaluaba por cuánto podía contener, mientras que un centro de distribución se evalúa por cuántos pedidos despacha por unidad de tiempo y a qué costo, y ese cambio de vara es el que pone el recorrido del operario en el centro de la discusión.
+
+Hablar de centros de distribución, sin embargo, todavía abarca operaciones que se parecen poco entre sí, y la distinción más útil pasa por el tipo de cliente al que sirven \citeme{Bartholdi y Hackman, seccion 1.2, tipos de deposito}.
+Uno que abastece tiendas trabaja contra un cliente regular y previsible, con órdenes que pueden tener cientos o miles de artículos y que suelen conocerse con un día o más de anticipación, de modo que hay margen para planificar.
+Un depósito de repuestos enfrenta el problema inverso, porque llega a almacenar decenas o cientos de miles de piezas cuya demanda individual es chica y difícil de anticipar, aunque la actividad agregada resulte estable.
+En el extremo opuesto está el que atiende comercio electrónico, donde las órdenes rara vez pasan de uno a tres artículos pero llegan en cantidades enormes y deben despacharse apenas se reciben.
+A eso se agregan operaciones con restricciones propias, como los depósitos de perecederos, en los que la mercadería permanece a veces solo unas horas y hay que sostener la cadena de frío y reglas de salida por vencimiento, o los operadores logísticos externos, que conviven en una misma instalación con inventario de varios clientes.
+
+Esas diferencias no son solo de escala, porque también cambia la unidad física con la que se manipula la mercadería.
+Cerca de la fábrica el producto se mueve en pallets, y a medida que desciende por la cadena esas unidades se van abriendo, primero en capas, después en cajas, luego en paquetes internos y finalmente en unidades sueltas, que es el formato en el que llega al consumidor \citeme{Bartholdi y Hackman, seccion 2.2, unidades de manipulacion}.
+
+Ese descenso es el que vuelve relevante todo lo que sigue.
+Mover un pallet entero de una ubicación a otra es un problema distinto de recorrer el depósito para juntar una o dos unidades de varios productos diferentes, y cuanto más chica es la unidad que se manipula y más pedidos hay que preparar, más peso adquiere la decisión de dónde ubicar cada artículo.
+
+\section{La informatización de la operación}
+
+\completar{Codigo de barras, ERP y WMS. Es la seccion mas importante de la rampa historica, porque es la que explica que el historial de ordenes exista y sea explotable, que es la precondicion de toda la tesis.}
+
+\section{El comercio electrónico y el warehouse moderno}
+
+\completar{Cambio de perfil de la orden, proliferacion de SKU, expectativas de entrega, omnicanalidad. Micro-fulfillment y automatizacion. La bifurcacion entre picker-to-parts y parts-to-picker, que despues habilita a declarar el alcance del trabajo.}
+
+\section{Operaciones dentro de un centro de distribución}
+
+\completar{Recepcion, put-away, almacenamiento, picking, packing y despacho, y como interactuan. Metricas de la operacion: throughput, lead time, distancia recorrida y utilizacion del espacio.}
+
+\section{Order picking}
+
+\completar{Por que es la operacion critica. Picker-to-parts, parts-to-picker, sistemas automatizados e hibridos. Picking de una orden por vez frente a batching. Zonificacion. Politicas de ruteo. La distancia recorrida como metrica.}
+
+\section{Asignación de ubicaciones}
+\label{sec:slotting}
+
+\completar{Definicion del problema. Almacenamiento dedicado, aleatorio y por clases. Politicas por rotacion, COI y ABC. Restricciones fisicas y operativas. Relacion con ruteo y batching. Slotting inicial frente a re-slotting.}
+
+\section{Afinidad entre productos}
+
+\completar{La demanda no es independiente entre productos. Co-ocurrencia, analisis de canasta y reglas de asociacion. Soporte, confianza y lift. Jaccard y coseno. Diferencia entre frecuencia individual y afinidad. El grafo de productos como representacion.}
+
+\section{Slotting basado en afinidad}
+
+\completar{Revision detallada. Metodos que agrupan productos correlacionados, clustering y grafos, family grouping. El esquema dominante de dos fases. Combinacion de popularidad y afinidad. Ventajas y limitaciones de los enfoques existentes.}
+
+\section{Formulación matemática y métodos de resolución}
+
+\completar{El problema de asignacion, el layout de instalaciones y el problema de asignacion cuadratica. Por que la afinidad conduce a un termino cuadratico. Complejidad y limites de resolucion exacta. Exactos, heuristicas y metaheuristicas. Descomposicion y busqueda local. Solo la formulacion general de la literatura; la formulacion propia va en su capitulo.}
+
+\section{Cuándo la afinidad rinde y cuándo no}
+
+\completar{El tamano de orden y el batching. La politica de ruteo. El sesgo de la curva de demanda. La intensidad de la correlacion. La contradiccion de la literatura sobre el signo del efecto segun el tipo de sistema.}
+
+\section{Síntesis y huecos}
+
+\completar{Que esta bien resuelto y que sigue abierto. Escalabilidad, modelos simplificados del deposito, afinidades estaticas, dificultad de despliegue. Los tres huecos que ataca este trabajo y donde se ubica.}
