@@ -1,13 +1,28 @@
 """Travel cost of a single picking route.
 
-Pure numerical helpers (no pandas): they take bay indices already prepared by
-the caller. The bay-level model means several picks in the same bay add nothing
-to the distance. ``dock`` is the bay index of the dock / packing station.
+Numerical helpers over bay indices prepared by the caller, plus the builder of
+the snake traversal key (the only function here that reads a pandas table). The
+bay-level model means several picks in the same bay add nothing to the
+distance. ``dock`` is the bay index of the dock / packing station.
 """
 
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+
+
+def bay_snake_keys(coordinates: pd.DataFrame, bay_ids: np.ndarray) -> np.ndarray:
+    """Snake traversal key per bay: aisle then bay number, encoded as one float.
+
+    Aligned with ``bay_ids``. The dock has no aisle/bay number; its key is -1,
+    which never matters because the dock is only a route endpoint, never part
+    of a pick sequence.
+    """
+    coord = coordinates.set_index("bay_id").reindex(bay_ids)
+    aisle = coord["aisle"].astype(float).to_numpy()
+    bay_number = coord["bay_number"].astype(float).to_numpy()
+    return np.nan_to_num(aisle * 1000.0 + bay_number, nan=-1.0)
 
 
 def snake_order(bays: np.ndarray, sort_keys: np.ndarray) -> np.ndarray:

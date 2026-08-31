@@ -18,7 +18,7 @@ from ..config import DOCK
 from ..slotting import Assignment
 from ..warehouse import build_bay_distance_matrix
 from .metrics import RouteMetrics, summarize_route_costs
-from .routes import route_distance, snake_order
+from .routes import bay_snake_keys, route_distance, snake_order
 
 
 class Evaluator:
@@ -51,12 +51,7 @@ class Evaluator:
         bay_ids = bay_dist.index.to_numpy()
         bay_to_idx = {bay: idx for idx, bay in enumerate(bay_ids)}
 
-        coord = coordinates.set_index("bay_id").reindex(bay_ids)
-        aisle = coord["aisle"].astype(float).to_numpy()
-        bay_number = coord["bay_number"].astype(float).to_numpy()
-        # Snake order = (aisle, bay_number); the dock is only an endpoint, so its
-        # key is irrelevant (NaN -> -1, never inside a pick sequence).
-        sort_key = np.nan_to_num(aisle * 1000.0 + bay_number, nan=-1.0)
+        sort_key = bay_snake_keys(coordinates, bay_ids)
 
         loc_to_bay = {
             loc: bay_to_idx[bay]

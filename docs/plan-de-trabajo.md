@@ -82,7 +82,7 @@ Nucleo 70 h, opcionales 30 h.
 
 Hoy se mide como si el deposito no cambiara. En la realidad si cambia: cuando un producto se
 queda sin stock se repone, y a veces se lo muda de hueco. Los eventos de reposicion se leen
-y no se usan. Diagnostico completo en `pending/simulacion-dinamica.md`.
+y no se usan.
 
 | | Tarea | h |
 |---|---|---:|

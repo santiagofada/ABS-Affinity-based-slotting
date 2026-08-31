@@ -230,6 +230,16 @@ class SlottingInstance:
     def n_bays(self) -> int:
         return len(self.bay_ids)
 
+    @property
+    def sku_indexes(self) -> dict[SkuId, int]:
+        """SKU id -> internal index, for bulk lookups (e.g. pandas ``map``)."""
+        return self._sku_to_idx
+
+    @property
+    def location_indexes(self) -> dict[LocationId, int]:
+        """Location id -> internal index, for bulk lookups."""
+        return self._location_to_idx
+
     def sku_index(self, sku_id: SkuId) -> int:
         """Return internal integer index for a SKU id."""
         return self._sku_to_idx[sku_id]

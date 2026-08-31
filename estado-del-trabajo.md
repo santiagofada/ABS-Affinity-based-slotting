@@ -77,8 +77,8 @@ no se resuelve exacto.
   partir en (1) repartir ubicaciones entre grupos y (2) ubicar productos dentro de cada
   zona.
 
-Las tres estan implementadas y documentadas en [docs/formulacion.md](docs/formulacion.md)
-y [docs/diseno-optimizacion.md](docs/diseno-optimizacion.md).
+Las tres estan implementadas y documentadas en [docs/modelo.md](docs/modelo.md)
+y [docs/metodo.md](docs/metodo.md).
 
 ---
 
@@ -337,15 +337,15 @@ peor). Para el QAP completo la comparacion contra el optimo **todavia no se hizo
 
 | Alternativa | Motivo del descarte | Donde queda registrado |
 |---|---|---|
-| Resolver el QAP global exacto | 8,1e8 variables binarias; NP-hard | formulacion.md |
-| Relajacion del QAP global (LP) | Sigue siendo enorme y la relajacion es floja | diseno-optimizacion.md §1 |
-| Clustering por componentes conexas de la afinidad | **Degenerado**: da un componente gigante de ~15.500 SKUs mas miles de singletons, incluso con k=3. Componentes conexas mide conectividad transitiva, no comunidades densas | idea_clustering.txt, diseno-optimizacion.md §6 |
-| Deteccion de comunidades (Louvain) | Se evaluo como plan A para "agrupar por afinidad"; se descarto al decidir que el agrupamiento seria por vendor y la afinidad se resolveria dentro de la zona | idea_clustering.txt, diseno-optimizacion.md §6 |
-| Problema 1 como secuenciacion de clusters | No es un QAP de coeficientes fijos (el costo de cada bloque depende del orden acumulado); modelo exacto incomodo | diseno-optimizacion.md §2 opcion C |
-| Problema 1 en forma cerrada (ordenar por demanda) | Da el mismo optimo (validado), pero no generaliza si se agrega afinidad inter-cluster; se prefirio plantearlo como optimizacion | diseno-optimizacion.md §3 |
-| Afinidad inter-cluster en el Problema 1 | Convertiria el Problema 1 en un QAP; se descarto para mantener la descomposicion limpia. **Costo asumido**: si dos productos muy co-pedidos caen en clusters distintos, su proximidad no se optimiza | diseno-optimizacion.md §5 |
-| `scipy.optimize.quadratic_assignment` (FAQ) | Otra heuristica no sancionada; no es la busqueda por swaps que se queria estudiar | diseno-optimizacion.md §4 |
-| Slotting dinamico / reubicaciones | Fuera de alcance declarado; las 6.452 relocations del dataset se ignoran a proposito | GUIA.md §12 |
+| Resolver el QAP global exacto | 8,1e8 variables binarias; NP-hard | modelo.md |
+| Relajacion del QAP global (LP) | Sigue siendo enorme y la relajacion es floja | metodo.md §1 |
+| Clustering por componentes conexas de la afinidad | **Degenerado**: da un componente gigante de ~15.500 SKUs mas miles de singletons, incluso con k=3. Componentes conexas mide conectividad transitiva, no comunidades densas | idea_clustering.txt, metodo.md §6 |
+| Deteccion de comunidades (Louvain) | Se evaluo como plan A para "agrupar por afinidad"; se descarto al decidir que el agrupamiento seria por vendor y la afinidad se resolveria dentro de la zona | idea_clustering.txt, metodo.md §6 |
+| Problema 1 como secuenciacion de clusters | No es un QAP de coeficientes fijos (el costo de cada bloque depende del orden acumulado); modelo exacto incomodo | metodo.md §2 opcion C |
+| Problema 1 en forma cerrada (ordenar por demanda) | Da el mismo optimo (validado), pero no generaliza si se agrega afinidad inter-cluster; se prefirio plantearlo como optimizacion | metodo.md §3 |
+| Afinidad inter-cluster en el Problema 1 | Convertiria el Problema 1 en un QAP; se descarto para mantener la descomposicion limpia. **Costo asumido**: si dos productos muy co-pedidos caen en clusters distintos, su proximidad no se optimiza | metodo.md §5 |
+| `scipy.optimize.quadratic_assignment` (FAQ) | Otra heuristica no sancionada; no es la busqueda por swaps que se queria estudiar | metodo.md §4 |
+| Slotting dinamico / reubicaciones | Fuera de alcance declarado; las 6.452 relocations del dataset se ignoran a proposito | decisiones de diseno |
 | Distancia intra-bay | Es como vienen los datos; dos productos en la misma bay quedan a distancia 0 | docs/README.md |
 | Ruteo TSP optimo por batch | Se aproxima con serpenteante para no confundir la calidad del *ruteo* con la del *slotting* | docs/README.md |
 
@@ -387,9 +387,8 @@ abandonadas dentro del paquete; lo descartado quedo documentado, no comentado.
 7. **La afinidad inter-cluster se calcula y se tira.** `aggregate_clusters` construye
    `G^T A G` y lo devuelve, pero `assign_locations_to_clusters` no lo usa. Esta bien
    documentado como extension planificada, pero hoy es codigo que no incide en el resultado.
-8. **`GUIA.md` esta desactualizado.** Marca como pendientes cosas que ya se hicieron
-   (afinidad, objetivo, heuristicas, swaps). Quedo superado por `docs/`. O se actualiza o
-   se archiva; hoy es una fuente de confusion.
+8. **Documentacion consolidada.** El documento maestro viejo quedaba superado por `docs/`
+   y se elimino; la referencia unica es ahora `docs/`.
 
 **Metodologicas**
 
@@ -457,7 +456,7 @@ Sin esto, seguir optimizando la afinidad es optimizar ruido.
 
 ### Higiene
 
-13. Actualizar o archivar `GUIA.md`. Consolidar los notebooks de experimentos.
+13. Consolidar los notebooks de experimentos.
 
 ---
 
@@ -518,7 +517,6 @@ confirmar antes que no es un artefacto del dataset (seccion 9, prioridad 1).
 
 ```bash
 uv venv && uv pip install -e .
-.venv/bin/python scripts/build_inputs.py     # genera data/processed/
 ```
 
 Notebooks, en orden:
