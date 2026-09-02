@@ -1,5 +1,8 @@
-º%\documentclass[spanish,a4paper,11pt,oneside,links]{report}
+%\documentclass[spanish,a4paper,11pt,oneside,links]{report}
 \documentclass[spanish,a4paper,oneside,10pt,openright]{book}
+% levanta el limite de 16 streams de escritura; sin esto, la combinacion de
+% glossaries, minted, pgfplots y los indices de figuras y tablas no compila
+\usepackage{morewrites}
 \usepackage{graphicx}
 \usepackage{amsmath,amsfonts,amssymb}
 \usepackage[utf8]{inputenc}

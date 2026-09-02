@@ -1,41 +1,32 @@
-# Compila la tesis y publica el PDF en docs/ para que quede versionado en GitHub.
-# Las fuentes viven en escritos/, que sincroniza con Overleaf via git subtree,
-# por eso el PDF se copia afuera: no debe viajar al proyecto de Overleaf.
+LATEX = pdflatex
+BIBTEX = bibtex
+FLAGS = -interaction=nonstopmode -halt-on-error
 
-ESCRITOS = escritos
-PDF      = docs/tesis.pdf
+.PHONY: all clean auto
 
-.PHONY: tesis watch clean empezar traer mandar
+all: main.pdf 
 
-# Build completo + publicacion del entregable.
-tesis:
-	cd $(ESCRITOS) && latexmk -pdf -shell-escape -interaction=nonstopmode main.tex
-	@mkdir -p docs
-	@cp $(ESCRITOS)/main.pdf $(PDF)
-	@echo "==> $(PDF) actualizado"
+define compile
+	@echo "==> [$(1)] Pasada 1: generando .aux y referencias..."
+	$(LATEX) $(FLAGS) $(1)
+	@echo "==> [$(1)] BibTeX: procesando bibliografía..."
+	$(BIBTEX) $(1) || true
+	@echo "==> [$(1)] Pasada 2: resolviendo referencias bibliográficas..."
+	$(LATEX) $(FLAGS) $(1)
+	@echo "==> [$(1)] Pasada 3: finalizando referencias cruzadas..."
+	$(LATEX) $(FLAGS) $(1)
+endef
 
-# Recompila solo al guardar, para escribir.
-watch:
-	cd $(ESCRITOS) && latexmk -pdf -pvc -shell-escape -interaction=nonstopmode -view=none main.tex
+main.pdf: main.tex
+	$(call compile,main)
+	
+
+auto:
+	latexmk -pdf -pvc -interaction=nonstopmode -view=none main.tex
+
+sync:
+	git commit -am "sync" && git push
 
 clean:
-	cd $(ESCRITOS) && latexmk -C
-
-# ---------------------------------------------------------------------------
-# Sincronizacion con Overleaf
-# ---------------------------------------------------------------------------
-
-# Antes de escribir: trae los commits del bot (el PDF) y lo que escribio el
-# director en Overleaf.
-empezar: traer
-
-traer:
-	git pull
-	git subtree pull --prefix=$(ESCRITOS) overleaf main --squash
-
-# Al terminar. Ojo: subtree push manda lo COMMITEADO, no el working tree.
-mandar:
-	@git diff-index --quiet HEAD -- $(ESCRITOS) || \
-		{ echo "ERROR: tenes cambios sin commitear en $(ESCRITOS)/. Commitealos primero."; exit 1; }
-	git push
-	git subtree push --prefix=$(ESCRITOS) overleaf main
+	rm -f main.pdf main.aux main.log main.bbl main.blg \
+	      main.out main.toc main.fls main.fdb_latexmk main.synctex.gz \
