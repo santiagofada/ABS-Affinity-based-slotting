@@ -4,7 +4,7 @@
 Este capítulo presenta los antecedentes necesarios para situar el problema abordado en este trabajo, desde la evolución de los sistemas de almacenamiento hasta las técnicas actuales de asignación de ubicaciones.
 Comienza por la historia, desde el almacén que solo custodiaba mercadería hasta el \emph{warehouse} moderno que despacha miles de pedidos por día, y desde ahí baja a las operaciones que ocurren puertas adentro, con el foco puesto en el \emph{picking}.
 Sobre ese terreno entra después la literatura sobre asignación de ubicaciones y sobre el uso de la afinidad entre productos, que es la que termina señalando los huecos que este trabajo está en posición de atacar.
-Todo lo que sigue habla de centros de distribución en general, mientras que el que se estudió y los datos que se utilizaron se describen más adelante, en un capítulo propio\completar{poner la ref cuando el capitulo exista}.
+Todo lo que sigue habla de centros de distribución en general, mientras que el que se estudió y los datos que se utilizaron se describen en un capítulo propio.
 
 
 
@@ -51,27 +51,27 @@ Uno que abastece tiendas trabaja contra un cliente más regular y previsible, co
 Un depósito de repuestos enfrenta el problema opuesto, porque llega a almacenar decenas o cientos de miles de piezas cuya demanda individual es chica y difícil de anticipar, aunque la actividad en promedio resulte estable.
 En el extremo opuesto está el centro de distribución orientado al comercio electrónico masivo, donde las órdenes suelen ser pequeñas, en muchas ocasiones de apenas uno a tres artículos, pero llegan con una frecuencia muy alta y deben procesarse rápidamente.
 A eso se agregan operaciones con restricciones propias, como los depósitos de perecederos, en los que la mercadería permanece a veces solo unas horas y hay que sostener la cadena de frío y reglas de salida por vencimiento, o los operadores logísticos externos, que conviven en una misma instalación con inventario de varios clientes.
-La Tabla~\ref{tab:tipos-deposito} resume estas diferencias, que van a reaparecer a lo largo del capítulo cada vez que una decisión dependa del tipo de operación.\completar{resta muy copiada asi nomas esta tabla, en uno de los libros habia una mejor }
+La Tabla~\ref{tab:tipos-deposito} resume estas diferencias, que reaparecen cada vez que una decisión dependa del tipo de operación.
 
-\begin{table}[ht]
+\begin{table}[htbp]
     \centering
-    \small
-    \begin{tabularx}{\textwidth}{|l|L|L|L|}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{|>{\hsize=0.95\hsize}L|>{\hsize=0.9\hsize}L|>{\hsize=1.15\hsize}L|>{\hsize=1.3\hsize}L|>{\hsize=0.55\hsize}L|>{\hsize=1.15\hsize}L|}
         \hline
-        \textbf{Tipo} & \textbf{Cliente típico} & \textbf{Orden típica} & \textbf{Presión dominante} \\
+        \textbf{Tipo} & \textbf{Cliente} & \textbf{Pedido típico} & \textbf{Surtido y demanda} & \textbf{Unidad que sale} & \textbf{Lo que manda} \\
         \hline
-        Reposición de tiendas & comercios de una cadena & cientos o miles de artículos, conocida con anticipación & mover volumen según plan \\
+        Reposición de tiendas & tiendas de una cadena, fijas y con entregas programadas & cientos o miles de líneas, conocidas con un día o más de anticipación & cambia con el marketing, demanda agregada alta y planificable & caja o pallet & mover mucho volumen según un plan \\
         \hline
-        Repuestos & talleres y equipos en servicio & pocas líneas, a menudo urgentes & variedad enorme, demanda difícil de anticipar \\
+        Repuestos & concesionarios y talleres & dos corrientes, reposiciones grandes y previsibles, y urgencias de dos o tres líneas & decenas o cientos de miles de piezas, demanda individual chica e impredecible, mucho stock de seguridad & pieza & variedad, urgencia y espacio \\
         \hline
-        Comercio electrónico & consumidor final & uno a tres artículos & muchísimas órdenes chicas, despacho inmediato \\
+        Comercio electrónico & consumidor final & una a tres líneas, muchísimos pedidos por día, despacho inmediato & surtido amplio, demanda que se intenta moldear con precios y plazos, devoluciones & pieza & muchos pedidos chicos con plazo corto \\
         \hline
-        Perecederos & comercios y consumidores & variable & permanencia corta, cadena de frío \\
+        Perecederos & comercios y consumidores & variable & permanencia de horas, salida por vencimiento, zonas de temperatura distintas & caja & frío, espacio caro y rotación forzada \\
         \hline
-        Operador logístico & varios clientes a la vez & mixta & inventarios de distintos dueños conviviendo \\
+        Operador logístico & varios clientes en un mismo edificio & la de cada cliente & inventarios separados, estacionalidades que se complementan & mixta & escala compartida y separación de dueños \\
         \hline
     \end{tabularx}
-    \caption{Tipos de centro de distribución según el cliente al que sirven }
+    \caption{Tipos de centro de distribución según el cliente al que sirven, y lo que cada uno implica para el pedido, el surtido y la unidad que se despacha. Elaborado a partir de \citet[sección~1.2]{bartholdi2014warehouse} y, para las devoluciones del comercio electrónico, de \citet{boysen2019warehousing}.}
     \label{tab:tipos-deposito}
 \end{table}
 
@@ -145,9 +145,9 @@ Cuando todo eso está, el nivel de detalle es fino, al punto de que un buen WMS 
 
 El alcance de estos sistemas sigue creciendo, y el WMS se relaciona con los sistemas del resto de la empresa, de los que recibe las órdenes y a los que devuelve un resumen de lo que ocurre puertas adentro, integrado en la planificación de la cadena de suministro completa \citep[capítulo~4]{bartholdi2014warehouse}.
 Ese control es una de las razones por las que la cadena de suministro se aceleró tanto entre los años noventa y la década de 2010, y para dar una idea del cambio basta recordar que hasta no hace tanto cualquier compra por catálogo venía acompañada de la advertencia de que la entrega podía demorar entre seis y ocho semanas, algo que hoy resultaría inaceptable \citep[capítulo~4]{bartholdi2014warehouse}.
-El argumento de los autores es que un producto controlado con precisión se mueve más rápido y con menos inventario en el sistema, una mejora que se suma a las del transporte y de la coordinación entre eslabones.
+El argumento de Bartholdi y Hackman es que un producto controlado con precisión se mueve más rápido y con menos inventario en el sistema, una mejora que se suma a las del transporte y de la coordinación entre eslabones.
 
-A esto se suma una consecuencia que va a reaparecer a lo largo de todo el capítulo.
+A esto se suma una consecuencia que atraviesa todo el capítulo.
 Para poder realizar todas estas tareas, el sistema está obligado a registrar cada movimiento, de modo que el depósito termina acumulando el historial completo de qué se pidió, cuándo, en qué cantidad y junto con qué otra cosa.
 Ese registro, que nadie arma a propósito sino que se genera solo como consecuencia de la operación diaria, termina siendo la materia prima sobre la que se apoya buena parte de la literatura que se revisa en este capítulo.
 
@@ -156,8 +156,7 @@ Fue sobre esa base informatizada que aterrizó el cambio de demanda descripto en
 A ese cambio de escala el comercio electrónico le sumó complicaciones que hasta entonces eran marginales, ya que una parte de lo despachado empezó a volver en forma de devoluciones y una misma instalación pasó a atender varios canales a la vez, reponiendo tiendas y despachando a clientes finales desde el mismo edificio, aunque los dos tipos de pedido se parezcan poco \citep{boysen2019warehousing}.
 Las devoluciones en particular invirtieron el sentido del flujo, porque cada paquete que vuelve tiene que ser recibido, controlado y guardado otra vez con el mismo cuidado que un producto recién llegado del proveedor, con la diferencia de que llega de a una unidad, en un estado que nadie conoce de antemano y sin que ningún plan lo haya previsto.
 
-\completar{PENDIENTE 2.2: dos parrafos antes del cierre para equilibrar el gradiente temporal, (a) la automatizacion como historia, AS/RS, carruseles, robots moviles y Kiva 2012 (L 12.3, Boysen 2019), el capital como tercer costo; (b) el deposito moderno no es uno solo, contrastes regionales del cap 16 de L, Norteamerica y Amazon, China, India, Singapur, y decidir si entra Sudamerica. Despues reescribir el cierre para que no repita.}
-La industria ensayó respuestas muy distintas a esa presión, desde automatizar el movimiento interno hasta repensar la organización del trabajo y del espacio, y buena parte de las secciones que siguen está dedicada a recorrerlas.
+La industria ensayó respuestas muy distintas a esa presión, desde automatizar el movimiento interno hasta repensar la organización del trabajo y del espacio, y buena parte de este capítulo está dedicada a recorrerlas.
 
 \section{Operaciones dentro de un warehouse}
 \label{sec:operaciones}
@@ -188,16 +187,16 @@ La mercadería que se descarga llega todavía en las unidades grandes de la Secc
 
 Una parte importante del costo posterior se condiciona un paso más adelante, en el \emph{put-away}.
 Antes de guardar hay que elegir dónde, y de esa elección depende en buena medida cuánto habrá que caminar después para volver a buscar cada producto, de modo que una etapa fija un costo que otra paga.
-Por otro lado, en la espera a que algún pedido solicite una SKU, la mercadería no consume trabajo pero sí espacio, ocupando una ubicación con dirección propia dentro del depósito.
+Por otro lado, a la espera de que algún pedido solicite una SKU, la mercadería no consume trabajo pero sí espacio, ocupando una ubicación con dirección propia dentro del depósito.
 
 Del lado de la salida, lo recolectado pasa por el control y el empaque antes de volver al dock, y ahí detectar un error todavía es barato, porque un pedido mal despachado cuesta el envío de vuelta, el reproceso y un cliente decepcionado.
 
-Una regla atraviesa todas las etapas, y es que el producto fluya deteniéndose lo menos posible, porque cada vez que un bulto se deja en algún lugar intermedio alguien va a tener que volver a levantarlo, y esa doble manipulación, sumado sobre los cientos de miles de piezas que pasan por un depósito, se vuelve un costo considerable.
+Una regla atraviesa todas las etapas, y es que el producto fluya deteniéndose lo menos posible, porque cada vez que un bulto se deja en algún lugar intermedio alguien va a tener que volver a levantarlo, y esa doble manipulación, sumada sobre los cientos de miles de piezas que pasan por un depósito, se vuelve un costo considerable.
 
 La Tabla~\ref{tab:costos-etapas} le pone números a ese reparto.
 Son estimaciones típicas reportadas en la literatura clásica de planificación de instalaciones, y conviene leerlas como órdenes de magnitud antes que como medidas, porque la proporción exacta depende de qué se almacena y a quién se atiende, mientras que el orden entre las etapas se mantiene en casi todos los casos reportados \citep{tompkins2010facilities, dekoster2007design}.
 
-\begin{table}[ht]
+\begin{table}[htbp]
     \centering
     \begin{tabular}{|l|c|}
         \hline
@@ -225,7 +224,7 @@ Sobre esa base, cada elección de diseño es en el fondo un problema de optimiza
 Una de esas elecciones es cuántos docks tener y dónde ponerlos, y su efecto es menos obvio de lo que parece, porque no cambia cuánto espacio hay sino cómo se reparte la conveniencia entre las ubicaciones \citep[sección~6.2]{bartholdi2014warehouse}.
 Cuando la recepción y el despacho comparten un mismo dock, en la configuración conocida como flujo en U de la Figura~\ref{fig:geo-u}, unas pocas ubicaciones cercanas quedan muy convenientes y las esquinas opuestas quedan muy castigadas, mientras que si hay un dock de entrada y otro de salida en lados opuestos, en el flujo pasante de la Figura~\ref{fig:geo-pasante}, el producto cruza el edificio y muchas ubicaciones resultan igual de razonables, aunque ninguna excepcional.
 Ninguna de las dos configuraciones domina a la otra, y el criterio es elegir según el sesgo de la demanda, porque una operación donde pocas SKU concentran la actividad aprovecha mejor el puñado de posiciones excelentes del flujo en U, mientras que una de actividad más repartida prefiere la uniformidad del flujo pasante.
-El patrón del argumento es lo más valioso que deja esta elección: la geometría define qué ubicaciones valen más, y la demanda define cuánto conviene esa definición.
+El patrón del argumento es lo más valioso que deja esta elección, la geometría define qué ubicaciones valen más, y la demanda define cuánto conviene esa definición.
 
 Los pasillos admiten sus propias variantes.
 En general conviene orientarlos en la dirección del flujo, y es habitual agregar pasillos transversales que permiten cortar camino entre ubicaciones, como en la Figura~\ref{fig:geo-transversal}, al precio de resignar posiciones de almacenamiento y de alargar levemente los viajes que los cruzan.
@@ -316,10 +315,10 @@ Cuando la unidad baja a la caja o a la pieza suelta, que es el caso del picking 
 \label{sec:picking}
 
 El picking se lleva la mayor parte del costo por una razón que la Tabla~\ref{tab:costos-etapas} muestra pero no explica.
-Es la etapa donde la mercadería se fragmenta, porque un pallet que se recibió y se guardó una sola vez, se va después de a cajas o de a piezas repartidas en muchos pedidos, de modo que una sola entrada genera múltiples extracciones, aunque una misma visita pueda llevarse varias unidades o servir a más de un pedido, y cuanto más chica es la unidad que se extrae más manipulación exige y más difícil resulta automatizarla \citep{dekoster2007design}.
+Es la etapa donde la mercadería se fragmenta, porque un pallet que se recibió y se guardó una sola vez se va después de a cajas o de a piezas repartidas en muchos pedidos, de modo que una sola entrada genera múltiples extracciones, aunque una misma visita pueda llevarse varias unidades o servir a más de un pedido, y cuanto más chica es la unidad que se extrae más manipulación exige y más difícil resulta automatizarla \citep{dekoster2007design}.
 Dentro de esa etapa, además, las mismas estimaciones clásicas ubican alrededor de la mitad del tiempo del operario en caminar de una ubicación a la siguiente en lugar de extraer \citep{tompkins2010facilities}, un viaje que no le agrega valor a ningún pedido y al que apunta buena parte del diseño de la operación.
 
-Como el viaje es el costo mas importante, la cantidad de líneas de una lista de recolección es una buena medida de su trabajo, pero no la única, porque una lista cuyas líneas caen cerca unas de otras se recolecta barata mientras que una de pocas líneas dispersas paga mucho viaje por cada extracción, una propiedad que se conoce como densidad de picking.
+Como el viaje es el costo más importante, la cantidad de líneas de una lista de recolección es una buena medida de su trabajo, pero no la única, porque una lista cuyas líneas caen cerca unas de otras se recolecta barata mientras que una de pocas líneas dispersas paga mucho viaje por cada extracción, una propiedad que se conoce como densidad de picking.
 
 La Sección~\ref{sec:digitalizacion} dejó planteados los dos caminos de la industria.
 Del lado \emph{parts-to-picker}, el producto viaja hacia un operario que trabaja quieto, transportado por carruseles que giran, grúas automáticas que recorren pasillos de almacenamiento denso o, más recientemente, robots móviles que cargan estanterías enteras hasta una estación de picking \citep{boysen2019warehousing}.
@@ -331,7 +330,7 @@ La economía del asunto depende del tamaño del pedido, dado que los de una sola
 También puede repartirse un mismo pedido entre varios operarios que trabajan en zonas distintas del depósito, lo que acorta los recorridos y el tiempo de flujo de cada orden, al precio de tener que consolidar después las partes.
 
 La segunda decisión es en qué orden visitar las ubicaciones de una lista.
-Formalmente es un problema de viajante de comercio, y para un depósito rectangular de un solo bloque de pasillos paralelos existe un algoritmo exacto eficiente \citep{ratliff1983order}\completar{chequear esta referencia}, aunque la garantía se pierde a medida que el layout se complica con pasillos transversales.
+Formalmente es un problema de viajante de comercio, y para un depósito rectangular de un solo bloque de pasillos paralelos existe un algoritmo exacto eficiente \citep{ratliff1983order}, aunque la garantía se pierde a medida que el layout se complica con pasillos transversales.
 En la práctica, además, Bartholdi y Hackman observaban en 2014 que ningún WMS que conocieran manejaba un modelo geométrico del depósito, y que un operario necesita reglas simples que pueda seguir sin mapa \citep[capítulo~10]{bartholdi2014warehouse}.
 Lo habitual es entonces fijar un recorrido patrón y visitar las ubicaciones de cada lista en el orden en que ese patrón las encuentra.
 La más estudiada es la política en forma de S de la Figura~\ref{fig:ruteo-serpentina}, en la que el operario entra a cada pasillo que tenga al menos una extracción, lo recorre completo y sale por el otro extremo, salteando los pasillos vacíos \citep{dekoster2007design}, con lo que un pasillo con una sola extracción cuesta lo mismo que uno lleno.
@@ -404,13 +403,13 @@ Todas estas decisiones se parecen en dos cosas, cada una se puede escribir como 
 \label{sec:perfil}
 
 Las decisiones que siguen, y en particular la de dónde ubicar cada SKU, se toman sobre el historial que la Sección~\ref{sec:digitalizacion} dejó como consecuencia de la operación, y leer ese historial antes de decidir es lo que la literatura llama perfil de actividad.
-Hacen falta tres fuentes, algunos datos de cada SKU, el historial de órdenes y el mapa de ubicaciones del propio warehouse, con la advertencia de que el historial puede provenir del sistema financiero y no del operativo, lo que tiene algunas consecuencias como que una fecha podria ser la de venta y no la del despacho, o que aparezcan cantidades negativas relacionadas a devoluciones.
+Hacen falta tres fuentes, algunos datos de cada SKU, el historial de órdenes y el mapa de ubicaciones del propio warehouse, con la advertencia de que el historial puede provenir del sistema financiero y no del operativo, lo que tiene algunas consecuencias como que una fecha podría ser la de venta y no la del despacho, o que aparezcan cantidades negativas relacionadas con devoluciones.
 
-Lo primero que se mira de cada SKU son dos cosas distintas,por un lado en cuántos pedidos apareció y por otro cuánto se movió.
-La primera cuenta picks, es decir cuántas veces alguien tuvo que ir hasta su ubicación, y por eso dice cuántas oportunidades de viaje genera esa SKU, aunque cuánto se camina en cada una depende de dónde esté guardada, del recorrido y de qué otras SKU se buscan en la misma pasada, mientras que la segunda cuenta unidades, o su volumen y su peso, y sirve para dimensionar la manipulación, la reposición y el transporte, pero no el espacio, que depende de cuánto stock se guarda de esa SKU y no de cuánto se mueve.
+Lo primero que se mira de cada SKU son dos cosas distintas, por un lado en cuántos pedidos apareció y por otro cuánto se movió.
+La primera dice cuántas oportunidades de viaje genera esa SKU, aunque no cuántos viajes, porque cuando hay batching una lista que junta varios pedidos con la misma SKU la visita una sola vez, así que lo que cuenta como pick es la cantidad de listas de recolección que la piden, que coincide con la de pedidos solo cuando cada lista es un pedido, y cuánto se camina en cada visita depende además de dónde esté guardada, del recorrido y de qué otras SKU se buscan en la misma pasada, mientras que la segunda cuenta unidades, o su volumen y su peso, y sirve para dimensionar la manipulación, la reposición y el transporte, pero no el espacio, que depende de cuánto stock se guarda de esa SKU y no de cuánto se mueve.
 En un depósito real con decenas de miles de SKU las dos casi no van juntas, un producto puede pedirse mucho y mover poco volumen o al revés, así que cuál de las dos mirar depende de qué se quiera decidir, los picks para acortar recorridos y las unidades para dimensionar reposición y transporte.
 
-Si se ordenan las SKU de la más pedida a la menos pedida, la curva que aparece suele ser similar a la de la Figura~\ref{fig:perfil-pareto}, unas pocas SKU concentran la mayor parte de los picks y una cola muy larga se reparte el resto, incluso en algunos casos la quinta parte de las SKU generan más de tres cuartos de los picks.
+Si se ordenan las SKU de la más pedida a la menos pedida, la curva que aparece suele ser similar a la de la Figura~\ref{fig:perfil-pareto}, unas pocas SKU concentran la mayor parte de los picks y una cola muy larga se reparte el resto, incluso en algunos casos la quinta parte de las SKU genera más de tres cuartos de los picks.
 Esa forma es la que está detrás de la regla del 80-20 y de la clasificación ABC, que separa a las pocas SKU que concentran la actividad, las A, de una franja intermedia, las B, y del grueso que casi no se mueve, las C.
 La cola larga importa aunque se mueva poco, porque por su cantidad ocupa la mayor parte del espacio, y de ahí la idea de que cada depósito es en realidad dos, uno chico y predecible donde está el trabajo y uno enorme que se lleva el espacio.
 Qué tan marcada es la curva depende del negocio, y por ejemplo en productos de oficina o ferretería suele ser bastante plana mientras que en moda o música puede ser extrema.
@@ -450,15 +449,14 @@ Esa distribución decide cómo organizar el picking, ya que con pocas líneas po
     \label{fig:perfil}
 \end{figure}
 
-Así mismo, el propo perfil también cambia con el tiempo,
-casi todo producto tiene cierta estacionalidad, ya sea anual, mensual o semanal, y no siempre es el obvia, y a eso se suman las SKU nuevas, que aparecen poco pedidas solo porque llevan poco tiempo almacenadas.
+El propio perfil también cambia con el tiempo, casi todo producto tiene cierta estacionalidad, ya sea anual, mensual o semanal, y no siempre es la obvia, y a eso se suman las SKU nuevas, que aparecen poco pedidas solo porque llevan poco tiempo almacenadas.
 Hay además una asimetría que surge de la propia forma de la curva, mientras el tramo de las SKU más pedidas es estable, y una que fue muy pedida el mes pasado suele seguir siéndolo el siguiente, en la cola es imposible saber si una SKU se va a pedir, y con cantidades tan chicas cualquier fluctuación parece una tendencia.
 
 Todo lo anterior mide cada SKU de forma individual, pero los pedidos con varias líneas tienen otra información, qué cosas se piden juntas.
 El paso más simple es contar, para cada par de familias de productos, en cuántos pedidos aparecen las dos, y con eso ya se ve, por ejemplo, que casi todo pedido que trae algo de una familia trae también algo de otra, lo que sugiere guardarlas cerca \citep[capítulo~14]{bartholdi2014warehouse}.
 Ese conteo esconde una trampa, porque dos familias pueden coincidir pocas veces en total y sin embargo una de ellas casi nunca pedirse sin la otra.
 Con pares el trabajo es manejable, con ternas y más crece tan rápido que deja de serlo.
-Las dos miradas sirven para cosas distintas, y las secciones que siguen las toman por separado, primero la asignación de ubicaciones a partir de lo que se sabe de cada SKU y después la afinidad a partir de lo que se sabe de sus pares.
+Las dos miradas sirven para cosas distintas y se toman por separado, primero la asignación de ubicaciones a partir de lo que se sabe de cada SKU y después la afinidad a partir de lo que se sabe de sus pares.
 
 \section{Asignación de ubicaciones}
 \label{sec:slotting}
@@ -491,11 +489,10 @@ es decir que la mitad del espacio reservado está ocioso en promedio, como muest
 \end{figure}
 
 El segundo nivel es con qué regla se elige la ubicación, y las más usadas son la aleatoria, que toma cualquier ubicación libre con igual probabilidad y reparte el tráfico por todo el depósito, la de la ubicación libre más cercana al dock, que es lo que termina pasando cuando se deja elegir al operario y que con el tiempo llena el frente y deja el fondo vacío, y las que ordenan las SKU por su actividad, por clases o una por una, que son las que usan el historial de picks.
-Estas últimas piden almacenamiento dedicado, y para elegir con ellas hay que empezar por medir dos cosas, qué tan lejos queda cada ubicación del punto donde empiezan y terminan los recorridos, y cuántas veces se la va a visitar, porque el costo de una asignación sale de combinar una con la otra.
+De estas últimas, la asignación una por una pide almacenamiento dedicado, mientras que la de clases queda en el medio, porque reserva una zona por clase y dentro de ella deja compartir, y para elegir con cualquiera de las dos hay que empezar por medir dos cosas, qué tan lejos queda cada ubicación del punto donde empiezan y terminan los recorridos, y cuántas veces se la va a visitar, porque el costo de una asignación sale de combinar una con la otra.
 
-Para lo primero alcanza con la distancia, 
-si los recorridos salen del dock y vuelven a él, a cada ubicación $k$ le corresponde un costo de acceso $c_k$, la distancia de ida y vuelta, que depende solo de la geometría, y la Figura~\ref{fig:conveniencia} muestra dos ubicaciones con $c_k$ distinto en un mismo layout.
-Para lo segundo sirve el perfil de actividad, porque si la SKU $i$ se pide $f_i$ veces y está guardada en la ubicación $k(i)$, la caminata que genera es proporcional a $f_i\, c_{k(i)}$ y la de todo el depósito a
+Para lo primero alcanza con la distancia, si los recorridos salen del dock y vuelven a él, a cada ubicación $k$ le corresponde un costo de acceso $c_k$, la distancia de ida y vuelta, que depende solo de la geometría, y la Figura~\ref{fig:conveniencia} muestra dos ubicaciones con $c_k$ distinto en un mismo layout.
+Para lo segundo sirve el perfil de actividad, porque si la SKU $i$ aparece en $f_i$ listas de recolección y está guardada en la ubicación $k(i)$, la caminata que genera es proporcional a $f_i\, c_{k(i)}$ y la de todo el depósito a
 \begin{equation}
     \sum_i f_i\, c_{k(i)},
     \label{eq:costo-lineal}
@@ -503,38 +500,37 @@ Para lo segundo sirve el perfil de actividad, porque si la SKU $i$ se pide $f_i$
 donde los $c_k$ vienen dados por el edificio, y pueden medirse de distintas maneras, en línea recta con la norma euclídea, sumando el tramo a lo largo del pasillo y el transversal con la norma uno, o como el largo del camino real entre estanterías, que es la que corresponde en un depósito porque las estanterías no se atraviesan, mientras que la asignación $k(i)$ es lo que se decide \citep[sección~6.2]{bartholdi2014warehouse}.
 Si cada viaje va del dock a una sola ubicación y vuelve, el costo de cada ubicación no depende de lo que haya en las demás, y por eso la suma es fácil de minimizar.
 Basta ordenar las ubicaciones de menor a mayor $c_k$, ordenar las SKU de más a menos $f_i$ y asignarlas en ese orden, y ningún otro reparto da una suma menor, porque si dos SKU quedaran en el orden contrario intercambiarlas nunca la aumenta.
-Con recorridos que visitan varias ubicaciones por viaje la suma deja de ser la caminata real y pasa a ser una aproximación, porque el costo de ir a una ubicación depende de cuáles otras se visitan en el mismo recorrido, y esa diferencia vuelve a aparecer en la Sección~\ref{sec:formulacion}.
+Con recorridos que visitan varias ubicaciones por viaje la suma deja de ser la caminata real y pasa a ser una aproximación, porque el costo de ir a una ubicación depende de cuáles otras se visitan en el mismo recorrido, y esa diferencia vuelve a aparecer en la Sección~\ref{sec:sintesis}.
 
 \begin{figure}[ht]
     \centering
     \begin{tikzpicture}[x=1cm, y=1cm]
         % estanterias
         \foreach \i in {0,...,7} \draw[fill=gray!25, draw=black!60] (\i*0.62, 0.5) rectangle ++(0.24, 2.4);
-        % dock de recepcion abajo y de despacho arriba, al centro
+        % un solo dock, abajo al centro
         \fill[black!70] (2.29, 0.1) circle (0.07);
-        \node[font=\scriptsize] at (2.29, -0.2) {recepción};
-        \fill[black!70] (2.29, 3.3) circle (0.07);
-        \node[font=\scriptsize] at (2.29, 3.6) {despacho};
-        % ubicacion A, cerca de la linea entre los docks
-        \fill[black] (2.22, 1.7) circle (0.08);
-        \node[font=\scriptsize, anchor=west] at (2.3, 1.7) {$A$};
-        \draw[thick, black!75, -{Stealth}] (2.29, 0.1) -- (2.29, 1.7) -- (2.29, 3.3);
+        \node[font=\scriptsize] at (2.29, -0.2) {dock};
+        % ubicacion A, cerca del dock
+        \fill[black] (2.22, 1.0) circle (0.08);
+        \node[font=\scriptsize, anchor=west] at (2.3, 1.0) {$A$};
+        \draw[thick, black!75, -{Stealth}] (2.29, 0.1) -- (2.29, 1.0);
+        \draw[thick, black!75, -{Stealth}] (2.36, 1.0) -- (2.36, 0.1);
         % ubicacion B, en una esquina
         \fill[black] (0.36, 2.6) circle (0.08);
         \node[font=\scriptsize, anchor=east] at (0.3, 2.6) {$B$};
-        \draw[thick, black!45, dashed, -{Stealth}] (2.29, 0.1) -- (0.43, 0.3) -- (0.43, 2.6) -- (0.43, 3.1) -- (2.29, 3.3);
+        \draw[thick, black!45, dashed, -{Stealth}] (2.29, 0.1) -- (0.43, 0.3) -- (0.43, 2.6);
+        \draw[thick, black!45, dashed, -{Stealth}] (0.5, 2.6) -- (0.5, 0.36) -- (2.29, 0.16);
     \end{tikzpicture}
-    \caption{Dos ubicaciones en un mismo layout. Para $A$ el viaje de recepción a despacho pasando por la ubicación es casi directo, mientras que para $B$ hay que desviarse hasta una esquina y volver, de modo que $c_A < c_B$.}
+    \caption{Dos ubicaciones y su viaje de ida y vuelta desde el dock, con $c_A < c_B$.}
     \label{fig:conveniencia}
 \end{figure}
 
-Las $f_i$ cuentan solo uno de los dos motivos por los que se visita una ubicación,
-por un lado la visitan los operarios que recolectan, una vez por cada pedido que pide esa SKU, y por el otro la visitan los que reponen, una vez por cada vez que hay que volver a llenarla, y las dos frecuencias pueden ser muy distintas.
+Las $f_i$ cuentan solo uno de los dos motivos por los que se visita una ubicación, por un lado la visitan los operarios que recolectan, una vez por cada lista que pide esa SKU, y por el otro la visitan los que reponen, una vez por cada vez que hay que volver a llenarla, y las dos frecuencias pueden ser muy distintas.
 Conviene entonces separar los picks $f_i$ de las reposiciones $r_i$, y la rotación del inventario, las unidades despachadas sobre las que se tienen en stock, es una tercera cosa, que va con $r_i$ y no con $f_i$.
 Además cuando una SKU ocupa varias ubicaciones hace falta una heurística o forma de elegir desde cuál recolectar y en cuál reponer, la más cercana para caminar menos, la que tiene menos stock para liberarla antes, o la que tiene más para ir vaciándolas de forma pareja.
-Cuando se mueven pallets enteros las tres medidas son la misma, porque cada pallet que entra se repone una vez y se extrae una vez, y de ahí viene la regla de guardar cerca lo que más rota.
+Cuando se mueven pallets enteros y cada pallet que sale se repone con otro, las tres crecen a la par, porque cada pallet que entra se guarda una vez y se saca una vez, y de ese caso viene la regla de guardar cerca lo que más rota.
 Cuando se recolectan piezas, en cambio, lo que manda es $f_i$, y ordenar las SKU por picks no da el mismo orden que ordenarlas por rotación.
-Una medida que respeta esa diferencia es el espacio que una SKU necesita dividido por la cantidad de pedidos que la piden, conocida como \emph{cube-per-order index} o COI \citep{heskett1963cube}\completar{chequear esta referencia}, que manda a las mejores ubicaciones a las SKU que dan más picks por metro ocupado.
+Una medida que respeta esa diferencia es el espacio que una SKU necesita dividido por la cantidad de pedidos que la piden, conocida como \emph{cube-per-order index} o COI \citep{heskett1963cube}, que manda a las mejores ubicaciones a las SKU que dan más picks por metro ocupado.
 
 Asignar una ubicación a cada SKU según su puesto en el ranking es lo más preciso, pero rara vez se hace así.
 Lo habitual es cortar el ranking en dos o tres clases, las A, B y C del perfil, reservar una zona del depósito para cada clase y, dentro de la zona, guardar donde haya lugar.
@@ -542,10 +538,8 @@ Se pierde algo de distancia respecto de asignar una por una, pero a cambio una S
 Las zonas pueden dibujarse de dos maneras, con las A ocupando el tramo de cada pasillo más cercano al corredor frontal, o con las A ocupando enteros los pasillos más cercanos al dock, y cuál conviene depende de la política de ruteo con que después se recorra.
 A todo esto se le suman restricciones que el ranking no ve, como que lo pesado vaya abajo y lo liviano arriba, que lo más pedido quede a la altura de las manos, que lo que necesita frío o es peligroso tenga su zona, que cada ubicación tenga un tamaño, y que algunas familias que vienen dadas de afuera, por proveedor o por categoría, se prefiera mantenerlas juntas.
 
-Ninguna de estas reglas se puede juzgar sola, 
-la misma asignación rinde distinto según la política de ruteo con que se recorra el depósito y cuántos pedidos se junten en cada pasada, ya que asignar SKU por SKU se nota más con pedidos chicos, mientras que con la política en S y listas largas las asignaciones se parecen cada vez más entre sí, de modo que una política de almacenamiento se compara siempre con un ruteo y un batching fijos.
-A eso se suma la pregunta de cuándo se decide, 
-Una cosa es armar la asignación desde cero, cuando se abre un depósito o se cambia el layout, y otra es mantenerla, porque el ranking que la justificó cambia con el tiempo, entran SKU nuevas, otras dejan de pedirse y la estacionalidad mueve a las del medio, así que una asignación que fue buena se va desarmando sola.
+Ninguna de estas reglas se puede juzgar sola, la misma asignación rinde distinto según la política de ruteo con que se recorra el depósito y cuántos pedidos se junten en cada pasada, ya que asignar SKU por SKU se nota más con pedidos chicos, mientras que con la política en S y listas largas las asignaciones se parecen cada vez más entre sí, de modo que una política de almacenamiento se compara siempre con un ruteo y un batching fijos.
+A eso se suma la pregunta de cuándo se decide, una cosa es armar la asignación desde cero, cuando se abre un depósito o se cambia el layout, y otra es mantenerla, porque el ranking que la justificó cambia con el tiempo, entran SKU nuevas, otras dejan de pedirse y la estacionalidad mueve a las del medio, así que una asignación que fue buena se va desarmando sola.
 Como mover una SKU cuesta un viaje de operario, un hueco que hay que tener libre y una actualización en el WMS, en la práctica no se reasigna todo de golpe, sino que se hace por partes, o bien se aprovecha cada reposición para guardar la SKU directamente en su lugar nuevo, y así el depósito se va corrigiendo de a poco.
 Por último, poner lo más pedido cerca del dock tiene un costo escondido, porque concentra a los operarios en los mismos pasillos a la misma hora, y en un pasillo angosto uno espera al otro, de modo que las esperas se acumulan sin que la suma de distancias las vea, y por eso una asignación algo más repartida puede funcionar mejor en la práctica que la que da la cuenta.
 
@@ -553,23 +547,23 @@ Por último, poner lo más pedido cerca del dock tiene un costo escondido, porqu
 \label{sec:afinidad}
 
 La Sección~\ref{sec:perfil} terminó contando pares de familias que aparecen juntas en un mismo pedido, y esta sección baja esa cuenta al nivel de las SKU, porque la demanda de un producto no es independiente de la de los demás.
-Antes de medir nada conviene distinguir cuatro terminos que se suelen usar como de forma indistinta, pero que guardan ciertas diferencias.
-\textbf{Co-ocurrencia} es un conteo, de en cuántos pedidos aparecieron dos SKU cualquiera, luego 
+Antes de medir nada conviene distinguir cuatro términos que se suelen usar de forma indistinta, pero que guardan ciertas diferencias.
+\textbf{Co-ocurrencia} es un conteo, de en cuántos pedidos aparecieron dos SKU cualesquiera, luego
 \textbf{asociación} es dar un paso más y afirmar que cuando aparece una tiende a aparecer la otra, lo que se escribe como una regla de $i$ hacia $j$ y se evalúa con dos números, qué tan seguido se da el par y, de las veces que se pidió $i$, en cuántas también se pidió $j$, por otro lado la
-\textbf{correlación} es relacion estadística, cuánto se aleja lo que se pidió junto de lo que se esperaría si las dos demandas fueran independientes, la misma puede ser negativa, así como dos SKU muy pedidas pueden coincidir mucho sin estar correlacionadas, finalmente la
-\textbf{Afinidad} es el término que se usa en la literatura de slotting para el peso que dice cuánto conviene guardar dos SKU cerca, no se trata un dato sino una decisión, porque se construye con alguna de las tres anteriores.
+\textbf{correlación} es una medida estadística de cuánto se aleja lo que se pidió junto de lo que se esperaría si las dos demandas fueran independientes, que para dos variables de sí o no es el coeficiente $\phi$ y va de $-1$ a $1$, así como dos SKU muy pedidas pueden coincidir mucho sin estar correlacionadas, finalmente la
+\textbf{afinidad} es el término que se usa en la literatura de slotting para el peso que dice cuánto conviene guardar dos SKU cerca, y no se trata de un dato sino de una decisión, porque se construye con alguna de las tres anteriores.
 
 Lo segundo que hay que fijar es qué quiere decir que dos SKU van juntas, y la opción más común es el pedido del cliente, dos SKU van juntas si alguien las compró en la misma orden.
 Pero el operario no camina un pedido, camina una lista de recolección, y cuando hay batching esa lista junta varios pedidos, y una \emph{wave} junta varias listas que salen en el mismo camión.
 Por eso comprados juntos y recolectados juntos son dos cosas distintas, dos SKU que ningún cliente pidió a la vez podrían aparecer de forma recurrente en la misma lista, aunque sea poco probable, y dos que casi siempre se compran juntas podrían quedar repartidas en listas separadas.
 Si lo que se quiere bajar es la caminata, lo que corresponde es contar sobre la lista, que es lo que el operario recorre, y usar el pedido solo cuando cada lista es un pedido o cuando se comprueba que las dos cuentas dan parecido, algo que depende de cómo el algoritmo de batching arma las listas.
 
-Con eso fijado, todas las medidas se arman con los mismos cuatro números, la cantidad $N$ de pedidos, la frecuencia o soporte $s_i$ y $s_j$ de cada SKU, es decir en cuántos pedidos aparece cada una, y la co-ocurrencia $n_{ij}$, en cuántos aparecen las dos, y la Tabla~\ref{tab:medidas-afinidad} reúne algunas de las más usadas.
+Con eso fijado, todas las medidas se arman con los mismos cuatro números, la cantidad $N$ de transacciones, sean pedidos o listas según la unidad elegida, la frecuencia $s_i$ y $s_j$ de cada SKU, es decir en cuántas de esas transacciones aparece cada una, y la co-ocurrencia $n_{ij}$, en cuántas aparecen las dos, y la Tabla~\ref{tab:medidas-afinidad} reúne algunas de las más usadas.
 La co-ocurrencia y el soporte del par cuentan lo mismo, el segundo dividido por $N$, y las dos favorecen a los pares populares, porque dos SKU muy pedidas coinciden mucho aunque no tengan nada que ver entre sí.
 La confianza es la única de las presentadas que es asimétrica, dice qué fracción de los pedidos de $i$ trae también a $j$, que es la probabilidad condicional $P(j \mid i)$ estimada del historial, y puede ser alta de $i$ a $j$ y baja al revés cuando una es mucho más pedida que la otra.
 El lift compara las coincidencias observadas con las que se esperarían si las dos SKU fueran independientes, y esas esperadas salen de multiplicar la probabilidad de que un pedido traiga a $i$, que es $s_i/N$, por la de que traiga a $j$, y de volver a multiplicar por los $N$ pedidos, lo que da $s_i s_j / N$.
-Vale 1 cuando lo observado es lo esperado, más de 1 cuando van juntas más de lo que daría el azar y menos de 1 cuando se evitan, así que es la más cercana a la idea de correlación, pero con soportes chicos se dispara, porque dos SKU pedidas tres veces cada una entre 10.000 pedidos tienen menos de una milésima de coincidencia esperada, y una sola coincidencia real ya da un lift de más de mil, que es justamente el régimen de la cola larga \citep{li2015dynamic}.
-Jaccard mira, de todos los pedidos que trajeron a alguna de las dos, qué fracción trajo a las dos, y el coseno hace algo parecido dividiendo por la media geométrica de los soportes, y por eso las dos suben a los pares raros que casi siempre van juntos y bajan a los populares que coinciden mucho pero en una fracción chica de sus pedidos, y en la literatura de slotting Jaccard es la elección más frecuente, por convención más que por derivación \citep{zhang2016correlated}.
+Vale 1 cuando lo observado es lo esperado, más de 1 cuando van juntas más de lo que daría el azar y menos de 1 cuando se evitan, así que mide lo mismo que la correlación, el alejamiento de la independencia, aunque en otra escala y sin cota superior, y con frecuencias chicas se dispara, porque dos SKU pedidas tres veces cada una entre 10.000 pedidos tienen menos de una milésima de coincidencia esperada, y una sola coincidencia real ya da un lift de más de mil, que es justamente el régimen de la cola larga \citep{li2015dynamic}.
+Jaccard mira, de todos los pedidos que trajeron a alguna de las dos, qué fracción trajo a las dos, y el coseno hace algo parecido dividiendo por la media geométrica de las frecuencias, y por eso las dos suben a los pares raros que casi siempre van juntos y bajan a los populares que coinciden mucho pero en una fracción chica de sus pedidos, y en la literatura de slotting Jaccard es la elección más frecuente, por convención más que por derivación \citep{zhang2016correlated}.
 
 \begin{table}[ht]
     \centering
@@ -592,7 +586,7 @@ Jaccard mira, de todos los pedidos que trajeron a alguna de las dos, qué fracci
         Coseno & $\dfrac{n_{ij}}{\sqrt{s_i s_j}}$ & $0$ a $1$ & parecido a Jaccard, menos severo si $s_i$ y $s_j$ difieren \\
         \hline
     \end{tabularx}
-    \caption{Medidas de relación entre dos SKU a partir de $N$ pedidos, los soportes $s_i$ y $s_j$ y la co-ocurrencia $n_{ij}$.}
+    \caption{Medidas de relación entre dos SKU a partir de $N$ transacciones, las frecuencias $s_i$ y $s_j$ y la co-ocurrencia $n_{ij}$.}
     \label{tab:medidas-afinidad}
 \end{table}
 
@@ -600,12 +594,14 @@ Que estas medidas no necesariamente responden a la misma pregunta puede verse co
 Supongamos que tenemos 10.000 pedidos, dos SKU populares $A$ y $B$, con soportes de 2.000 y 1.500 que coinciden en 300 pedidos, y dos SKU no tan populares $C$ y $D$, con soportes de 12 y 10 que coinciden en 9.
 Siguiendo el orden de la tabla, por co-ocurrencia el par popular vale 300 y el otro 9, y por soporte del par 0,03 y 0,0009, de modo que las dos medidas absolutas favorecen al popular.
 La confianza de $A$ hacia $B$ es 0,15 y la de $C$ hacia $D$ es 0,75, el lift del par popular es exactamente 1, porque las 300 coincidencias son justo las que se esperarían por azar, mientras que el del otro es 750, y por Jaccard y coseno el popular vale 0,09 y 0,17 contra 0,69 y 0,82 del otro, así que todas las medidas normalizadas dan vuelta el orden.
-Si esos valores se usan como peso $a_{ij}$ para decidir qué acercar, con co-ocurrencia se acercan $A$ y $B$ y se ahorra caminata en 300 pedidos, mientras que con cualquiera de las otras se acercan $C$ y $D$ y se ahorra en 9.
+Si esos valores se usan como peso $a_{ij}$ para decidir qué acercar, con co-ocurrencia el par popular pesa 300 contra 9 y el modelo prioriza acercar a $A$ y $B$, mientras que con cualquiera de las otras medidas prioriza a $C$ y $D$, y en ninguno de los dos casos acercarlos garantiza un ahorro en cada una de esas transacciones, porque la caminata real depende de toda la lista.
 No son entonces dos versiones de un mismo objetivo sino dos objetivos distintos, uno cuenta viajes conjuntos y el otro qué tan exclusiva es la relación, y elegir el peso es elegir qué se está minimizando.
 
 Todo lo anterior mira de a dos SKU por vez, y esa es la simplificación más común de la literatura, porque la cantidad de pares ya crece de forma cuadrática con la cantidad de SKU y la de ternas o grupos mayores explota, aunque existen algoritmos que encuentran los conjuntos de productos que aparecen juntos con frecuencia sin tener que enumerarlos todos \citep{han2004mining}.
 La afinidad tampoco tendría por qué salir del historial de pedidos, en entornos de manufactura se la ha derivado de la estructura del producto, de qué piezas forman parte de un mismo conjunto, con una señal mucho más nítida que la del comercio electrónico \citep{brynzer1996storage}, e incluso podría estimarse con modelos de aprendizaje automático a partir de los atributos de los productos.
-Cualquiera sea la medida y la fuente, el resultado es una matriz simétrica y rala de pesos $a_{ij}$, que es lo mismo que un grafo con una SKU en cada nodo y una arista pesada entre cada par relacionado, como el de la Figura~\ref{fig:grafo-afinidad}.
+Con cualquiera de las medidas simétricas, que son todas las de la tabla salvo la confianza, el resultado es una matriz simétrica de pesos $a_{ij}$, que en un depósito con muchas SKU y pedidos chicos suele ser además rala, porque la mayoría de los pares nunca coincide.
+Las dos cosas terminan otorgando una ventaja, mientras que la simetría hace que cada par aporte un solo término al costo, con lo que alcanza con sumar sobre $i < j$, y lo ralo hace que ese costo tenga pocos términos distintos de cero, de modo que mover una SKU solo cambia los términos de sus vecinos.
+Esa matriz simétrica también puede verse como grafo sin dirección, con una SKU en cada nodo y una arista pesada entre cada par que alguna vez coincidió, como el de la Figura~\ref{fig:grafo-afinidad}.
 Pensarlo así ayuda en dos cosas, porque quedarse solo con los vecinos más fuertes de cada SKU, que es lo habitual para que la matriz sea manejable, es podar aristas, y porque los métodos que agrupan productos antes de asignarlos, que se ven en la Sección~\ref{sec:estado}, buscan en ese grafo los grupos densos, como el de la izquierda de la figura, y los separan de los pares sueltos y de las SKU que no se relacionan con nadie.
 
 \begin{figure}[ht]
@@ -636,11 +632,11 @@ Pensarlo así ayuda en dos cosas, porque quedarse solo con los vecinos más fuer
 \end{figure}
 
 
+\FloatBarrier
 \section{Formulación matemática}
 \label{sec:formulacion}
-Las herramientas para escribir y resolver estas decisiones vienen de la optimización lineal, 
-un programa lineal busca el mínimo de una función lineal de las variables sujeta a restricciones también lineales, y su propiedad central es que la región factible es un poliedro y el óptimo, si existe, está en alguno de sus vértices, de modo que alcanza con recorrer vértices para dar una solución.
-Eso es lo que hace el método símplex, que desde que Dantzig lo propuso en 1947 resuelve en la práctica problemas con miles de variables \citep{dantzig1963linear}\completar{chequear esta referencia}.
+Las herramientas para escribir y resolver estas decisiones vienen de la optimización lineal, un programa lineal busca el mínimo de una función lineal de las variables sujeta a restricciones también lineales, y su propiedad central es que la región factible es un poliedro y el óptimo, si existe, está en alguno de sus vértices, de modo que alcanza con recorrer vértices para dar una solución.
+Eso es lo que hace el método símplex, que desde que Dantzig lo propuso en 1947 resuelve en la práctica problemas con miles de variables \citep{dantzig1963linear}.
 Cuando las variables tienen que ser enteras, como cuando deciden si una SKU va o no a una ubicación, el problema se vuelve en general mucho más difícil, porque los vértices del poliedro relajado ya no son enteros y hay que buscar entre las soluciones enteras con métodos de ramificación, salvo en algunas familias afortunadas en las que la relajación alcanza.
 
 La suma de la Ecuación~\ref{eq:costo-lineal} se puede escribir como un problema de asignación.
@@ -656,7 +652,7 @@ Con $I$ el conjunto de SKU y $L$ el de ubicaciones, la variable $x_{i\ell}$ vale
 \end{equation}
 donde la primera restricción dice que cada SKU ocupa exactamente una ubicación, que es el caso del almacenamiento dedicado con un solo lugar por SKU, y si alguna necesita varias se la trata como varias copias, la segunda que cada ubicación aloja a lo sumo una SKU, con lo que puede haber ubicaciones vacías, y la tercera que la decisión es sí o no.
 El costo de poner a $i$ en $\ell$ es $f_i\, c_\ell$ y no depende de dónde estén las demás, así que el objetivo es lineal en las $x_{i\ell}$, y el problema es uno de los clásicos de la investigación de operaciones, el problema de asignación.
-Es además una de esas familias afortunadas, porque si se relaja la última restricción y se deja que las variables tomen cualquier valor entre 0 y 1, la solución óptima del programa lineal sigue siendo entera, así que se resuelve de forma exacta con el símplex o con algoritmos propios como el húngaro \citep{kuhn1955hungarian}\completar{chequear esta referencia}, y en este caso ni siquiera hace falta, porque el orden por $f_i$ y por $c_\ell$ de la Sección~\ref{sec:slotting} da directamente la solución óptima.
+Es además una de esas familias afortunadas, porque si se relaja la última restricción y se deja que las variables tomen cualquier valor entre 0 y 1, la solución óptima del programa lineal sigue siendo entera, así que se resuelve de forma exacta con el símplex o con algoritmos propios como el húngaro \citep{kuhn1955hungarian}, y en este caso ni siquiera hace falta, porque el orden por $f_i$ y por $c_\ell$ de la Sección~\ref{sec:slotting} da directamente la solución óptima.
 
 La afinidad rompe esa independencia, porque si conviene que $i$ y $j$ estén cerca, lo que cuesta poner a $i$ en $\ell$ depende de dónde haya quedado $j$.
 Con $d_{\ell k}$ la distancia entre las ubicaciones $\ell$ y $k$, cada par $(i, j)$ paga su afinidad multiplicada por la distancia entre las ubicaciones que recibieron, y sumando sobre todos los pares queda
@@ -665,9 +661,10 @@ Con $d_{\ell k}$ la distancia entre las ubicaciones $\ell$ y $k$, cada par $(i, 
     \label{eq:termino-cuadratico}
 \end{equation}
 donde cada término lleva el producto de dos variables, $x_{i\ell}$ y $x_{jk}$, y por eso se lo llama cuadrático.
+Como $a_{ij} = a_{ji}$ y $d_{\ell k} = d_{k \ell}$, cada par aparece dos veces en esa suma, una como $(i, j)$ y otra como $(j, i)$, lo que en un problema puramente cuadrático es solo un factor dos que no cambia el óptimo.
 Ahí está todo el cambio, ya no alcanza con ordenar dos listas, porque mover una SKU cambia el costo de todas las que tienen afinidad con ella, y una mejora local puede empeorar el total.
 
-Juntar los dos términos da el problema completo,
+Juntar los dos términos da un problema de la forma
 \begin{equation}
     \begin{aligned}
         \min_{x} \quad & \sum_{i \in I} \sum_{\ell \in L} f_i\, c_\ell\, x_{i\ell} + \sum_{i \in I} \sum_{j \in I} \sum_{\ell \in L} \sum_{k \in L} a_{ij}\, d_{\ell k}\, x_{i\ell}\, x_{jk} \\
@@ -678,27 +675,125 @@ Juntar los dos términos da el problema completo,
     \label{eq:qap}
 \end{equation}
 que es la forma que Koopmans y Beckmann le dieron en 1957 al problema de ubicar plantas industriales, con un costo de instalar cada planta en cada sitio, un flujo de mercadería entre cada par de plantas y una distancia entre cada par de sitios, y que se conoce como problema de asignación cuadrática \citep{koopmans1957assignment}.
-En el slotting los papeles son los mismos, las SKU son las plantas, las ubicaciones son los sitios, la afinidad $a_{ij}$ hace de flujo y el término lineal es el de la Ecuación~\ref{eq:asignacion-lineal}, así que un problema planteado hace casi setenta años describe el de esta tesis, y la formulación propia, con qué es cada uno de esos símbolos en el depósito estudiado, se escribe en el capítulo siguiente\completar{ref al capitulo cuando exista}.
+En el slotting los papeles son los mismos, las SKU son las plantas, las ubicaciones son los sitios, la afinidad $a_{ij}$ hace de flujo y el término lineal es el de la Ecuación~\ref{eq:asignacion-lineal}.
+Escribirlo así, sin embargo, deja dos cosas abiertas.
+Una es el conteo de los pares, porque aquel factor dos que no cambiaba el óptimo del término cuadrático solo, acá duplica el peso de la afinidad frente al término lineal si no se lo corrige.
+La otra es la escala, porque $f_i$ cuenta picks y puede valer miles mientras que $a_{ij}$ depende de la medida elegida, por ejemplo Jaccard varía entre 0 y 1, así que sumar los dos términos tal cual deja que el más grande domine la optimización, por lo que lo habitual es llevar $f$ y $a$ a fracciones, de este modo cada suma pasa a ser una distancia promedio, y agregar un peso que diga cuánto importa una frente a la otra.
+Las dos dependen de qué se elija como $a_{ij}$ y de cómo se cuenten los pares, así que no las fija la forma general sino cada formulación concreta.
 
-El precio de esa generalidad es la dificultad, porque el problema de asignación cuadrática es NP-hard \citep{sahni1976pcomplete}\completar{chequear esta referencia}, lo que quiere decir que pertenece a la clase de problemas para los que no se conoce ningún algoritmo cuyo tiempo crezca de forma polinomial con el tamaño de la instancia, y que si alguien encontrara uno lo tendría para todos los demás problemas de esa clase, algo que se considera muy improbable.
-En la práctica eso significa que el tiempo de cualquier método exacto crece de forma exponencial, y como a diferencia de la asignación lineal la relajación no da soluciones enteras, no hay atajo, de modo que los métodos exactos como \emph{branch and bound} \citep{land1960automatic}\completar{chequear esta referencia}, que recorren el árbol de asignaciones posibles acotando el costo de cada rama y descartando las que no pueden mejorar la mejor solución conocida, dejan de terminar en tiempo razonable con apenas treinta objetos \citep{loiola2007qap}.
+El precio de esa generalidad es la dificultad, porque el problema de asignación cuadrática es NP-hard \citep{sahni1976pcomplete}, lo que quiere decir que es al menos tan difícil como cualquier problema de la clase NP, la de los problemas cuya solución se puede verificar en tiempo polinomial, así que un algoritmo que lo resolviera en tiempo polinomial daría uno para todos los problemas de esa clase, algo que se considera muy improbable, y hasta hoy no se conoce ninguno.
+En la práctica los métodos exactos que existen crecen muy rápido con el tamaño de la instancia, y como a diferencia de la asignación lineal la relajación no da soluciones enteras, no hay atajo, de modo que métodos como \emph{branch and bound} \citep{land1960automatic}, que recorren el árbol de asignaciones posibles acotando el costo de cada rama y descartando las que no pueden mejorar la mejor solución conocida, solo resultan prácticos en instancias chicas, y la revisión de \citet{loiola2007qap} ubicaba ese límite en el orden de las pocas decenas de objetos.
 Para tener una idea de la escala, treinta SKU en treinta ubicaciones ya son más de $10^{32}$ asignaciones posibles, mientras que un depósito real tiene decenas de miles de cada una.
-La literatura mide entonces la calidad de lo que sí se puede calcular contra dos referencias, la biblioteca QAPLIB de instancias con soluciones conocidas y la cota inferior de Gilmore y Lawler \citep{gilmore1962optimal, lawler1963quadratic}\completar{chequear estas referencias}, que sale de resolver problemas de asignación lineal y da un piso que ninguna solución puede bajar, aunque las dos sirven solo en instancias chicas.
+La literatura mide entonces la calidad de lo que sí se puede calcular contra dos referencias, la biblioteca QAPLIB de instancias con soluciones conocidas y la cota inferior de Gilmore y Lawler \citep{gilmore1962optimal, lawler1963quadratic}, que sale de resolver problemas de asignación lineal y da un piso que ninguna solución puede bajar, aunque las dos sirven solo en instancias chicas.
 
 Por eso, en la escala de un depósito, la solución exacta queda descartada y lo que se usa son heurísticas, que buscan soluciones buenas sin garantía de que sean las mejores, y la revisión de Loiola y otros las ordena en unas pocas familias \citep{loiola2007qap}.
-Las constructivas arman la asignación de a una SKU, eligiendo en cada paso la ubicación más barata dado lo que ya se asignó, y son rápidas pero se quedan en el primer óptimo local que encuentran.
-Las metaheurísticas, como el recocido simulado, la búsqueda tabú y los algoritmos genéticos, aceptan a veces empeorar para poder escapar de esos óptimos locales, y son las más usadas en el slotting con afinidad, aunque cada una trae parámetros que hay que calibrar \citep{li2015dynamic}.
+Las constructivas arman la asignación de a una SKU, eligiendo en cada paso la ubicación más barata dado lo que ya se asignó, y son rápidas pero lo que entregan es solo un punto de partida, que ni siquiera tiene por qué ser un óptimo local.
+Las metaheurísticas, como el recocido simulado, la búsqueda tabú y los algoritmos genéticos, agregan algún mecanismo para no quedarse en el primer óptimo local, ya sea aceptar a veces un cambio que empeora, recordar por dónde ya se pasó o trabajar con varias soluciones a la vez, y son las más usadas en el slotting con afinidad, aunque cada una trae parámetros que hay que calibrar \citep{li2015dynamic}.
 La descomposición parte el problema en dos más chicos, y en el slotting toma la forma del esquema de dos fases que domina la literatura, agrupar primero las SKU afines y asignar después los grupos, a costa de que lo que se pierde al separar las dos decisiones rara vez se mide \citep{islam2023cslap}.
 Casi todas terminan con una búsqueda local por intercambios, tomar dos SKU, permutar sus ubicaciones y quedarse con el cambio si el costo baja, que es barata porque la diferencia en la Ecuación~\ref{eq:qap} se calcula sin recomputar toda la suma, y que en la práctica es lo que pule cualquier solución inicial.
 
-\completar{PARA EL CAPITULO PROPIO, no para aca: la formulacion de la tesis es casi la de la Ecuacion eq:qap, asi que alla va la instancia concreta, que es aij, que es d y c, el peso lambda entre los dos terminos, las restricciones del deposito, y el punto de que la suma es un surrogate de la distancia real y no la distancia, a verificar por simulacion.}
+% NOTA PARA EL CAPITULO PROPIO: la formulacion de la tesis es casi la de la Ecuacion eq:qap; alla va la instancia concreta (que es a_ij, d y c, el peso lambda, la normalizacion de f y a, las restricciones del deposito) y el punto de que la suma es un surrogate de la distancia real, a verificar por simulacion.
 
 \section{Estado del arte}
 \label{sec:estado}
 
-\completar{Organizado por preguntas, nunca paper por paper. (1) Historia corta de la idea, guardar juntos lo que se pide junto: repuestos para ordenes urgentes y la farmacia que agrupa cuidado capilar (L 1.2 y 8.5), el family grouping, y el esquema dominante de dos fases, agrupar y despues asignar (Islam 2023). (2) Mapa de fuentes: las dos revisiones sistematicas (Rojas Reyes 2019, Islam 2023) como mapa, no como unica base; de Koster 2007 y Gu 2007 para SLAP en general; los clasicos (Frazelle y Sharp 1989, Brynzer 1996, Mantel 2007); los recientes (Li 2015, Zhang 2016, Xu 2020, Mirzaei 2021); y BUSCAR literatura 2023-2026, porque la tesis se escribe en 2026 y hoy no hay nada posterior a 2022. (3) La revision por preguntas, una subseccion corta por cada una: que senal de afinidad usan; como agrupan; como asignan; que funcion objetivo; que metodo de resolucion; que layout; que ruteo; si hay batching; que tamano de orden; que baseline; como evaluan y con que datos, reales o sinteticos. (4) Cuidado con el tipo de sistema: Mirzaei 2021 es parts-to-picker con pods, donde el costo es cuantos contenedores se traen y no cuanto se camina; no extrapolar sus conclusiones al picker-to-parts manual sin decirlo. (5) Cuando dos trabajos dan signo distinto para el mismo efecto, no llamarlo contradiccion antes de comparar sistema, layout, ruteo, batching, tamano de orden, distribucion de demanda, metrica de afinidad y objetivo; casi siempre son regimenes experimentales distintos. (6) La critica de Mirzaei a la secuencialidad de las dos fases, como advertencia. TABLA COMPARATIVA unica pero ancha, apaisada si hace falta: sistema, escala, layout, ruteo, batching, tamano de orden, senal de afinidad, metodo, funcion objetivo, baseline, datos reales o sinteticos, mejora reportada. Con esas columnas la tabla de condiciones experimentales sobra.}
+Guardar juntos los productos que se piden juntos es una idea vieja, y como antecedente directo se suele citar a Frazelle y Sharp, que a fines de los ochenta propusieron la asignación correlacionada \citep{frazelle1989correlated}.
+Desde entonces el problema recibió varios nombres, asignación correlacionada, slotting por afinidad o \emph{family grouping}, en un área cuya terminología las propias revisiones señalan como no unificada \citep{rojasreyes2019slap, islam2023cslap}.
+La revisión de \citet{islam2023cslap} cubre sesenta trabajos entre 1985 y 2022, y además del esquema de dos fases de la Sección~\ref{sec:formulacion} marca que muy pocos validan sobre datos reales.
+Lo que sigue no recorre esos trabajos uno por uno, sino que los ordena por las preguntas que cada uno tuvo que responder, y la Tabla~\ref{tab:estado-arte} los reúne.
+Cuando en esta sección se dice que ninguno hace algo, se habla siempre de los trabajos incluidos en esta revisión y no de toda la literatura.
+
+La primera pregunta es de dónde sale el peso que dice que dos SKU van juntas, y la respuesta más común es alguna de las medidas de la Sección~\ref{sec:afinidad}, sin que ninguna se haya impuesto por un argumento, ya que \citet{zhang2016correlated} recoge seis medidas distintas de correlación y \citet{li2015dynamic} combinan el lift con el conteo de soporte.
+Entre los trabajos recientes aparecen el conteo de co-ocurrencia por par \citep{islam2024heuristic, debold2025storage}, las reglas de asociación junto con la clasificación ABC \citep{benaglia2024cold}, y la línea de scattered storage, que reparte copias de cada SKU por el depósito y no define un peso por par, porque la proximidad entre las SKU de una misma orden queda implícita en las órdenes con que se evalúa \citep{gamezalban2024scattered, chen2026integrated}.
+Ninguno de los trabajos revisados verifica antes si la co-ocurrencia observada excede la que daría el azar dados los soportes, así que la afinidad se calcula y se usa sin preguntarse si hay algo que explotar.
+
+La segunda pregunta es cómo se pasa de esa matriz a una asignación, y la norma es la descomposición en dos fases.
+La crítica más directa viene de \citet{mirzaei2021integrated}, que en un sistema parts-to-picker alternan entre agrupar y asignar y reportan que la versión integrada supera a la secuencial en un 13\% promedio, un número que no se traslada al depósito manual pero que muestra que separar las dos decisiones tiene un costo.
+Quienes atacan la formulación cuadrática completa lo hacen con heurísticas, como \citet{mantel2007order}, cuyo heurístico queda en promedio 2,14\% por encima del óptimo en 550 instancias chicas, con algoritmos genéticos \citep{li2015dynamic, guan2018genetic}, o con las variantes recientes, una que agrupa las SKU por pasillo y después ordena grupos y pasillos \citep{islam2024heuristic}, una de tres etapas con búsqueda de vecindad variable \citep{debold2025storage} y una búsqueda que decide a la vez dónde va cada SKU y cómo se recorre el depósito \citep{chen2026integrated}.
+Lo que separa a unos de otros no es la familia de método sino cuánto del problema resuelven de una vez y cuánto descomponen.
+
+La tercera pregunta es bajo qué condiciones se prueba cada método, y la primera es el tipo de sistema, porque la mayoría trabaja en picker-to-parts mientras que \citet{mirzaei2021integrated} y \citet{guan2018genetic} lo hacen en parts-to-picker, donde lo que cuesta no es caminar sino cuántos contenedores hay que traer hasta el operario.
+El layout va de un solo bloque de pasillos \citep{zhang2016correlated} a varios bloques \citep{islam2024heuristic} y al zone picking secuencial \citep{debold2025storage}, la política en S domina el ruteo por su simplicidad \citep{islam2023cslap}, y solo \citet{chen2026integrated} prueban una misma asignación bajo varias políticas.
+El batching casi no aparece, \citet{mantel2007order} lo nombran solo para justificar que se recolecte de a una orden por vez, con el argumento de que un batching extenso apaga el efecto de cualquier slotting, pero no lo prueban, y de los trabajos de la tabla solo \citet{benaglia2024cold} lo incluyen en su simulación.
+El tamaño de orden va de una a veinte líneas, listas chicas incluso en el extremo alto.
+
+La cuarta pregunta es contra qué se compara y con qué datos, y los baselines son casi siempre los tres de la Sección~\ref{sec:slotting}, aleatorio, rotación o COI, y clases ABC.
+Los datos son casi siempre sintéticos con la correlación plantada, ya sea generando después de cada producto de una orden otro correlacionado con una fuerza que se barre entre el 2\% y el 10\% \citep{xu2020dynamic}, o manipulando la probabilidad de pedir un producto correlacionado en cinco niveles \citep{mirzaei2021integrated}, y las excepciones con datos reales son pocas, como el archivo de órdenes con el que trabaja \citet{debold2025storage}.
+La escala acompaña, porque las instancias van de 12 SKU \citep{mantel2007order} a entre 300 y 500 \citep{mirzaei2021integrated} y a 1.000 \citep{zhang2016correlated}, lejos de las decenas de miles de un depósito real.
+
+Con las condiciones a la vista los resultados se leen distinto.
+La mejora de 2,08\% que \citet{zhang2016correlated} reporta sobre full-turnover viene de órdenes generadas solo por popularidad, sin correlación plantada, así que toda la co-ocurrencia que su método explota se explica por las frecuencias de cada SKU y ese 2\% es lo que se obtuvo en esas condiciones, y en el mismo trabajo las clases ABC quedan 10,28\% peor que full-turnover porque dentro de cada clase guardan al azar.
+En \citet{xu2020dynamic} el ahorro cae de 10,48\% con órdenes chicas a 5,0\% con órdenes de veinte líneas, porque con listas largas hay que pasar por casi todos los pasillos y la asignación ya no reduce cuántos se atraviesan, y en \citet{mantel2007order} la ventaja de asignar con cuidado frente al aleatorio se reduce a un tercio al pasar de órdenes de dos a órdenes de diez.
+\citet{mirzaei2021integrated}, en parts-to-picker, quedan 6,5\% por debajo de la clasificación ABC cuando la curva de demanda es 20/80, y sus ahorros crecen con el tamaño de orden, al revés que en \citet{xu2020dynamic}.
+Eso no es una contradicción sino dos regímenes, porque en un sistema de \emph{pods} una orden más grande podría dar más oportunidades de que las SKU pedidas compartan contenedor, mientras que en picker-to-parts obliga a pasar por más pasillos.
+Por eso la mejora porcentual por sí sola no compara trabajos si cambian el sistema, el ruteo, el tamaño de orden, los datos o el baseline, que es lo que la Tabla~\ref{tab:estado-arte} deja ver, y la Sección~\ref{sec:sintesis} recoge de todo esto cuándo la afinidad rinde y qué queda sin resolver.
+
+% Filas de Islam 2024 y Gamez Alban 2024 confirmadas contra el texto completo; Debold 2025, Benaglia 2024 y Chen 2026 solo contra el resumen (pendiente leerlos).
+\begin{table}[tp]
+    \centering
+    \scriptsize
+    \renewcommand{\arraystretch}{1.05}
+    \begin{tabularx}{\textwidth}{|L|L|L|L|L|L|}
+        \hline
+        \textbf{Trabajo} & \textbf{Sistema} & \textbf{Señal} & \textbf{Método} & \textbf{Datos y baseline} & \textbf{Mejora reportada} \\
+        \hline
+        \citet{mantel2007order} & n/d, módulo vertical de bandejas, 12 SKU & n/d & heurístico QAP, una orden por vez & sintéticos, 550 instancias; óptimo y aleatorio & gap al óptimo 2,14\%; la ventaja sobre el aleatorio cae a un tercio con órdenes de 10 \\
+        \hline
+        \citet{li2015dynamic} & n/d & lift y soporte & QAP con afinidad y ABC, genético & caso de estudio & 7,14\% a 104,48\% en tiempo de picking \\
+        \hline
+        \citet{zhang2016correlated} & picker-to-parts, un bloque, 1.000 SKU & correlación por pares, medida n/d & estrategia correlacionada & sintéticos sin correlación plantada; full-turnover y ABC & 2,08\% menos distancia; ABC 10,28\% peor que full-turnover \\
+        \hline
+        \citet{xu2020dynamic} & picker-to-parts, ruteo en S, órdenes de hasta 20 & n/d & asignación dinámica entre \emph{waves} & sintéticos, correlación plantada de 2\% a 10\% & 10,48\% con órdenes chicas, 5,0\% con órdenes de 20 \\
+        \hline
+        \citet{mirzaei2021integrated} & parts-to-picker, 300 a 500 SKU & score de afinidad & agrupar y asignar integrado & sintéticos, cinco niveles; dos fases y ABC & 13\% sobre dos fases; 6,5\% peor que ABC con curva 20/80 \\
+        \hline
+        \citet{islam2024heuristic} & picker-to-parts, varios bloques & conteo de co-ocurrencia por par & agrupa por pasillo y ordena grupos y pasillos & sintéticos, 100.000 órdenes; full-turnover, ABC y la estrategia de Zhang & 22,55\% a 39,67\% menos distancia que full-turnover \\
+        \hline
+        \citet{debold2025storage} & picker-to-parts, zone picking & co-ocurrencia & tres etapas con VNS & reales; benchmarks & hasta 19,5\% \\
+        \hline
+        \citet{benaglia2024cold} & depósito frío, con batching y ruteo & reglas de asociación y ABC & simulación de 8 estrategias & simulados de órdenes reales; aleatorio & hasta 8\% menos tiempo de picking \\
+        \hline
+        \citet{gamezalban2024scattered} & picker-to-parts, scattered storage & implícita en las órdenes & VNS & sintéticos, 68 instancias con clases ABC; scatter aleatorio y por volumen & hasta 36\% y 56\% menos distancia \\
+        \hline
+        \citet{chen2026integrated} & picker-to-parts, scattered, tres ruteos & implícita en las órdenes & MIP y búsqueda adaptativa con ruteo & n/d; práctica estándar & hasta 14\% menos en el objetivo, distancia ponderada de guardado y picking \\
+        \hline
+    \end{tabularx}
+    \caption{Condiciones y resultados de los trabajos revisados. Las celdas n/d son las que la fuente no informa o no pudieron verificarse, y la última columna solo se lee junto con las anteriores.}
+    \label{tab:estado-arte}
+\end{table}
 
 \section{Síntesis y problemas abiertos}
 \label{sec:sintesis}
 
-\completar{Cierre del capitulo, sin supuestos propios: esos van al capitulo metodologico. (1) Cuando parece rendir la afinidad, con lo empirico de la literatura: pedidos chicos y poco batching (Mantel 2007), ruteo que no atraviese todo igual (Xu 2020), curva de demanda poco sesgada (Mirzaei 2021), correlacion real y no artefacto de popularidad (Zhang 2016, techo de 2 por ciento sin correlacion plantada). (2) Las variables que condicionan su utilidad, las cuatro anteriores mas las que la literatura casi no mira: congestion por concentrar operarios, costo de re-slotting, costo de reposicion, estabilidad temporal de la demanda y de las afinidades, si los pares que van juntos hoy siguen yendo juntos en tres meses. Recordar que el signo del efecto del tamano de orden depende del tipo de sistema, y presentarlo como regimenes distintos, no como contradiccion. (3) Las simplificaciones habituales: todo por pares, datos sinteticos con correlacion plantada, slotting estatico, un solo bloque de pasillos, sin congestion, sin reposicion, y nadie contrasta la afinidad contra un modelo nulo. (4) Problemas abiertos: escala real de decenas de miles de SKU, validar que la senal supera al azar dados los soportes, afinidades dinamicas, el costo de descomponer en dos fases. (5) Donde se ubica esta tesis, en una oracion por hueco. Aca aterriza tambien el cierre que hoy esta al final de 2.2 (pendiente punto B).}
+Lo que la Sección~\ref{sec:estado} deja, leída en conjunto, es que el aporte de la afinidad depende fuertemente de las condiciones en que se la usa, y la evidencia permite señalar cuatro, cada una con su propio mecanismo.
+Rinde cuando los pedidos son chicos y se recolectan de a uno o en lotes chicos, porque una lista larga pasa por casi todos los pasillos de todos modos y acercar dos SKU deja de ahorrar pasillos, que es lo que \citet{xu2020dynamic} miden al agrandar la orden en picker-to-parts con ruteo en S, y lo que \citet{mantel2007order} asumen, sin probarlo, cuando dicen que un batching extenso apaga cualquier slotting.
+Hace falta además que la política de ruteo deje lugar al ahorro, porque con una política en S estricta lo que cuenta es en cuántos pasillos se entra y no dónde está cada SKU dentro del pasillo, y cabe esperar, aunque ningún trabajo revisado lo mida, que con retorno o con recorridos que se adaptan a la lista la posición fina vuelva a importar.
+Tampoco alcanza si la curva de demanda está tan sesgada que ordenar por picks ya resuelve casi todo, porque si unas pocas SKU concentran la actividad, guardarlas cerca del dock captura la mayor parte del ahorro posible y la afinidad solo puede repartir lo que queda.
+Eso es lo que \citet{mirzaei2021integrated} encuentran con una curva 20/80, aunque en un sistema parts-to-picker.
+Y rinde poco si la co-ocurrencia observada no es más que un reflejo de la popularidad, porque dos SKU muy pedidas coinciden mucho por azar, y una afinidad construida sobre eso apenas reordena lo que la rotación ya ordenó, que es el 2\% que \citet{zhang2016correlated} obtiene con órdenes generadas sin correlación.
+Ninguna de esas cuatro condiciones la documentó un solo trabajo, cada una aparece en uno distinto, en sistemas y con ruteos que no siempre coinciden y no siempre se informan, y ninguno de los trabajos revisados las barrió juntas, así que el umbral a partir del cual conviene pasar de la rotación a la afinidad sigue sin estar medido.
+
+A esas cuatro se les suman otras variables que pesan tanto o más sobre lo que la afinidad puede dar, y que los trabajos de la Tabla~\ref{tab:estado-arte} casi no miran.
+Una es la congestión, que la Sección~\ref{sec:slotting} ya presentó como costo escondido de la rotación y que con la afinidad podría agravarse, aunque esto es un razonamiento y no un resultado, porque juntar las SKU que se piden juntas también juntaría a los operarios que las buscan.
+Por eso una asignación con menos distancia teórica podría resultar peor en la práctica si concentra el tráfico en unos pocos pasillos, y ninguno de los trabajos revisados mide esperas.
+Otra es el costo de mover la mercadería hasta la asignación nueva, el mismo que la Sección~\ref{sec:slotting} describió al hablar de mantener una asignación, y que de los trabajos revisados solo \citet{xu2020dynamic} incluyen en la cuenta, al reubicar entre \emph{waves} y cargar al tiempo del operario el sacar y volver a colocar cada producto.
+A eso se agrega la reposición, que sigue ocurriendo después de asignar y que con SKU agrupadas por afinidad habría que adaptar, algo que \citet{mirzaei2021integrated} señalan para su sistema parts-to-picker sin cuantificarlo y dejan como trabajo futuro junto con la asignación dinámica.
+Y queda la estabilidad en el tiempo, porque la asignación se calcula con un historial y se usa hacia adelante, lo que supone que los pares que hoy van juntos van a seguir yendo juntos meses después, un supuesto que ningún trabajo revisado mide, aunque la Sección~\ref{sec:perfil} ya mostró que la demanda de cada SKU por sí sola cambia con la estacionalidad y con las altas.
+A todo esto hay que agregarle que el efecto del tamaño de orden cambia de signo entre los dos trabajos que lo miden, uno en picker-to-parts y otro en parts-to-picker, como la Sección~\ref{sec:estado} ya mostró, así que cualquiera de estas condiciones se lee dentro de un régimen y no se traslada al otro.
+
+Que esas variables falten no es casualidad de cada trabajo sino un patrón de cómo se estudia el problema.
+Casi todo se mira de a dos SKU, la simplificación que la Sección~\ref{sec:afinidad} ya señaló, y aunque \citet{islam2023cslap} lo marcan como hueco abierto, casi ninguno de los trabajos revisados usa conjuntos de tres o más productos para asignar.
+Los datos son casi siempre sintéticos con la correlación plantada, como mostró la Sección~\ref{sec:estado}, de modo que la pregunta de si hay señal que explotar viene respondida por construcción, y la evaluación se hace casi siempre sobre un slotting estático, muchas veces en un solo bloque de pasillos, sin esperas, sin reposición y con una afinidad que no cambia en el tiempo.
+Cada una de esas decisiones es razonable por separado, porque aísla el efecto que se quiere medir, pero todas parecen ir en la misma dirección, hacia una señal más nítida y un depósito más quieto que uno en operación, y por eso las mejoras reportadas se leen mejor como lo que la afinidad podría dar bajo esas condiciones que como lo que da en operación.
+Y, como la Sección~\ref{sec:estado} ya marcó, ninguno de los trabajos revisados contrasta la co-ocurrencia observada contra la que darían SKU pedidas de forma independiente con los soportes observados, que es lo que separaría una relación real de una coincidencia explicada por las frecuencias, como la de \citet{zhang2016correlated}.
+
+De ahí salen los problemas que siguen abiertos, y el primero es la escala, porque las instancias de la Tabla~\ref{tab:estado-arte} van de la docena al millar de SKU, con órdenes de hasta veinte líneas, mientras que un depósito de comercio electrónico puede tener decenas de miles de SKU y, cuando hay batching, listas de recolección que juntan varios pedidos, y no está claro que los métodos ni las conclusiones sobrevivan al salto.
+También falta validar la señal antes de usarla, comparando la co-ocurrencia observada con la que se obtendría si cada lista se armara al azar conservando la frecuencia de cada SKU y el tamaño de cada lista, y rompiendo solo la relación entre SKU, una comparación que ninguno de los trabajos revisados hace y que decide si hay algo que optimizar.
+Tampoco está resuelta la afinidad dinámica, tanto en el sentido de cuánto dura una afinidad medida como en el de cómo reasignar cuando cambia, porque entre los trabajos revisados casi no aparece, ya que \citet{xu2020dynamic} reasignan entre \emph{waves} con datos sintéticos y \citet{mirzaei2021integrated} lo dejan como trabajo futuro.
+Otro costo sin medir es el de descomponer en dos fases, que \citet{mirzaei2021integrated} cuantificaron en parts-to-picker pero que en el depósito manual, donde la descomposición es la norma, ninguno de los trabajos revisados mide.
+Y queda la elección del peso $a_{ij}$, que la Sección~\ref{sec:afinidad} mostró que no es una cuestión de escala sino de qué objetivo se minimiza, y que en los trabajos revisados casi siempre se toma por convención y rara vez se discute qué pares termina acercando.
+
+Esta tesis se ubica en esos huecos, ya que trabaja sobre un depósito manual picker-to-parts de comercio electrónico real, con decenas de miles de SKU y listas de recolección que juntan varios pedidos, es decir en la escala y en el régimen que los trabajos de la Tabla~\ref{tab:estado-arte} no cubren.
+Mide la señal antes de usarla, para saber si la co-ocurrencia de sus listas excede la de ese modelo nulo, y compara la afinidad contra la rotación bajo las condiciones del propio depósito, con su ruteo, su batching y su curva de demanda, y no bajo condiciones armadas para aislar el efecto.
+Se pregunta, por último, si una mejora en la suma de la Ecuación~\ref{eq:qap} se traduce en distancia recorrida, que es la diferencia entre el objetivo y lo que se quiere bajar que la Sección~\ref{sec:slotting} dejó planteada.
+Para eso hace falta primero conocer el depósito y los datos con que se hizo todo lo anterior, que es lo que sigue.
