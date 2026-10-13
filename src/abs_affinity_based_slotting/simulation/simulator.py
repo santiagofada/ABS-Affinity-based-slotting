@@ -4,8 +4,9 @@ Each run copies the initial state and walks the stream in time order.
 Replenishments ask the policy where the units go (the answer must be a free
 location or one the SKU already owns). Batches are processed atomically, after
 applying every replenishment falling inside their time span, and their route is
-measured over the locations actually visited using the same snake ordering and
-distance model as the static evaluator.
+measured over the bays actually visited by a routing policy: ``snake`` (the
+default, same ordering and distance model as the static evaluator) or
+``s_shape`` (strict S, see :mod:`..evaluation.routing`).
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from ..evaluation import route_distance, snake_order, summarize_route_costs
+from ..evaluation import RoutingPolicy, SnakeRouting, routing_registry, summarize_route_costs
 from ..slotting import Assignment, SlottingInstance
 from ..slotting.objective import _assignment_location_indices
 from .base import ReplenishmentPolicy, SimulationContext
@@ -28,7 +29,7 @@ from .state import WarehouseState
 class Simulator:
     """Runs event streams over warehouse states.
 
-    Holds only geometry (instance + snake key + dock); each ``run`` is
+    Holds only geometry (instance + routing policy); each ``run`` is
     independent and does not mutate its inputs.
     """
 
@@ -37,6 +38,9 @@ class Simulator:
         instance: SlottingInstance,
         bay_snake_key: np.ndarray,
         dock_bay: int,
+        *,
+        routing: RoutingPolicy | None = None,
+        bay_aisle: np.ndarray | None = None,
     ):
         if bay_snake_key.shape != (instance.n_bays,):
             raise ValueError(
@@ -44,8 +48,12 @@ class Simulator:
                 f"got {bay_snake_key.shape}"
             )
         self._instance = instance
-        self._bay_snake_key = np.asarray(bay_snake_key, dtype=float)
-        self._dock_bay = int(dock_bay)
+        self._routing = routing if routing is not None else SnakeRouting(
+            bay_snake_key, instance.bay_distance, dock_bay
+        )
+        # Aisle number of each bay (NaN for the dock); only used to log how
+        # many aisles each batch visits. None leaves that column as NaN.
+        self._bay_aisle = None if bay_aisle is None else np.asarray(bay_aisle, dtype=float)
 
     @classmethod
     def from_tables(
@@ -54,14 +62,22 @@ class Simulator:
         coordinates: pd.DataFrame,
         *,
         dock: str = "DOCK",
+        routing: str = "snake",
     ) -> "Simulator":
+        """Build the simulator; ``routing`` names a policy of ``routing_registry``."""
         from ..evaluation import bay_snake_keys
 
         return cls(
             instance,
             bay_snake_keys(coordinates, instance.bay_ids),
             instance.bay_index(dock),
+            routing=routing_registry.get(routing).from_tables(instance, coordinates, dock=dock),
+            bay_aisle=coordinates.set_index("bay_id")["aisle"].reindex(instance.bay_ids).to_numpy(dtype=float),
         )
+
+    @property
+    def routing(self) -> RoutingPolicy:
+        return self._routing
 
     def run(
         self,
@@ -193,14 +209,19 @@ class Simulator:
             bays = np.unique(
                 instance.location_bay[np.fromiter(visited, dtype=np.int64)]
             ) if visited else np.empty(0, dtype=np.int64)
-            ordered = snake_order(bays, self._bay_snake_key[bays])
-            distance = route_distance(ordered, instance.bay_distance, self._dock_bay)
+            distance = self._routing.distance(bays)
+            if self._bay_aisle is None:
+                n_aisles = math.nan
+            else:
+                aisles = self._bay_aisle[bays]
+                n_aisles = len(np.unique(aisles[~np.isnan(aisles)]))
 
             batch_rows.append(
                 (
                     batch.batch_id,
                     batch.timestamp,
                     distance,
+                    n_aisles,
                     batch.n_lines,
                     batch_shortfall,
                     off_home_fraction(),
@@ -217,6 +238,7 @@ class Simulator:
                 "batch_id",
                 "timestamp",
                 "distance",
+                "n_aisles",
                 "n_lines",
                 "shortfall_units",
                 "off_home_fraction",
