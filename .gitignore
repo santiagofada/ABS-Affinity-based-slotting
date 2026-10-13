@@ -92,3 +92,6 @@ tmp/
 temp/
 # Local secrets
 .env
+
+# Resultados de experimentos (se regeneran corriendo los notebooks).
+results/
