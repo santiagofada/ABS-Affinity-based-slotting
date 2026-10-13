@@ -143,13 +143,21 @@ de cada reposicion durante la simulacion (seccion 7.3).
 ### Ejemplo de composicion
 
 ```python
-A = affinity_registry.get("jaccard")().build(co.matrix, co.support, co.n_batches)
-A = filter_registry.get("top_k")(k=10).filter(A)
-instance = build_instance(sku_demand, loc_costs, bay_distance,
-                          initial_stock=stock, skus=universe, affinity=A)
-assignment = method_registry.get("swap_search")(lam=0.3).solve(instance)
+ds = WarehouseDataLoader(dataset_dir("v2", "small")).load_all()
+split = split_picking_events(ds.picking_events, test_size=0.2)
+instance = build_full_instance(split.train, ds.initial_stock, ds.distances,
+                               affinity_metric="jaccard",
+                               cooccurrence_col="order_id",       # o "batch_id"
+                               affinity_filter=TopKFilter(k=10))
+assignment = method_registry.get("swap_search")(lam=0.01).solve(instance)
 result = simulator.run(state, events, policy, planned=assignment)
 ```
+
+`build_full_instance` es el punto de entrada canonico: universo desde el stock inicial,
+demanda y co-ocurrencia desde train, afinidad con la metrica y el filtro elegidos, y la
+geometria desde el stock y las distancias. Las piezas tambien se pueden armar por separado
+(`build_cooccurrence`, `affinity_registry`, `filter_registry`, `build_instance`), como hace el
+notebook `data2/02_el_codigo`.
 
 ---
 
@@ -157,7 +165,7 @@ result = simulator.run(state, events, policy, planned=assignment)
 
 ```
 src/abs_affinity_based_slotting/
-├── config.py            rutas y constantes
+├── config.py            dataset_dir(version, size); constantes; licencia del solver
 ├── registry.py          mecanismo nombre -> implementacion
 │
 ├── data/
@@ -177,7 +185,7 @@ src/abs_affinity_based_slotting/
 │
 ├── slotting/
 │   ├── instance.py      SlottingInstance
-│   ├── build.py         construccion de la instancia
+│   ├── build.py         construccion de la instancia; build_full_instance; restrict_instance
 │   ├── assignment.py    Assignment
 │   └── objective.py     slotting_cost y swap_cost_delta
 │
@@ -237,8 +245,9 @@ src/abs_affinity_based_slotting/
 | Naturaleza | funcion analitica | simulacion de la operacion |
 
 Los metodos optimizan el objetivo; el desempeno se mide con la simulacion. La brecha entre
-ambas medidas es objeto de estudio; se registro un caso en que la busqueda local redujo el
-objetivo y aumento la distancia (26.079 a 26.964, lambda igual a 0,5).
+ambas medidas es objeto de estudio; en v1 se registro un caso en que la busqueda local redujo
+el objetivo y aumento la distancia (26.079 a 26.964, lambda igual a 0,5). Ese lambda, ademas,
+casi no pesa la afinidad ([modelo.md](modelo.md#47-la-escala-de-los-dos-terminos)).
 
 ### Costo de un recorrido
 
@@ -355,6 +364,8 @@ test, iterando hasta que el balance cierra.
 
 ## 8. Validacion del simulador
 
+Controles hechos sobre v1:
+
 | Control | Criterio | Resultado |
 |---|---|---|
 | Reproduccion de la historia completa | 6.452 mudanzas del dato; stock final por producto igual a un calculo independiente en pandas | exacto |
@@ -376,6 +387,8 @@ movimientos adicionales, la degradacion medida es conservadora.
 ---
 
 ## 9. Resultados de referencia
+
+### 9.1 v1
 
 Sobre los 400 batches de test, con semilla fija:
 
@@ -399,3 +412,25 @@ Dos lecturas:
    slotting, medido sobre este dataset.
 
 La evaluacion estatica no puede observar ninguno de los dos efectos.
+
+### 9.2 v2 small
+
+Sobre los 218 batches de test, con afinidad Jaccard por orden y `top_k(10)` (notebook
+`data2/02_el_codigo`):
+
+| Escenario | Media por batch | Mudanzas |
+|---|---:|---:|
+| Estatico: slotting vigente | 6.663 | — |
+| Estatico: `demand_greedy` | 5.832 | — |
+| Estatico: `linear_assignment` | 5.821 | — |
+| Estatico: `swap_search` (lambda = 0,5) | 5.862 | — |
+| Estatico: bi-nivel `merchant` + zona `demand_greedy` | 6.110 | — |
+| Simulado: vigente + `random` | 6.662 | 693 |
+| Simulado: `demand_greedy` + `random` | 6.612 | 693 |
+| Simulado: `demand_greedy` + `home` | 5.832 | 0 |
+
+La reduccion del greedy es del 12,5%, contra el 50% de v1, y la media y el p95 casi coinciden:
+con cuatro pasillos y unos 63 productos por batch el recorrido cubre el deposito entero casi
+siempre, asi que `small` deja poco margen al slotting. Las dos lecturas de v1 se repiten en
+signo: `random` degrada el plan casi hasta el nivel vigente y `home` lo conserva. Los
+resultados de `medium` y `big` se agregan cuando se corran.

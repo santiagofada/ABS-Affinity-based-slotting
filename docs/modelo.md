@@ -34,22 +34,43 @@ El problema pertenece a la familia **Storage Location Assignment Problem (SLAP)*
 
 ## 2. Los datos
 
-Dataset sintetico, generado a partir de un deposito real. Zona unica, 30 dias de
-actividad, cinco tablas parquet en `data/raw/`.
+Dos datasets sinteticos, generados por ShipHero a partir de un deposito real, con las mismas
+cinco tablas parquet (`coordinates`, `distances`, `initial_stock`, `picking_events`,
+`replenishment_events`). El primero, **v1** (abril de 2026), es un unico deposito con 30 dias
+de historia. El segundo, **v2** (septiembre de 2026), viene en tres tamanos con seis meses de
+historia cada uno y agrega a `picking_events` la columna `order_id`, que identifica la orden
+del cliente a la que pertenece cada linea. La carpeta de cada dataset la resuelve
+`dataset_dir(version, size)` en `config.py`; los notebooks de `notebooks/data2/` describen v2
+en detalle.
 
-| Concepto | Valor |
-|---|---|
-| Lineas de picking | 174.597 |
-| Batches (viajes de picking) | 2.000; ~87 lineas y ~76 productos distintos por batch |
-| Ubicaciones | 30.000 (1.000 bays x 5 estantes x 6 bins) |
-| Productos ubicados | 27.000; 3.000 huecos libres |
-| Bays | 1.000 (25 pasillos x 40 bays), mas el dock |
-| Merchants (vendors) | 10, balanceados (~2.700 productos cada uno) |
-| Reposiciones | 14.647 (56% recarga in situ, 44% mudanza) |
-| Pickers | 20, carga uniforme |
+| Concepto | v1 | v2 small | v2 medium | v2 big |
+|---|---:|---:|---:|---:|
+| Periodo | 30 dias | 6 meses | 6 meses | 6 meses |
+| Pasillos x bays por lado | 25 x 20 | 4 x 10 | 8 x 16 | 16 x 24 |
+| Pasillos transversales | 0 | 1 | 2 | 3 |
+| Estantes x bins por bay | 5 x 6 | 4 x 6 | 5 x 6 | 6 x 6 |
+| Ubicaciones | 30.000 | 1.920 | 7.680 | 27.648 |
+| Productos ubicados (10% de huecos libres) | 27.000 | 1.728 | 6.912 | 24.883 |
+| Merchants (vendors) | 10 | 4 | 50 | 100 |
+| Pickers | 20 | 5 | 20 | 60 |
+| Batches (viajes de picking) | 2.000 | 1.086 | 8.145 | 18.100 |
+| Ordenes | no observables | 27.150 | 203.625 | 452.500 |
+| Lineas de picking | 174.597 | 95.043 | 712.137 | 1.583.010 |
+| Reposiciones (45% mudanzas) | 14.647 | 9.417 | 76.966 | 171.333 |
 
-Las distancias son camino minimo (Dijkstra) sobre el grafo de pasillos, en pulgadas. La
-conversion a metros se usa solo en los reportes.
+En v1 un batch tiene ~87 lineas y ~76 productos distintos, y la orden no es observable, aunque
+el readme del generador indica que todas las lineas de una orden comparten merchant. En v2 cada
+orden tiene entre 2 y 5 productos distintos de un unico merchant, con 1 a 3 unidades por linea;
+un batch son 25 ordenes consecutivas por llegada, mezcla merchants y reune entre ~63 (`small`)
+y ~86 (`big`) productos distintos. Esa distincion es la que hace observable la co-demanda: que
+dos productos se compren juntos es un hecho de la orden, que se recolecten juntos es un hecho
+del batch, y en v2 se puede medir lo primero y construir lo segundo con el tamano de lote que
+se quiera.
+
+Las distancias son camino minimo (Dijkstra) sobre el grafo de pasillos, en pulgadas; en v2 los
+pasillos transversales acortan el paso entre pasillos vecinos a su altura. La conversion a
+metros se usa solo en los reportes. El costo de acceso de una ubicacion es la distancia de su
+bay al dock, y dos ubicaciones del mismo bay estan a distancia cero.
 
 ### 2.1 De las tablas a los parametros
 
@@ -78,7 +99,7 @@ flowchart LR
         SNK["orden de recorrido"]
     end
     PE --> F
-    PE --> A
+    PE -->|"por batch o por orden"| A
     IS --> U
     IS --> C
     IS --> ST
@@ -88,37 +109,58 @@ flowchart LR
     RE --> EV
 ```
 
+La unidad sobre la que se cuenta la co-ocurrencia (batch u orden) es un parametro de
+`build_cooccurrence` y de `build_full_instance` (`cooccurrence_col`). En v1 solo puede ser el
+batch.
+
 ### 2.2 Particion train / test
 
 Corte temporal a nivel de batch: cada batch se asigna integro a una particion segun su
-timestamp; el 20% mas reciente constituye el test.
+timestamp; el 20% mas reciente constituye el test. El corte se hace a nivel de batch porque el
+batch es la unidad de evaluacion; partirlo introduciria fuga de informacion entre particiones.
+En v2 ninguna orden se reparte entre batches, asi que el corte tampoco parte ordenes.
 
-| Particion | Batches | Lineas | Productos observados |
-|---|---:|---:|---:|
-| Train | 1.600 | 139.632 | 15.554 |
-| Test | 400 | 34.965 | — |
+| Dataset | Particion | Batches | Lineas | Ordenes |
+|---|---|---:|---:|---:|
+| v1 | Train | 1.600 | 139.632 | — |
+| v1 | Test | 400 | 34.965 | — |
+| v2 small | Train | 868 | 75.787 | 21.700 |
+| v2 small | Test | 218 | 19.256 | 5.450 |
 
-El corte se hace a nivel de batch porque el batch es la unidad de co-ocurrencia y de
-evaluacion; partirlo introduciria fuga de informacion entre particiones.
-
-De los 27.000 productos del universo, 11.446 no registran demanda en train e ingresan al
-modelo con demanda cero.
+En v1 quedan 15.554 productos observados en train y 11.446 de los 27.000 del universo entran
+al modelo con demanda cero. En v2 casi todo el universo se pide en train (3 productos sin
+demanda en `small`). Los cortes de `medium` y `big` se agregan cuando se corran.
 
 Los eventos de reposicion requieren un corte propio, descrito en
 [sistema.md](sistema.md#75-el-corte-de-las-reposiciones).
 
 ### 2.3 Caracterizacion exploratoria
 
-Del notebook `00_EDA`: la ocupacion es uniforme por pasillo, bay, estante y vendor; la
-actividad de picking es uniforme por pasillo y por numero de bay; pickers y merchants
-estan balanceados. El dataset no presenta estructura espacial ni de demanda que sesgue el
-analisis, y tampoco estructura explotable mas alla de la distancia al despacho.
+**v1** (notebook `data1/00_EDA`): la ocupacion es uniforme por pasillo, bay, estante y vendor;
+la actividad de picking es uniforme por pasillo y por numero de bay; pickers y merchants estan
+balanceados. El dataset no presenta estructura espacial ni de demanda que sesgue el analisis,
+y tampoco estructura explotable mas alla de la distancia al despacho.
+
+**v2** (notebook `data2/01_EDA_v2`): el volumen es constante mes a mes, siete dias por semana,
+sin estacionalidad, y la popularidad de cada producto es estable entre meses. La demanda esta
+moderadamente sesgada: entre el 16% y el 25% de los productos de un merchant explican el 80%
+de sus picks. Todos los productos del stock se piden al menos una vez.
+
+Sobre la co-demanda, v2 permite la verificacion que v1 no permitia: comparar la co-ocurrencia
+por orden con la que producirian ordenes que eligen sus productos al azar segun la popularidad
+de cada uno dentro del merchant. El resultado es que **no se distinguen**: para los pares con
+al menos 20 co-ocurrencias esperadas, el cociente observado sobre esperado queda entre 0,65 y
+1,19 (percentiles 5 y 99) en los tres tamanos, y ningun par supera 1,5. Los pares que mas
+co-ocurren son los productos mas populares de cada merchant, en la cantidad que predice la
+independencia. En v1, a nivel batch, pasa lo mismo. Hasta que se confirme con ShipHero como se
+generan las ordenes, hay que asumir que **ninguno de los dos datasets tiene afinidad plantada**,
+y que cualquier metodo que la optimice esta optimizando ruido.
 
 ---
 
 ## 3. Benchmark de referencia
 
-Slotting vigente del deposito, evaluado sobre los 400 batches de test:
+Slotting vigente del deposito, evaluado sobre los batches de test. Para **v1** (400 batches):
 
 | Metrica | Pulgadas | Metros |
 |---|---:|---:|
@@ -127,7 +169,12 @@ Slotting vigente del deposito, evaluado sobre los 400 batches de test:
 | Mediana por batch | 52.540 | 1.335 |
 | p95 por batch | 57.233 | 1.454 |
 
-Toda estrategia se reporta como reduccion porcentual respecto de esta linea base.
+Para **v2 small** (218 batches) la media del slotting vigente es 6.663 pulgadas por batch, con
+un p95 de 6.664: con cuatro pasillos y unos 63 productos por batch el recorrido cubre el
+deposito entero casi siempre, asi que `small` deja poco margen para que el slotting cambie
+algo. Los benchmarks de `medium` y `big` se agregan cuando se corran.
+
+Toda estrategia se reporta como reduccion porcentual respecto de la linea base de su dataset.
 
 ---
 
@@ -186,10 +233,12 @@ una unica ubicacion y el costo adopta la forma de Koopmans-Beckmann del **Quadra
 Assignment Problem**, con termino lineal. El QAP es NP-hard; Loiola et al. (2007) situan
 el limite practico de la resolucion exacta en instancias de tamano 30.
 
-A la escala de este problema, una formulacion directa tendria
-$n \cdot m \approx 8{,}1 \times 10^{8}$ variables binarias y una afinidad densa de
-$n^2 \approx 7{,}3 \times 10^{8}$ entradas. De alli dos decisiones que atraviesan la
-implementacion:
+A la escala de v1 o de v2 `big` (unos 25.000 a 27.000 productos y 28.000 a 30.000
+ubicaciones), una formulacion directa tendria $n \cdot m \approx 7$ a $8 \times 10^{8}$
+variables binarias y una afinidad densa de $n^2 \approx 6$ a $7 \times 10^{8}$ entradas. Ni
+siquiera v2 `small` entra: 1.728 por 1.920 son 3,3 millones de binarias, y el resolvedor exacto
+deja de probar optimalidad en un minuto con unos 30 productos (notebook `data2/02_el_codigo`,
+seccion 6b). De alli dos decisiones que atraviesan la implementacion:
 
 1. **Afinidad dispersa**: $a_{ij}$ se almacena como matriz CSR restringida a los vinculos
    mas fuertes (top-$k$ por producto), reduciendo las entradas de $O(n^2)$ a $O(nk)$.
@@ -243,6 +292,27 @@ reporta con una medida distinta, la distancia de los recorridos simulados sobre 
 ([sistema.md](sistema.md#6-dos-medidas-distintas)). Optimizar y medir con la misma funcion
 produciria una estimacion sesgada.
 
+### 4.7 La escala de los dos terminos
+
+Los dos terminos de $C$ no estan en la misma escala. El lineal suma picks por pulgadas y el
+cuadratico suma afinidades, que con Jaccard son menores que 1, por pulgadas. Medido sobre una
+subinstancia de 20 productos de v2 `small`, $L$ vale unos 7,8 millones y $Q$ unos 5 mil, una
+relacion cercana a 1.500 a 1. Con $\lambda = 0{,}5$ el optimo exacto coincide con el de demanda
+pura, y la afinidad solo empieza a mover la solucion alrededor de $\lambda = 0{,}01$. Los
+barridos de v1 con $\lambda$ entre 0,3 y 0,7 fueron, en la practica, demanda pura.
+
+La solucion adoptada (2026-09-09) es expresar $f$ y $a$ como **proporciones**: $f_i$ pasa a ser
+la fraccion de los picks que se lleva el producto $i$ y $a_{ij}$ la fraccion del peso total de
+afinidad que se lleva el par. Con eso $L$ es la distancia media al dock de un pick y $Q$ la
+distancia media entre un par afin, ambas en pulgadas, y $\lambda = 0{,}5$ significa que las dos
+distancias medias pesan igual. Vale para cualquier metrica de afinidad: la metrica decide que
+pares pesan mas entre si y la normalizacion fija la escala. En el codigo es el parametro
+`normalize=True` de `build_instance` y `build_full_instance`, aplicado despues del filtro; como
+todo es lineal en $f$ y $a$, el objetivo, el delta de intercambio y la politica
+`objective_greedy` no cambian. Sobre v2 `small` con el plan por demanda, $L$ y $Q$
+normalizados valen unas 630 pulgadas cada uno. Los experimentos publicados de v1 no usaron esta
+normalizacion y hay que repetirlos.
+
 ---
 
 ## 5. Alcance y simplificaciones
@@ -254,6 +324,8 @@ produciria una estimacion sesgada.
 | Recorrido serpenteante, no TSP optimo | Aproxima la politica de ruteo real y separa la calidad del ruteo de la del slotting |
 | Sin capacidad por ubicacion | El generador rellena "a capacidad" pero ninguna tabla exporta ese valor; al replicarse las cantidades del dato, los niveles la respetan por construccion |
 | Sin costo de reposicion | Se contabiliza el desplazamiento del picker. El dataset no modela area de reserva, por lo que el recorrido del repositor no es derivable |
+| lambda sin normalizar | Los dos terminos del objetivo difieren en unos tres ordenes de magnitud (seccion 4.7); los valores de lambda de los experimentos publicados no pesan la afinidad como su nombre sugiere |
+| Afinidad sin senal en los datos | En v1 y v2 la co-ocurrencia observada es compatible con muestreo independiente por popularidad (seccion 2.3); las conclusiones sobre el aporte de la afinidad estan condicionadas a eso |
 
 El trabajo comenzo con evaluacion estatica, que ignoraba las reposiciones. La evaluacion
 vigente es una simulacion que las incorpora ([sistema.md](sistema.md#7-la-simulacion)).
@@ -268,8 +340,10 @@ vigente es una simulacion que las incorpora ([sistema.md](sistema.md#7-la-simula
 - **Location** (ubicacion): hueco fisico exacto, identificado por bay, estante y bin.
 - **Bay**: columna de estanteria; unidad de distancia del modelo.
 - **Dock**: estacion de empaque; inicio y fin de cada recorrido.
-- **Batch**: conjunto de pedidos recolectados en una pasada; unidad de co-ocurrencia y de
-  evaluacion.
+- **Orden**: pedido de un cliente; en v2, de 2 a 5 productos de un unico merchant. Unidad
+  natural de la co-demanda; observable solo en v2.
+- **Batch**: conjunto de ordenes recolectadas en una pasada; unidad de evaluacion, y unidad
+  de co-ocurrencia cuando la orden no es observable.
 - **Picking**: recoleccion de items para un pedido. **Slotting**: asignacion de una
   ubicacion a cada producto. **Reposicion**: reabastecimiento de stock, eventualmente con
   mudanza de ubicacion.

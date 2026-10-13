@@ -23,7 +23,7 @@ en resolver un problema aproximado y tratable.
 
 ```mermaid
 flowchart TB
-    QAP["QAP global<br/>27.000 productos, 30.000 ubicaciones<br/>intratable de forma exacta"]
+    QAP["QAP global<br/>decenas de miles de productos y ubicaciones<br/>intratable de forma exacta"]
     QAP -->|"agrupamiento + truncado top-k"| P1
     subgraph binivel["Descomposicion bi-nivel"]
         direction TB
@@ -55,8 +55,7 @@ coincide con la forma cerrada de ordenar por demanda (verificado: ambos producen
 costo). El planteo con solver generaliza al caso con afinidad entre grupos, que convierte
 el problema en un QAP a nivel de grupo. **[adoptada]**
 
-**Criterio de orden de las ubicaciones.** Determina la forma de las zonas. Medido sobre el
-dataset:
+**Criterio de orden de las ubicaciones.** Determina la forma de las zonas. Medido sobre v1:
 
 | Criterio | Forma resultante | Dispersion media de la zona sobre el recorrido |
 |---|---|---:|
@@ -75,12 +74,18 @@ son independientes entre si.
 
 | Alternativa | Ambito | Ventaja | Desventaja | Estado |
 |---|---|---|---|---|
-| Resolvedor exacto | zonas pequenas | optimo probado; referencia de calidad | no escala (una zona por vendor, ~2.700 productos, excede el limite) | **[adoptada]** |
+| Resolvedor exacto | zonas pequenas | optimo probado; referencia de calidad | no escala: una zona por vendor tiene entre ~250 (v2 `big`) y ~2.700 (v1) productos | **[adoptada]** |
 | Busqueda por intercambios | zonas grandes | escala mediante el delta incremental | sin garantia de optimalidad | **[adoptada]** |
 | `scipy.quadratic_assignment` (FAQ) | — | sin requisito de licencia | heuristica distinta de la estudiada | descartada |
 
 Regla: por zona, resolucion exacta si el tamano lo permite; busqueda por intercambios en
-caso contrario. El umbral de tamano es un parametro a calibrar. **[abierta]**
+caso contrario. El umbral se midio sobre v2 `small` (notebook `data2/02_el_codigo`, seccion
+6b): con lambda igual a 0,01 el exacto prueba optimalidad en segundos hasta unos 20 productos
+y corta por tiempo a los 30; el QAP puro (lambda igual a 0) no cierra en un minuto ni con 20.
+Como ninguna zona de vendor baja de 250 productos, en la practica el resolvedor de zona es la
+busqueda por intercambios, y el exacto queda como vara sobre subinstancias de ese tamano, donde
+la busqueda quedo a menos de 0,2% del optimo y el greedy por demanda hasta 7% cuando la
+afinidad pesa. **[adoptada]**
 
 ---
 
@@ -100,7 +105,7 @@ entre grupos y la descarta, de modo que incorporarla es una extension acotada.
 
 ## 5. Criterio de agrupamiento
 
-| Agrupamiento | Grupos | Resultado medido |
+| Agrupamiento | Grupos | Resultado medido (v1) |
 |---|---|---|
 | `merchant` (vendor) | ~10, balanceados | 10% peor que el baseline por demanda |
 | `demand_class` (A/B/C) | 3 | equivalente al baseline (-0,3%, dentro del ruido) |
@@ -113,6 +118,23 @@ fenomeno coincide en magnitud con lo reportado en la literatura (Zhang 2016: la
 zonificacion ABC resulta 10,28% peor que la asignacion por rotacion pura). La eleccion del
 agrupamiento queda **[abierta]**; la deteccion de comunidades sobre el grafo de afinidad
 filtrado es la alternativa a implementar.
+
+---
+
+## 5b. Unidad de co-ocurrencia y peso lambda
+
+| Alternativa | Idea | Estado |
+|---|---|---|
+| Co-ocurrencia por batch | la unica posible en v1; mezcla ~25 ordenes de varios merchants y diluye la co-demanda | conservada para comparar |
+| Co-ocurrencia por orden | disponible en v2 (`cooccurrence_col="order_id"`); mide la co-demanda donde ocurre | **[adoptada]** para v2 |
+| lambda sin normalizar | los terminos difieren en ~1.500 a 1; lambda igual a 0,5 equivale a demanda pura | es lo que se uso en v1 |
+| lambda sobre proporciones | f y A divididas por su suma; L y Q pasan a ser distancias medias en pulgadas (`normalize=True`) | **[adoptada]** |
+
+Con la co-ocurrencia por orden aparece una verificacion previa a cualquier metodo: si la
+co-ocurrencia observada supera la que produciria el azar dados los soportes. En v1 y v2 no la
+supera ([modelo.md](modelo.md#23-caracterizacion-exploratoria)), de modo que el aporte de la
+afinidad no puede medirse con estos datos hasta que se confirme como se generan las ordenes o
+se disponga de afinidad inyectada.
 
 ---
 
@@ -151,8 +173,11 @@ Problema 2:    QAP por zona, en paralelo
                  zona grande  -> busqueda por intercambios
 Afinidad entre grupos: descartada (solo intra-zona)
 Agrupamiento:  abierto; vendor descartado por resultado, comunidades pendiente
+Co-ocurrencia: por orden en v2 (por batch en v1)
+Peso lambda:   sobre f y A normalizadas a proporciones (normalize=True)
 Evaluacion:    simulacion con reposiciones; estatica como comparacion
 ```
 
-Decisiones abiertas: umbral de tamano del Problema 2, criterio de agrupamiento
-definitivo, incorporacion de la afinidad entre grupos.
+Decisiones abiertas: criterio de agrupamiento definitivo, incorporacion de la afinidad
+entre grupos. El umbral del Problema 2 quedo medido: exacto hasta unos 20 productos,
+intercambios en el resto.
