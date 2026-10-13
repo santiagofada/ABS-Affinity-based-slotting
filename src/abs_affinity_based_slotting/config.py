@@ -7,7 +7,37 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DATA_DIR = PROJECT_ROOT / "data"
+
+#: Warehouse sizes available in the second dataset. Variants of a size generated
+#: with other parameters live next to them under ``data/v2`` (for example
+#: ``medium-alpha-1.3``, the medium preset with a steeper Pareto demand).
+V2_SIZES = ("small", "medium", "big")
+
+
+def dataset_dir(version: str, size: str | None = None) -> Path:
+    """Return the folder holding the five parquet tables of one dataset.
+
+    ``v1`` is the original 30-day warehouse (no order id), a single folder.
+    ``v2`` (2026-09) comes in three sizes, each with six months of history and
+    an ``order_id`` column in the picking events; ``size`` picks one. Any other
+    folder under ``data/v2`` (a variant such as ``medium-alpha-1.3``) is accepted
+    as long as it exists.
+    """
+    if version == "v1":
+        if size is not None:
+            raise ValueError("dataset v1 has a single warehouse; do not pass size")
+        path = DATA_DIR / "v1" / "raw"
+    elif version == "v2":
+        if size is None:
+            raise ValueError(f"dataset v2 needs a size: one of {V2_SIZES} or a variant folder under {DATA_DIR / 'v2'}")
+        path = DATA_DIR / "v2" / size
+    else:
+        raise ValueError(f"unknown dataset version {version!r}; expected 'v1' or 'v2'")
+
+    if not path.is_dir():
+        raise FileNotFoundError(f"dataset folder not found: {path}")
+    return path
 
 #: Identifier of the dock / packing station in the layout tables.
 DOCK = "DOCK"
