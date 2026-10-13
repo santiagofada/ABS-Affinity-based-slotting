@@ -69,9 +69,10 @@ class ExactQAPSlotting:
         m = instance.n_locations
         lam = self.lam
 
-        # Dense location-to-location distance via bays (only sound for small m).
+        # Dense location-to-location distance via bays (only sound for small m),
+        # using the distance the objective charges between pairs.
         loc_bay = instance.location_bay
-        location_distance = instance.bay_distance[np.ix_(loc_bay, loc_bay)]
+        location_distance = instance.pair_distance[np.ix_(loc_bay, loc_bay)]
 
         env = make_solver_env()
         model = gp.Model("slotting", env=env)

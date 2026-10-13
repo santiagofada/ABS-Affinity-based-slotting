@@ -136,6 +136,52 @@ def swap_cost_delta(
     return float(lam * linear_delta + (1.0 - lam) * quadratic_delta)
 
 
+def move_cost_delta(
+    assignment: Assignment,
+    instance: SlottingInstance,
+    sku: SkuId,
+    location_id,
+    *,
+    lam: float,
+) -> float:
+    """Return the cost change from moving one SKU to a FREE location.
+
+    With x_s the current location of ``sku`` and y the target:
+
+        dL = f_s * (c[y] - c[x_s])
+        dQ = 2 * sum_k a_sk * (d[y, x_k] - d[x_s, x_k])      over neighbors k of s
+
+    Same conventions as :func:`swap_cost_delta` (symmetric affinity, factor 2 for
+    the two orderings of each pair). O(deg(s)). The target must not be occupied;
+    the caller is responsible for that.
+    """
+    lam = _validate_lam(lam)
+    sku_idx = instance.sku_index(sku)
+    old_idx = instance.location_index(assignment.location_of(sku))
+    new_idx = instance.location_index(location_id)
+    if old_idx == new_idx:
+        return 0.0
+
+    linear_delta = instance.demand[sku_idx] * (
+        instance.location_cost[new_idx] - instance.location_cost[old_idx]
+    )
+
+    row = _row_as_dict(instance.affinity.tocsr(), sku_idx)
+    quadratic_delta = 0.0
+    for neighbor_idx, weight in row.items():
+        if neighbor_idx == sku_idx:
+            continue
+        neighbor_loc = instance.location_index(
+            assignment.location_of(instance.sku_id(neighbor_idx))
+        )
+        quadratic_delta += weight * (
+            instance.distance_between_location_indices(new_idx, neighbor_loc)
+            - instance.distance_between_location_indices(old_idx, neighbor_loc)
+        )
+
+    return float(lam * linear_delta + (1.0 - lam) * 2.0 * quadratic_delta)
+
+
 def _validate_lam(lam: float) -> float:
     lam = float(lam)
     if not 0.0 <= lam <= 1.0:
@@ -199,7 +245,7 @@ def _quadratic_cost_from_location_indices(
     sku_row_bays = instance.location_bay[sku_row_locations]
     sku_col_bays = instance.location_bay[sku_col_locations]
 
-    bay_distances = instance.bay_distance[sku_row_bays, sku_col_bays]
+    bay_distances = instance.pair_distance[sku_row_bays, sku_col_bays]
 
     return float(np.dot(affinity.data, bay_distances))
 

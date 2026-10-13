@@ -76,7 +76,7 @@ class ObjectiveGreedyPolicy:
                 ]
                 candidate_bays = instance.location_bay[candidates]
                 quadratic = (
-                    instance.bay_distance[np.ix_(candidate_bays, neighbor_bays)]
+                    instance.pair_distance[np.ix_(candidate_bays, neighbor_bays)]
                     @ np.asarray(neighbor_weights)
                 )
                 cost = cost + (1.0 - lam) * 2.0 * quadratic

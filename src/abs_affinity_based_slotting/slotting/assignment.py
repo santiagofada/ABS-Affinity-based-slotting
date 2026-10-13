@@ -137,6 +137,23 @@ class Assignment:
         self._loc_to_sku[loc_a] = sku_b
         self._loc_to_sku[loc_b] = sku_a
 
+    def move(self, sku: Sku, location: Location) -> None:
+        """Move an assigned SKU to a free location in place; its old one is released.
+
+        Raises ``ValueError`` if the target location is already occupied.
+        """
+        occupant = self._loc_to_sku.get(location)
+        if occupant is not None:
+            if occupant == sku:
+                return
+            raise ValueError(
+                f"Location {location!r} is occupied by {occupant!r}; use swap instead."
+            )
+        old = self._sku_to_loc[sku]
+        del self._loc_to_sku[old]
+        self._sku_to_loc[sku] = location
+        self._loc_to_sku[location] = sku
+
     def copy(self) -> "Assignment":
         """Return an independent copy of the assignment."""
         return Assignment(self._sku_to_loc)

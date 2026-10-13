@@ -47,6 +47,12 @@ class SlottingInstance:
         matrix.
     merchant_ids:
         Optional merchant identifier per SKU. Shape: (n_skus,).
+    pair_distance:
+        Optional distance between bays as charged by the quadratic term of the
+        objective (the ``d_lk`` of the QAP). Shape: (n_bays, n_bays). Defaults
+        to ``bay_distance``. It is a modeling choice, e.g. an aisle-level cost
+        that mimics S-shape routing, while ``bay_distance`` stays the physical
+        walking distance used to measure routes and to simulate.
 
     Notes
     -----
@@ -68,6 +74,7 @@ class SlottingInstance:
     affinity: csr_matrix
 
     merchant_ids: np.ndarray | None = None
+    pair_distance: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "sku_ids", np.asarray(self.sku_ids, dtype=object))
@@ -105,6 +112,13 @@ class SlottingInstance:
         if self.merchant_ids is not None:
             merchant_ids = np.asarray(self.merchant_ids, dtype=object)
             object.__setattr__(self, "merchant_ids", merchant_ids)
+
+        if self.pair_distance is None:
+            object.__setattr__(self, "pair_distance", self.bay_distance)
+        else:
+            object.__setattr__(
+                self, "pair_distance", np.asarray(self.pair_distance, dtype=float)
+            )
 
         self._validate()
         self._build_indexes()
@@ -150,6 +164,12 @@ class SlottingInstance:
                 f"got {self.bay_distance.shape}."
             )
 
+        if self.pair_distance.shape != (self.n_bays, self.n_bays):
+            raise ValueError(
+                f"pair_distance must have shape ({self.n_bays}, {self.n_bays}), "
+                f"got {self.pair_distance.shape}."
+            )
+
         if self.affinity.shape != (self.n_skus, self.n_skus):
             raise ValueError(
                 f"affinity must have shape ({self.n_skus}, {self.n_skus}), "
@@ -186,6 +206,18 @@ class SlottingInstance:
 
         if (self.bay_distance < 0).any():
             raise ValueError("bay_distance must be non-negative.")
+
+        if np.isnan(self.pair_distance).any():
+            raise ValueError("pair_distance contains NaN values.")
+
+        if (self.pair_distance < 0).any():
+            raise ValueError("pair_distance must be non-negative.")
+
+        if not np.allclose(self.pair_distance, self.pair_distance.T):
+            raise ValueError(
+                "pair_distance must be symmetric (d_lk = d_kl); swap_cost_delta "
+                "relies on it."
+            )
 
         if self.location_bay.min(initial=0) < 0:
             raise ValueError("location_bay contains negative bay indexes.")
@@ -277,11 +309,15 @@ class SlottingInstance:
         location_a: int,
         location_b: int,
     ) -> float:
-        """Return walking distance between two location indices."""
+        """Return the objective's pair distance between two location indices.
+
+        This is ``pair_distance`` (what the quadratic term charges), which
+        equals the physical ``bay_distance`` unless a distance model was chosen.
+        """
         bay_a = self.location_bay[location_a]
         bay_b = self.location_bay[location_b]
 
-        return float(self.bay_distance[bay_a, bay_b])
+        return float(self.pair_distance[bay_a, bay_b])
 
     def affinity_between_sku_indices(
         self,

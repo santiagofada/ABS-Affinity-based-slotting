@@ -24,6 +24,8 @@ def build_instance(
     demand_metric: str = "pick_lines",
     cost_col: str = "distance_to_dock_in",
     affinity: csr_matrix | None = None,
+    normalize: bool = False,
+    pair_distance: pd.DataFrame | None = None,
 ) -> SlottingInstance:
     """Assemble a slotting instance.
 
@@ -46,6 +48,20 @@ def build_instance(
     affinity:
         SKU-SKU affinity as a CSR matrix aligned with ``skus``. Defaults to an
         empty matrix (no affinity built yet).
+    normalize:
+        If True, divide the demand vector by its sum and the affinity matrix by
+        its sum, so both become shares. The linear term of the objective is
+        then the mean dock distance of a pick and the quadratic term the mean
+        distance between an affine pair, both in inches, and ``lam`` weighs two
+        comparable quantities. Without it the two terms differ by orders of
+        magnitude (picks x inches vs. an affinity score x inches). Applied to
+        the affinity as given, so filter before building the instance.
+    pair_distance:
+        Optional bay-by-bay matrix (same index/columns as ``bay_distance``)
+        that the quadratic term charges between two products. Built by a model
+        from ``distance_registry`` (``walking`` reproduces ``bay_distance``,
+        ``aisle`` charges per aisle entered as S-shape routing does). None
+        keeps the physical walking distance.
     """
     demand_by_sku = sku_demand.set_index("sku")
     sku_ids = (
@@ -54,6 +70,8 @@ def build_instance(
     demand = (
         demand_by_sku[demand_metric].reindex(sku_ids, fill_value=0).to_numpy(dtype=float)
     )
+    if normalize and demand.sum() > 0:
+        demand = demand / demand.sum()
 
     if initial_stock is not None:
         merchant_by_sku = initial_stock.drop_duplicates(subset=["sku"]).set_index("sku")["merchant_account_id"]
@@ -65,6 +83,10 @@ def build_instance(
     bay_ids = bay_distance.index.to_numpy()
     bay_matrix = bay_distance.loc[bay_ids, bay_ids].to_numpy(dtype=float)
     bay_to_idx = {bay: idx for idx, bay in enumerate(bay_ids)}
+    pair_matrix = (
+        None if pair_distance is None
+        else pair_distance.loc[bay_ids, bay_ids].to_numpy(dtype=float)
+    )
 
     location_ids = location_costs["location_id"].to_numpy()
     location_cost = location_costs[cost_col].to_numpy(dtype=float)
@@ -79,6 +101,8 @@ def build_instance(
 
     if affinity is None:
         affinity = csr_matrix((len(sku_ids), len(sku_ids)))
+    elif normalize and affinity.sum() > 0:
+        affinity = (affinity / affinity.sum()).tocsr()
 
     return SlottingInstance(
         sku_ids=sku_ids,
@@ -90,6 +114,7 @@ def build_instance(
         bay_distance=bay_matrix,
         affinity=affinity,
         merchant_ids=merchant_ids,
+        pair_distance=pair_matrix,
     )
 
 
@@ -99,15 +124,48 @@ def build_full_instance(
     distances: pd.DataFrame,
     *,
     affinity_metric: str = "jaccard",
+    cooccurrence_col: str = "batch_id",
+    affinity_filter=None,
+    normalize: bool = False,
+    pair_distance_model: str = "walking",
+    coordinates: pd.DataFrame | None = None,
+    demand_metric: str = "pick_lines",
 ) -> SlottingInstance:
     """Build the canonical problem instance for the entire SKU universe.
 
-    Produces a SlottingInstance covering all 27k occupied SKUs:
     - Universe: all SKUs in initial_stock
     - Demand f: from picking_train (cold-start SKUs get f=0)
     - Merchant: from initial_stock (complete coverage)
     - Affinity A: co-occurrence from picking_train, aligned to the universe
     - Warehouse (c, D): from initial_stock and distances
+
+    Parameters
+    ----------
+    affinity_metric:
+        Name in ``affinity_registry`` (``jaccard``, ``cosine``, ``cooccurrence``).
+    cooccurrence_col:
+        Column of ``picking_train`` that defines when two SKUs co-occur. The
+        batch (a picking trip) is the only unit available in the v1 dataset;
+        with v2 the customer order (``"order_id"``) is observable too.
+    affinity_filter:
+        An ``AffinityFilter`` (e.g. ``TopKFilter(k=10)``) applied to A before
+        building the instance. None keeps every nonzero pair, which is dense
+        for large warehouses.
+    normalize:
+        Passed to :func:`build_instance`: turn demand and affinity into shares
+        so the two objective terms are comparable.
+    pair_distance_model:
+        Name in ``distance_registry`` of the distance the quadratic term
+        charges: ``walking`` (physical path between bays, the default) or
+        ``aisle`` (per aisle entered, as S-shape routing costs). Models other
+        than ``walking`` need ``coordinates``.
+    coordinates:
+        The ``coordinates`` table, required by distance models that use the
+        layout (aisle, x, y).
+    demand_metric:
+        Column of :func:`build_sku_demand` used as the demand f:
+        ``pick_lines`` (default), ``unique_orders``, ``unique_batches`` or
+        ``total_units``.
 
     This is the single entry point for building the canonical problem.
     """
@@ -115,18 +173,29 @@ def build_full_instance(
         occupied_locations,
         build_location_costs,
         build_bay_distance_matrix,
+        distance_registry,
     )
     from ..demand import build_cooccurrence, affinity_registry, build_sku_demand
 
     universe = occupied_locations(initial_stock)["sku"].to_numpy()
 
-    co = build_cooccurrence(picking_train, skus=universe)
+    co = build_cooccurrence(picking_train, skus=universe, batch_col=cooccurrence_col)
     A = affinity_registry.get(affinity_metric)().build(
         co.matrix, co.support, co.n_batches
     )
+    if affinity_filter is not None:
+        A = affinity_filter.filter(A)
     sku_demand = build_sku_demand(picking_train)
     location_costs = build_location_costs(initial_stock, distances)
     bay_distance = build_bay_distance_matrix(distances)
+
+    pair_distance = None
+    if pair_distance_model != "walking":
+        if coordinates is None:
+            raise ValueError(
+                f"pair_distance_model={pair_distance_model!r} needs the coordinates table"
+            )
+        pair_distance = distance_registry.get(pair_distance_model)().build(coordinates, distances)
 
     return build_instance(
         sku_demand,
@@ -134,7 +203,10 @@ def build_full_instance(
         bay_distance,
         initial_stock=initial_stock,
         skus=universe,
+        demand_metric=demand_metric,
         affinity=A,
+        normalize=normalize,
+        pair_distance=pair_distance,
     )
 
 
@@ -176,4 +248,5 @@ def restrict_instance(
         bay_distance=instance.bay_distance,
         affinity=sub_affinity,
         merchant_ids=merchant,
+        pair_distance=instance.pair_distance,
     )
