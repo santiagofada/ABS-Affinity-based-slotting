@@ -9,7 +9,7 @@
 ESCRITOS = escritos
 PDF      = docs/tesis.pdf
 
-.PHONY: tesis watch clean empezar traer mandar
+.PHONY: tesis watch clean empezar traer mandar manual
 
 # Build completo + publicacion del entregable.
 tesis:
@@ -24,6 +24,12 @@ watch:
 
 clean:
 	cd $(ESCRITOS) && latexmk -C
+
+# Manual del sistema (fuera de escritos/: no viaja a Overleaf).
+manual:
+	cd docs/manual && latexmk -pdf -interaction=nonstopmode -outdir=build manual.tex
+	@cp docs/manual/build/manual.pdf docs/manual.pdf
+	@echo "==> docs/manual.pdf actualizado"
 
 # ---------------------------------------------------------------------------
 # Sincronizacion con Overleaf

@@ -1,0 +1,538 @@
+% Catalogo de figuras propuestas para el capitulo 2 de la tesis (version 2).
+% Compilar: pdflatex propuesta-figuras.tex (dos pasadas). No va en la tesis.
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{subcaption}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\usepackage{float}
+\floatplacement{figure}{H}
+
+\definecolor{azul}{HTML}{4C78A8}
+\definecolor{naranja}{HTML}{F58518}
+\definecolor{verde}{HTML}{54A24B}
+\definecolor{rojo}{HTML}{E45756}
+\definecolor{violeta}{HTML}{B279A2}
+\definecolor{gris}{HTML}{8C8C8C}
+
+\newcommand{\donde}[1]{\par\noindent\textbf{Dónde va.} #1\par\smallskip}
+\newcommand{\pie}[1]{\par\noindent\textbf{Pie propuesto.} #1\par\smallskip}
+\newcommand{\nota}[1]{\par\noindent\textbf{Nota.} #1\par\smallskip}
+
+\title{Figuras propuestas para el Capítulo 2 (versión 3)}
+\author{Catálogo para evaluar, no forma parte de la tesis}
+\date{Octubre de 2026}
+
+\begin{document}
+\maketitle
+
+\noindent
+Tercera vuelta. Quedaron afuera ``quién se mueve'', el perfil con datos, el
+mapa del capítulo y el ejemplo del término cuadrático. Se rehicieron el
+programa lineal, la planta, las zonas ABC y las dos fases, y se corrigieron el
+costo de acceso y la leyenda del perfil esquemático. Paleta del manual, azul
+\tikz\fill[azul] (0,0) rectangle (0.8em,0.8em); y naranja
+\tikz\fill[naranja] (0,0) rectangle (0.8em,0.8em); sobre gris.
+
+\tableofcontents
+
+% =====================================================================
+\section{Nuevas}
+% =====================================================================
+
+\subsection{N1. Programa lineal y relajación entera}
+
+\donde{Nueva, en 2.7 Formulación matemática, después del párrafo que presenta
+la programación lineal y el símplex. El párrafo la referenciaría en ``hay al
+menos un vértice que lo alcanza'' y en ``los vértices del poliedro relajado ya
+no tienen por qué ser enteros''.}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1.1cm, y=1.1cm]
+            % region factible: x>=0, y>=0, x+2y<=7, 3x+y<=9
+            \fill[azul!30] (0,0) -- (3,0) -- (2.2,2.4) -- (0,3.5) -- cycle;
+            \draw[azul!80!black, very thick] (0,0) -- (3,0) -- (2.2,2.4) -- (0,3.5) -- cycle;
+            % restricciones rotuladas sobre su arista
+            \path (0,3.5) -- (2.2,2.4) node[pos=0.45, above, sloped, font=\scriptsize, black!60] {$x + 2y \le 7$};
+            \path (3,0) -- (2.2,2.4) node[pos=0.5, above, sloped, font=\scriptsize, black!60] {$3x + y \le 9$};
+            % ejes con marcas
+            \draw[-{Stealth}, black!70] (-0.3,0) -- (4.2,0) node[below, font=\scriptsize] {$x$};
+            \draw[-{Stealth}, black!70] (0,-0.3) -- (0,4.1) node[left, font=\scriptsize] {$y$};
+            \foreach \t in {1,2,3} { \draw[black!70] (\t,0.06) -- (\t,-0.06) node[below, font=\scriptsize] {\t}; \draw[black!70] (0.06,\t) -- (-0.06,\t) node[left, font=\scriptsize] {\t}; }
+            % curvas de nivel del objetivo x+3y = c
+            \begin{scope}
+                \clip (-0.2,-0.2) rectangle (4.1,4.0);
+                \draw[naranja, dashed] (0,1.5) -- (4.1,0.1333);
+                \draw[naranja, dashed] (0,2.5) -- (4.1,1.1333);
+                \draw[naranja, dashed] (0,3.5) -- (4.1,2.1333);
+            \end{scope}
+            \node[font=\scriptsize, naranja, anchor=west] at (3.0,2.75) {$x + 3y = 10{,}5$};
+            \node[font=\scriptsize, naranja, anchor=south west] at (3.15,1.5) {$x + 3y = 7{,}5$};
+            \node[font=\scriptsize, naranja, anchor=south west] at (3.15,0.5) {$x + 3y = 4{,}5$};
+            % direccion de mejora
+            \draw[-{Stealth}, naranja, very thick] (1.1,0.5) -- ++(0.3,0.9) node[right, font=\scriptsize, pos=0.75] {mejora};
+            % vertices
+            \foreach \p in {(0,0),(3,0),(2.2,2.4)} \fill[azul!80!black] \p circle (0.07);
+            \fill[naranja] (0,3.5) circle (0.1);
+            \node[font=\scriptsize, anchor=west] at (0.18,3.72) {óptimo $(0;\,3{,}5)$};
+        \end{tikzpicture}
+        \caption{El programa lineal}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1.1cm, y=1.1cm]
+            \fill[azul!30] (0,0) -- (3,0) -- (2.2,2.4) -- (0,3.5) -- cycle;
+            \draw[azul!80!black, very thick] (0,0) -- (3,0) -- (2.2,2.4) -- (0,3.5) -- cycle;
+            \draw[-{Stealth}, black!70] (-0.3,0) -- (4.2,0) node[below, font=\scriptsize] {$x$};
+            \draw[-{Stealth}, black!70] (0,-0.3) -- (0,4.1) node[left, font=\scriptsize] {$y$};
+            \foreach \t in {1,2,3} { \draw[black!70] (\t,0.06) -- (\t,-0.06) node[below, font=\scriptsize] {\t}; \draw[black!70] (0.06,\t) -- (-0.06,\t) node[left, font=\scriptsize] {\t}; }
+            % puntos enteros factibles, bien visibles
+            \foreach \x in {0,...,3} \foreach \y in {0,...,3} {
+                \pgfmathparse{(\x+2*\y<=7) && (3*\x+\y<=9) ? 1 : 0}
+                \ifnum\pgfmathresult=1 \fill[azul!80!black] (\x,\y) circle (0.085); \fi
+            }
+            % nivel por el optimo relajado y por el mejor entero
+            \begin{scope}
+                \clip (-0.2,-0.2) rectangle (4.1,4.0);
+                \draw[naranja, dashed] (0,3.5) -- (4.1,2.1333);
+                \draw[naranja, dashed, thin] (0,3.3333) -- (4.1,1.9667);
+            \end{scope}
+            \draw[naranja, very thick] (0,3.5) circle (0.12);
+            \node[font=\scriptsize, anchor=west, naranja] at (0.2,3.78) {óptimo relajado, $10{,}5$};
+            \fill[naranja] (1,3) circle (0.12);
+            \node[font=\scriptsize, anchor=west] at (1.2,3.36) {mejor entero $(1;\,3)$, $10$};
+            \draw[black!70, very thick] (0,3) circle (0.12);
+            \node[font=\scriptsize, anchor=west, black!70] at (0.2,2.55) {redondeo, $9$};
+        \end{tikzpicture}
+        \caption{Con variables enteras}
+    \end{subfigure}
+\end{figure}
+
+\pie{Un programa lineal en dos variables y su versión entera. En (a) la región
+factible es el polígono que recortan las restricciones, las líneas punteadas
+son curvas de nivel del objetivo $x + 3y$, la flecha indica hacia dónde mejora
+y el máximo se alcanza en un vértice. En (b) solo valen los puntos de
+coordenadas enteras, marcados en azul. El vértice óptimo de la relajación no es
+entero, el mejor punto entero no es un vértice del polígono, y tampoco es el
+redondeo del óptimo relajado, que vale menos.}
+
+\clearpage
+\subsection{N2. Planta del depósito con el camino de un producto}
+
+\donde{Reemplaza la Figura 2.2 actual, en 2.3.1, después del párrafo que define
+las seis etapas. Ahora es un solo camino continuo, el de un producto, numerado
+de 1 a 6.}
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[x=1cm, y=1cm, font=\scriptsize,
+        num/.style={circle, fill=white, draw=black!70, inner sep=1pt, minimum size=3.8mm, font=\scriptsize}]
+        % edificio
+        \draw[black!70, thick] (0,0) rectangle (11,6.4);
+        % puertas del dock
+        \foreach \x in {1.2,2.2,3.2} \draw[fill=naranja!30, draw=naranja!70!black] (\x-0.35,-0.02) rectangle ++(0.7,0.18);
+        \foreach \x in {7.8,8.8,9.8} \draw[fill=azul!30, draw=azul!70!black] (\x-0.35,-0.02) rectangle ++(0.7,0.18);
+        \node[anchor=north] at (2.2,-0.12) {\emph{dock} de recepción};
+        \node[anchor=north] at (8.8,-0.12) {\emph{dock} de despacho};
+        % zonas
+        \draw[fill=naranja!10, draw=naranja!60!black, dashed] (0.4,0.4) rectangle (4.0,1.5);
+        \node at (2.2,0.95) {recepción};
+        \draw[fill=azul!10, draw=azul!60!black, dashed] (7.0,0.4) rectangle (10.6,1.5);
+        \node at (8.8,0.95) {empaque};
+        % estanterias
+        \foreach \i in {0,...,6} \draw[fill=gray!25, draw=black!60] (1.0+\i*1.5, 2.3) rectangle ++(0.5, 3.4);
+        \node[anchor=south] at (9.5,5.8) {estanterías};
+        % ubicacion donde queda el producto (cara de la estanteria 3, pasillo de x=3.5)
+        \fill[naranja] (3.92,3.85) rectangle (4.1,4.15);
+        % 1 -> 2: recepcion y put-away (naranja), sube por el lado derecho del pasillo
+        \draw[-{Stealth}, very thick, naranja] (2.2,0.18) -- (2.2,0.4);
+        \draw[-{Stealth}, very thick, naranja] (2.2,1.5) -- (2.2,2.05) -- (3.65,2.05) -- (3.65,4.0) -- (3.88,4.0);
+        % 4: recorrido de picking (azul): sale de empaque, va por el corredor frontal,
+        % sube por el lado izquierdo del mismo pasillo, cruza por el fondo y baja por
+        % otro pasillo directo a empaque. Sin tramos repetidos.
+        \fill[azul] (7.3,1.5) circle (0.07);
+        \draw[-{Stealth}, very thick, azul] (7.3,1.5) -- (7.3,1.75) -- (3.35,1.75) -- (3.35,6.0) -- (8.0,6.0) -- (8.0,1.5);
+        % 6: despacho
+        \draw[-{Stealth}, very thick, azul] (8.8,0.4) -- (8.8,0.18);
+        % numeros
+        \node[num] at (0.75,-0.3) {1};
+        \node[num] at (1.95,2.3) {2};
+        \node[num] at (3.78,4.4) {3};
+        \node[num] at (3.35,4.9) {4};
+        \node[num] at (10.3,1.25) {5};
+        \node[num] at (10.25,-0.3) {6};
+        % referencias
+        \draw[very thick, naranja] (0.0,6.75) -- (0.5,6.75) node[anchor=west, black] {recepción y \emph{put-away}};
+        \draw[very thick, azul] (3.6,6.75) -- (4.1,6.75) node[anchor=west, black] {\emph{picking}, empaque y despacho};
+    \end{tikzpicture}
+\end{figure}
+
+\pie{Planta esquemática de un depósito y el camino de un producto. Entra por el
+\emph{dock} de recepción (1), el \emph{put-away} lo lleva hasta una ubicación
+de las estanterías (2), donde queda almacenado (3) hasta que un recorrido de
+\emph{picking}, que sale de empaque (punto azul), pasa a buscarlo (4) y lo deja
+en empaque (5), de donde sale por el \emph{dock} de despacho (6). En naranja el
+tramo de entrada, en azul el de salida.}
+
+\nota{Flujo pasante, entrada de un lado y salida del otro, para que las etapas
+se lean de izquierda a derecha. El recorrido de \emph{picking} sale de empaque
+(punto azul), va por el corredor frontal, sube por el pasillo donde está el
+producto, cruza por el fondo y baja por otro pasillo directo a empaque, que es
+lo que hace la política en $S$ de 2.3.3. El \emph{put-away} sube por el mismo
+pasillo, por eso las dos líneas van paralelas en ese tramo.}
+
+\clearpage
+\subsection{N3. Conveniencia de las ubicaciones y zonas ABC}
+
+\donde{Nueva, en 2.5.4 Clases y restricciones, junto a la oración ``Las zonas
+pueden dibujarse de dos maneras''. El tono es continuo, como en el manual, y
+las clases se cortan sobre ese orden.}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.46\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm, font=\scriptsize]
+            \path (-0.5,-0.7) rectangle (4.9,3.9);
+            \foreach \i in {0,...,5} {
+                \shade[top color=azul!8, bottom color=azul!90] (\i*0.7, 0.4) rectangle ++(0.3, 2.8);
+                \draw[black!50] (\i*0.7, 0.4) rectangle ++(0.3, 2.8);
+            }
+            \draw[black!60, dashed] (-0.2,1.3) -- (4.0,1.3);
+            \draw[black!60, dashed] (-0.2,2.2) -- (4.0,2.2);
+            \node[anchor=west] at (4.0,0.85) {A};
+            \node[anchor=west] at (4.0,1.75) {B};
+            \node[anchor=west] at (4.0,2.7) {C};
+            \fill[naranja] (1.9, 0.05) circle (0.08);
+            \node[anchor=north] at (1.9,-0.05) {\emph{dock}};
+        \end{tikzpicture}
+        \caption{Por franjas, a lo largo de cada pasillo}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.46\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm, font=\scriptsize]
+            \path (-0.5,-0.7) rectangle (4.9,3.9);
+            % un tono plano por pasillo: mas oscuro cuanto mas cerca del dock
+            \foreach \i/\c in {0/azul!15, 1/azul!50, 2/azul!90, 3/azul!90, 4/azul!50, 5/azul!15} {
+                \fill[\c] (\i*0.7, 0.4) rectangle ++(0.3, 2.8);
+                \draw[black!50] (\i*0.7, 0.4) rectangle ++(0.3, 2.8);
+            }
+            \draw[black!60, dashed] (0.5,0.2) -- (0.5,3.4);
+            \draw[black!60, dashed] (1.2,0.2) -- (1.2,3.4);
+            \draw[black!60, dashed] (2.6,0.2) -- (2.6,3.4);
+            \draw[black!60, dashed] (3.3,0.2) -- (3.3,3.4);
+            \node[anchor=south] at (1.9,3.4) {A};
+            \node[anchor=south] at (0.85,3.4) {B};
+            \node[anchor=south] at (2.95,3.4) {B};
+            \node[anchor=south] at (0.15,3.4) {C};
+            \node[anchor=south] at (3.65,3.4) {C};
+            \fill[naranja] (1.9, 0.05) circle (0.08);
+            \node[anchor=north] at (1.9,-0.05) {\emph{dock}};
+        \end{tikzpicture}
+        \caption{Por pasillos enteros}
+    \end{subfigure}
+
+    \vspace{0.6em}
+    \begin{tikzpicture}[font=\scriptsize]
+        \shade[left color=azul!90, right color=azul!8] (0,0) rectangle (3,0.25);
+        \draw[black!50] (0,0) rectangle (3,0.25);
+        \node[anchor=east] at (-0.1,0.125) {más conveniente};
+        \node[anchor=west] at (3.1,0.125) {menos conveniente};
+    \end{tikzpicture}
+\end{figure}
+
+\pie{Dos maneras de cortar en clases las ubicaciones de un mismo depósito, con
+el \emph{dock} abajo. El tono indica la conveniencia, más oscuro cuanto más
+corto es el viaje de ida y vuelta desde el \emph{dock}, y las líneas punteadas
+son los cortes entre las clases A, B y C. En (a) la conveniencia crece hacia el
+frente de cada pasillo y las clases son franjas. En (b) lo que cuenta es el
+pasillo, los centrales son más convenientes que los de los costados, y las
+clases son pasillos enteros.}
+
+\clearpage
+\subsection{N4. Agrupar primero, asignar después}
+
+\donde{Nueva, en 2.8 Estado del arte, en el bloque ``Método de asignación'',
+donde se dice que la norma es la descomposición en dos fases.}
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[x=1cm, y=1cm, font=\scriptsize,
+        chip/.style={draw=black!50, fill=gray!15, rounded corners=1pt, inner sep=2pt, minimum width=4.2mm, minimum height=4.2mm, font=\scriptsize},
+        chipA/.style={chip, fill=azul!25, draw=azul!70!black},
+        chipB/.style={chip, fill=naranja!30, draw=naranja!70!black},
+        grupo/.style={draw, rounded corners=3pt, inner sep=4pt},
+        panel/.style={font=\scriptsize\bfseries, anchor=south}]
+        % --- panel 1: pedidos
+        \node[panel] at (0.9,3.0) {pedidos};
+        \foreach \y/\lista in {2.4/{A,B}, 1.8/{A,B,E}, 1.2/{C,D}, 0.6/{C,D}, 0.0/{F}} {
+            \node[anchor=east] at (-0.1,\y) {};
+            \foreach [count=\k] \s in \lista { \node[chip] at (0.05+\k*0.55,\y) {$\s$}; }
+        }
+        \node[anchor=north, black!60] at (0.9,-0.35) {$\cdots$};
+        % --- flecha 1
+        \draw[-{Stealth}, thick, black!60] (2.6,1.2) -- (3.7,1.2) node[midway, above, align=center] {medir afinidad\\y agrupar};
+        % --- panel 2: grupos
+        \node[panel] at (5.3,3.0) {grupos afines};
+        \node[chipA] (a) at (4.4,2.2) {$A$};
+        \node[chipA] (b) at (5.0,2.2) {$B$};
+        \node[chipA] (e) at (5.6,2.2) {$E$};
+        \node[grupo, draw=azul!70!black, fit=(a)(b)(e)] (g1) {};
+        \node[chipB] (c) at (4.7,1.1) {$C$};
+        \node[chipB] (d) at (5.3,1.1) {$D$};
+        \node[grupo, draw=naranja!70!black, fit=(c)(d)] (g2) {};
+        \node[chip] (f) at (5.0,0.1) {$F$};
+        \node[grupo, draw=black!50, fit=(f)] (g3) {};
+        % --- flecha 2
+        \draw[-{Stealth}, thick, black!60] (6.9,1.2) -- (7.9,1.2) node[midway, above] {asignar};
+        % --- panel 3: deposito
+        \node[panel] at (9.8,3.0) {depósito};
+        \foreach \i in {0,...,3} \draw[fill=gray!20, draw=black!60] (8.5+\i*0.8, 0.0) rectangle ++(0.35, 2.6);
+        \fill[azul!60] (8.5,0.0) rectangle (8.85,1.1);
+        \fill[naranja!70] (9.3,0.0) rectangle (9.65,0.8);
+        \fill[gray!60] (10.9,2.1) rectangle (11.25,2.6);
+        \fill[naranja] (9.1,-0.3) circle (0.07);
+        \node[anchor=north] at (9.1,-0.38) {\emph{dock}};
+        % referencias de color
+        \fill[azul!60] (8.3,-1.05) rectangle ++(0.3,0.22); \node[anchor=west] at (8.65,-0.94) {$A$, $B$, $E$};
+        \fill[naranja!70] (10.1,-1.05) rectangle ++(0.3,0.22); \node[anchor=west] at (10.45,-0.94) {$C$, $D$};
+        \fill[gray!60] (11.5,-1.05) rectangle ++(0.3,0.22); \node[anchor=west] at (11.85,-0.94) {$F$};
+    \end{tikzpicture}
+\end{figure}
+
+\pie{El esquema de dos fases que domina la literatura. Del historial de pedidos
+se mide qué SKU aparecen juntas y con eso se arman grupos de SKU afines. Recién
+después se decide dónde va cada grupo en el depósito, los grupos con más
+actividad cerca del \emph{dock} y las SKU sin pareja donde quede lugar. Las dos
+decisiones se toman por separado, y lo que se pierde al separarlas rara vez se
+mide.}
+
+% =====================================================================
+\clearpage
+\section{Existentes, recoloreadas}
+% =====================================================================
+
+\noindent
+R1 a R4 quedaron como en la primera versión, que te gustaron. R5 cambia la
+forma de dibujar los viajes y R6 arregla la leyenda.
+
+\subsection{R1. Figura 2.1, la unidad de manipulación}
+\donde{2.1 Evolución, misma posición.}
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[x=1cm, y=1cm, every node/.style={font=\small}]
+        \foreach \i in {0,1,2} \foreach \j in {0,1,2}
+            \draw[fill=azul!18, draw=azul!70!black] (\i*0.63, \j*0.5) rectangle ++(0.58, 0.44);
+        \draw[fill=gray!55, draw=black!70] (-0.08, -0.2) rectangle (1.92, -0.04);
+        \node at (0.92, -0.65) {\emph{pallet}};
+        \draw[-{Stealth}, thick, black!60] (2.25, 0.7) -- (2.95, 0.7);
+        \foreach \i in {0,1} \foreach \j in {0,1}
+            \draw[fill=azul!18, draw=azul!70!black] (3.25+\i*0.46, 0.24+\j*0.46) rectangle ++(0.42, 0.42);
+        \draw[draw=black!70, thick] (3.2, 0.19) rectangle (4.22, 1.21);
+        \node at (3.71, -0.65) {caja};
+        \draw[-{Stealth}, thick, black!60] (4.55, 0.7) -- (5.25, 0.7);
+        \foreach \i in {0,1,2} \draw[fill=azul!18, draw=azul!70!black] (5.55+\i*0.36, 0.54) rectangle ++(0.32, 0.32);
+        \draw[draw=black!70, thick] (5.5, 0.49) rectangle (6.66, 0.91);
+        \node at (6.08, -0.65) {paquete interno};
+        \draw[-{Stealth}, thick, black!60] (7.0, 0.7) -- (7.7, 0.7);
+        \draw[fill=azul!18, draw=azul!70!black] (7.95, 0.54) rectangle ++(0.32, 0.32);
+        \node at (8.11, -0.65) {unidad};
+    \end{tikzpicture}
+\end{figure}
+
+\subsection{R2. Figura 2.3, variantes de geometría}
+\donde{2.3.2 La geometría del depósito, misma posición.}
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm]
+            \foreach \i in {0,...,9} \draw[fill=gray!15, draw=black!60] (\i*0.42, 0) rectangle ++(0.18, 2.6);
+            \fill[azul, opacity=0.18] (1.10, 0) rectangle (2.86, 2.6);
+            \fill[azul, opacity=0.22] (1.52, 0) rectangle (2.44, 2.6);
+            \fill[naranja] (1.98, -0.22) circle (0.07);
+            \fill[naranja] (1.98, 2.82) circle (0.07);
+            \node[font=\scriptsize] at (1.98, -0.5) {recepción};
+            \node[font=\scriptsize] at (1.98, 3.08) {despacho};
+        \end{tikzpicture}
+        \caption{Flujo pasante}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm]
+            \foreach \i in {0,...,9} \draw[fill=gray!15, draw=black!60] (\i*0.42, 0) rectangle ++(0.18, 2.6);
+            \fill[azul, opacity=0.14] (1.98, 2.35) -- (0.15, 0) -- (3.81, 0) -- cycle;
+            \fill[azul, opacity=0.18] (1.98, 1.5) -- (0.85, 0) -- (3.11, 0) -- cycle;
+            \fill[azul, opacity=0.24] (1.98, 0.75) -- (1.45, 0) -- (2.51, 0) -- cycle;
+            \fill[naranja] (1.98, -0.22) circle (0.07);
+            \node[font=\scriptsize] at (1.98, -0.5) {recepción y despacho};
+            \node[font=\scriptsize, opacity=0] at (1.98, 3.08) {despacho};
+        \end{tikzpicture}
+        \caption{Flujo en U}
+    \end{subfigure}
+
+    \vspace{0.8em}
+
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm]
+            \foreach \i in {0,...,9} {
+                \draw[fill=gray!15, draw=black!60] (\i*0.42, 1.5) rectangle ++(0.18, 1.1);
+                \draw[fill=gray!15, draw=black!60] (\i*0.42, 0) rectangle ++(0.18, 1.1);
+            }
+            \draw[very thick, azul] (0.72, 0.3) -- (0.72, 1.3) -- (3.24, 1.3) -- (3.24, 2.25);
+            \fill[naranja] (0.63, 0.16) rectangle ++(0.18, 0.18);
+            \fill[naranja] (3.15, 2.2) rectangle ++(0.18, 0.18);
+            \fill[naranja] (1.98, -0.22) circle (0.07);
+            \node[font=\scriptsize] at (1.98, -0.5) {dock};
+        \end{tikzpicture}
+        \caption{Pasillo transversal}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm]
+            \begin{scope}
+                \clip (0, 0) -- (1.68, 0) -- (0.08, 2.6) -- (0, 2.6) -- cycle;
+                \foreach \j in {0,...,5} \draw[fill=gray!15, draw=black!60] (0, 0.06+\j*0.44) rectangle (1.9, 0.24+\j*0.44);
+            \end{scope}
+            \begin{scope}
+                \clip (2.28, 0) -- (3.96, 0) -- (3.96, 2.6) -- (3.88, 2.6) -- cycle;
+                \foreach \j in {0,...,5} \draw[fill=gray!15, draw=black!60] (2.0, 0.06+\j*0.44) rectangle (3.96, 0.24+\j*0.44);
+            \end{scope}
+            \begin{scope}
+                \clip (1.98, 0.2) -- (0.5, 2.6) -- (3.46, 2.6) -- cycle;
+                \foreach \k in {0,...,8} \draw[fill=gray!15, draw=black!60] (0.15+\k*0.44, 0.2) rectangle ++(0.18, 2.4);
+            \end{scope}
+            \fill[naranja] (1.98, -0.22) circle (0.07);
+            \node[font=\scriptsize] at (1.98, -0.5) {dock};
+        \end{tikzpicture}
+        \caption{Espina de pescado}
+    \end{subfigure}
+\end{figure}
+
+\clearpage
+\subsection{R3. Figura 2.4, las dos políticas de ruteo}
+\donde{2.3.3 Order picking, misma posición.}
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm]
+            \foreach \i in {0,...,6} \draw[fill=gray!25, draw=black!60] (\i*0.62, 0.35) rectangle ++(0.24, 2.3);
+            \draw[very thick, azul, -{Stealth}]
+                (0.43, 0.15) -- (0.43, 2.85) -- (1.05, 2.85) -- (1.05, 0.15) -- (2.91, 0.15) -- (2.91, 2.85) -- (3.53, 2.85) -- (3.53, 0.15);
+            \draw[thick, azul!60, dashed] (3.53, 0.15) -- (3.53, 0.02) -- (0.43, 0.02) -- (0.43, 0.15);
+            \foreach \p in {(0.36, 1.9), (1.12, 0.9), (2.84, 1.4), (3.60, 2.1)} \fill[naranja] \p circle (0.07);
+            \fill[black!70] (0.43, -0.2) circle (0.06);
+            \node[font=\scriptsize] at (0.43, -0.45) {inicio};
+        \end{tikzpicture}
+        \caption{Política en forma de $S$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm]
+            \foreach \i in {0,...,6} \draw[fill=gray!25, draw=black!60] (\i*0.62, 0.35) rectangle ++(0.24, 2.3);
+            \draw[very thick, azul, -{Stealth}]
+                (0.43, 0.15) -- (0.43, 1.9) -- (0.43, 0.15) -- (1.05, 0.15) -- (1.05, 0.9) -- (1.05, 0.15) -- (2.91, 0.15) -- (2.91, 1.4) -- (2.91, 0.15) -- (3.53, 0.15) -- (3.53, 2.1) -- (3.53, 0.15);
+            \draw[thick, azul!60, dashed] (3.53, 0.15) -- (3.53, 0.02) -- (0.43, 0.02) -- (0.43, 0.15);
+            \foreach \p in {(0.36, 1.9), (1.12, 0.9), (2.84, 1.4), (3.60, 2.1)} \fill[naranja] \p circle (0.07);
+            \fill[black!70] (0.43, -0.2) circle (0.06);
+            \node[font=\scriptsize] at (0.43, -0.45) {inicio};
+        \end{tikzpicture}
+        \caption{Política de retorno}
+    \end{subfigure}
+\end{figure}
+
+\subsection{R4. Figura 2.6, el diente de sierra}
+\donde{2.5.1 Dedicado o compartido, misma posición.}
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[width=0.7\textwidth, height=4.2cm, xlabel={Tiempo}, ylabel={Stock en la ubicación}, xmin=0, xmax=3, ymin=0, ymax=1.15, xtick={0,1,2,3}, xticklabels={$0$,$T$,$2T$,$3T$}, ytick={0.5,1}, yticklabels={$Q/2$,$Q$}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, axis lines=left]
+            \addplot[very thick, azul] coordinates {(0,1) (1,0) (1,1) (2,0) (2,1) (3,0)};
+            \addplot[dashed, naranja, thick, domain=0:3] {0.5};
+        \end{axis}
+    \end{tikzpicture}
+\end{figure}
+
+\subsection{R5. Figura 2.7, dos ubicaciones y su costo de acceso}
+\donde{2.5.2 Las reglas de asignación, misma posición. Cada viaje es una sola
+línea con punta en los dos extremos, ida y vuelta, y salen del \emph{dock} en
+direcciones distintas para no pisarse. El pie sigue diciendo $c_A < c_B$.}
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[x=1cm, y=1cm]
+        \foreach \i in {0,...,7} \draw[fill=gray!25, draw=black!60] (\i*0.62, 0.5) rectangle ++(0.24, 2.4);
+        \fill[black!70] (2.29, 0.1) circle (0.07);
+        \node[font=\scriptsize] at (2.29, -0.2) {dock};
+        % A: viaje corto, vertical desde el dock
+        \draw[very thick, azul, {Stealth}-{Stealth}] (2.29, 0.17) -- (2.29, 1.0);
+        \fill[azul] (2.29, 1.0) circle (0.09);
+        \node[font=\scriptsize, anchor=south] at (2.29, 1.12) {$A$};
+        % B: viaje largo, sale del dock hacia la izquierda por el corredor frontal
+        \draw[very thick, naranja, dashed, {Stealth}-{Stealth}] (2.2, 0.1) -- (0.43, 0.1) -- (0.43, 2.6);
+        \fill[naranja] (0.43, 2.6) circle (0.09);
+        \node[font=\scriptsize, anchor=south] at (0.43, 2.95) {$B$};
+    \end{tikzpicture}
+\end{figure}
+
+\subsection{R6. Figura 2.5, el perfil esquemático}
+\donde{2.4 Perfil de actividad y demanda, misma posición. Barras azul y
+naranja, y la leyenda con un solo cuadrado por serie.}
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[width=\linewidth, height=4.6cm, xlabel={Fracción de las SKU, ordenadas por picks}, ylabel={Fracción acumulada de picks}, xmin=0, xmax=1, ymin=0, ymax=1, xtick={0,0.2,0.5,1}, ytick={0,0.5,0.8,1}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, grid=none, axis lines=left]
+                \addplot[very thick, azul, domain=0:1, samples=100] {(1-exp(-8*x))/(1-exp(-8))};
+                \draw[dashed, naranja] (axis cs:0.2,0) -- (axis cs:0.2,0.8) -- (axis cs:0,0.8);
+            \end{axis}
+        \end{tikzpicture}
+        \caption{Curva de Pareto de los picks}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[width=\linewidth, height=4.6cm, ybar, bar width=4pt, xlabel={Líneas por pedido}, ylabel={Fracción}, xmin=0.4, xmax=6.6, ymin=0, ymax=0.7, xtick={1,...,6}, ytick={0,0.2,0.4,0.6}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, legend style={font=\scriptsize, draw=none, at={(0.97,0.95)}, anchor=north east}, legend image code/.code={\draw[#1] (0cm,-0.08cm) rectangle (0.25cm,0.08cm);}, axis lines=left]
+                \addplot[fill=azul!45, draw=azul] coordinates {(1,0.60) (2,0.20) (3,0.10) (4,0.05) (5,0.03) (6,0.02)};
+                \addplot[fill=naranja, draw=naranja!70!black] coordinates {(1,0.34) (2,0.23) (3,0.17) (4,0.11) (5,0.08) (6,0.07)};
+                \legend{De los pedidos,De los picks}
+            \end{axis}
+        \end{tikzpicture}
+        \caption{Distribución de líneas por pedido}
+    \end{subfigure}
+\end{figure}
+
+% =====================================================================
+\clearpage
+\section{Descartadas y pendientes}
+% =====================================================================
+\begin{itemize}
+    \item \textbf{Quién se mueve}, \textbf{mapa del capítulo} y el
+    \textbf{ejemplo numérico del término cuadrático}, descartadas.
+    \item \textbf{Perfil con datos}, va al capítulo de los datos. Queda anotado
+    que en \texttt{data/v2/medium} las líneas por orden son uniformes entre 2 y
+    5 por construcción del simulador.
+    \item \textbf{Foto de un depósito real}, la aportás vos.
+    \item \textbf{Tabla 2.1}, se rehace aparte.
+\end{itemize}
+
+\end{document}
