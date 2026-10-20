@@ -5,18 +5,18 @@ Para quien compra, una operación en línea dura segundos, se elige un producto,
 Esa simplicidad esconde el trabajo que la sostiene.
 Cada compra en línea termina siendo una secuencia de operaciones físicas en un almacén.
 Detrás del clic hay un depósito donde alguien camina hasta una estantería, toma el producto, lo lleva a una mesa de empaque y lo despacha.
-Sobre ese recorrido pesa una decisión más influyente de lo que parece, y que este trabajo busca mejorar; dónde se guarda cada producto.
+Sobre ese recorrido pesa una decisión más influyente de lo que parece, y que este trabajo busca mejorar, dónde se guarda cada producto.
 
 \section{Contexto}
 
 El comercio electrónico creció de forma sostenida durante la última década, y con él la exigencia sobre la infraestructura que lo sostiene \citep{boysen2019warehousing}.
-Esa infraestructura son los centros de distribución, que organizan su operación en cinco grandes etapas encadenadas: la recepción de la mercadería que llega de los proveedores, su almacenamiento en las estanterías, el \emph{picking} o recolección de los artículos que componen cada pedido, el empaquetado, y el despacho hacia el cliente.
+Esa infraestructura son los centros de distribución, que organizan su operación en cinco grandes etapas encadenadas, la recepción de la mercadería que llega de los proveedores, su almacenamiento en las estanterías, el \emph{picking} o recolección de los artículos que componen cada pedido, el empaquetado, y el despacho hacia el cliente.
 Ese crecimiento cambió la operación en cuatro aspectos fundamentales.
-Los pedidos se multiplicaron y, al mismo tiempo se achicaron; donde antes se despachaban pallets completos, cientos de unidades de un mismo producto con destino a un comercio, ahora se preparan pedidos de unos pocos artículos distintos para un cliente final.
+Los pedidos se multiplicaron y, al mismo tiempo, se achicaron, donde antes se despachaban pallets completos, cientos de unidades de un mismo producto con destino a un comercio, ahora se preparan pedidos de unos pocos artículos distintos para un cliente final.
 A eso se sumaron plazos de entrega cada vez más cortos y un catálogo que no dejó de ampliarse, de modo que el depósito pasó a resolver muchos pedidos chicos, variados y urgentes sobre un universo de productos cada vez mayor.
 
 En la mayoría de los depósitos el \emph{picking} sigue siendo una actividad manual, bajo un esquema conocido como \emph{picker-to-parts}, es el operario quien se desplaza hasta la ubicación del producto, y no el producto el que llega hasta él \citep{dekoster2007design}.
-Bajo ese esquema el \emph{picking} concentra la mayor parte del costo operativo del depósito, y dentro del \emph{picking} la mayor parte del tiempo no se va en tomar los artículos ni en empaquetarlos, sino en caminar entre ubicaciones \citep{dekoster2007design, tompkins2010facilities}.
+Bajo ese esquema el \emph{picking} concentra la mayor parte del costo operativo del depósito, y dentro de esa etapa la mayor parte del tiempo no se va en tomar los artículos ni en empaquetarlos, sino en caminar entre ubicaciones \citep{dekoster2007design, tompkins2010facilities}.
 Esa caminata depende directamente de cómo estén distribuidos los productos en el inventario.
 
 \section{El problema}
@@ -26,7 +26,7 @@ En primer lugar, el \emph{layout} fija la geometría del depósito, cuántos pas
 Sobre esa geometría opera el \emph{batching}, que agrupa múltiples órdenes para recolectarlas en una sola pasada, y junto a él el \emph{routing}, que determina en qué orden se visitan las ubicaciones de un mismo recorrido.
 Queda por último el \emph{slotting}, que decide qué ubicación ocupa cada producto.
 
-Es también la que menos atención suele recibir.
+Es también la decisión que menos atención suele recibir.
 En muchas situaciones el \emph{slotting} se resuelve de manera heurística, y ante la llegada de nuevo inventario la asignación responde a la disponibilidad inmediata de espacios libres o, en el mejor de los casos, a la rotación individual de cada artículo, de modo que los productos que más se piden se ubican cerca de la zona de despacho.
 
 Ese segundo criterio es razonable, pero incompleto.
@@ -65,6 +65,6 @@ Aunque la evaluación se realiza sobre un depósito concreto, el método no depe
 
 Los capítulos de este trabajo se organizan de la siguiente manera.
 
-El Capítulo~\ref{chapter:antecedentes} reúne el contexto necesario para ubicar el problema: los fundamentos y las técnicas sobre las que se apoya el trabajo, junto con la revisión de la literatura relevante.
+El Capítulo~\ref{chapter:antecedentes} reúne el contexto necesario para ubicar el problema, los fundamentos y las técnicas sobre las que se apoya el trabajo, junto con la revisión de la literatura relevante.
 
 \completar{ORGANIZACION: describir los capitulos restantes (deposito, optimizacion, resultados y conclusiones) cuando su alcance este definido}
