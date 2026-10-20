@@ -27,7 +27,9 @@
 \usepackage{tabularx}
     \newcolumntype{L}{>{\raggedright\arraybackslash\hspace{0pt}}X}
 \usepackage{emptypage}
-\usepackage[acronym,shortcuts,xindy]{glossaries}
+% sin la opcion xindy: usa makeindex, que viene con cualquier TeX Live (aca, en
+% el Action y en Overleaf); latexmkrc tiene la regla que corre makeglossaries.
+\usepackage[acronym,shortcuts]{glossaries}
 \usepackage{markdown}
 \usepackage{booktabs}
 \usepackage{xcolor}
@@ -39,6 +41,9 @@
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
+% Paleta de las figuras (la misma del manual del sistema): dos acentos sobre gris.
+\definecolor{azul}{HTML}{4C78A8}
+\definecolor{naranja}{HTML}{F58518}
 \usepackage{subcaption}
 \usepackage{placeins}
 
@@ -107,6 +112,16 @@
 
 \newcommand{\citeme}[1]{{\color{red}{¡¡CITEME: #1!!}}}
 \newcommand{\completar}[1]{{\color{red!75}{Completar: #1}}}
+% Texto corregido a partir de los comentarios del director: el texto nuevo va en
+% verde y, si hay nota, una aclaracion corta entre corchetes. Al aprobar, sacar
+% el comando y dejar la prosa.
+\newcommand{\corregir}[2][]{{\color{green!50!black}#2}\ifstrempty{#1}{}{{\color{green!50!black}\small\ [#1]}}}
+% Rotulos de las listas description en cursiva, no en negrita (pedido del director).
+\renewcommand{\descriptionlabel}[1]{\hspace{\labelsep}\normalfont\scshape #1}
+% Titulos de parrafo (\paragraph) en versalitas, mismo codigo visual que los rotulos.
+\makeatletter
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{3.25ex \@plus1ex \@minus.2ex}{-1em}{\normalfont\normalsize\scshape}}
+\makeatother
 
 \renewcommand{\listingscaption}{Algoritmo}
 \renewcommand{\listoflistingscaption}{Lista de algoritmos}
