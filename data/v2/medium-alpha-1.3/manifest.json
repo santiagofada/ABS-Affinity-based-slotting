@@ -1,0 +1,31 @@
+{
+  "warehouse": "medium-alpha-1.3",
+  "base_preset": "medium",
+  "pareto_alpha": 1.3,
+  "seed": 124,
+  "start_timestamp": "2026-01-01T00:00:00",
+  "end_timestamp": "2026-07-01T00:00:00",
+  "calendar_months": 6,
+  "num_batches": 8145,
+  "num_orders": 203625,
+  "preset": {
+    "num_aisles": 8,
+    "bays_per_side": 16,
+    "num_cross_aisles": 2,
+    "shelves_per_bay": 5,
+    "bins_per_shelf": 6,
+    "batch_size": 25,
+    "batches_per_day": 45,
+    "num_merchants": 50,
+    "num_pickers": 20,
+    "num_replenishers": 5,
+    "empty_location_pct": 0.1
+  },
+  "rows": {
+    "coordinates": 257,
+    "distances": 32896,
+    "initial_stock": 7680,
+    "picking_events": 711860,
+    "replenishment_events": 77016
+  }
+}

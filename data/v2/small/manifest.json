@@ -1,0 +1,29 @@
+{
+  "warehouse": "small",
+  "seed": 123,
+  "start_timestamp": "2026-01-01T00:00:00",
+  "end_timestamp": "2026-07-01T00:00:00",
+  "calendar_months": 6,
+  "num_batches": 1086,
+  "num_orders": 27150,
+  "preset": {
+    "num_aisles": 4,
+    "bays_per_side": 10,
+    "num_cross_aisles": 1,
+    "shelves_per_bay": 4,
+    "bins_per_shelf": 6,
+    "batch_size": 25,
+    "batches_per_day": 6,
+    "num_merchants": 4,
+    "num_pickers": 5,
+    "num_replenishers": 2,
+    "empty_location_pct": 0.1
+  },
+  "rows": {
+    "coordinates": 81,
+    "distances": 3240,
+    "initial_stock": 1920,
+    "picking_events": 95043,
+    "replenishment_events": 9417
+  }
+}
