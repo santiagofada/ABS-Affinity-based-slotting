@@ -50,4 +50,9 @@ metodo. Para trabajar sobre el codigo alcanza con modelo (secciones 1 y 4) y sis
 - [estado-del-trabajo.md](../estado-del-trabajo.md): informe de situacion para la
   direccion.
 - [notebooks/](../notebooks/): corridas y experimentos, numerados cronologicamente. No son
-  codigo de produccion y pueden estar desactualizados respecto del paquete.
+  codigo de produccion y pueden estar desactualizados respecto del paquete. En
+  `notebooks/data2/`, los notebooks 00 a 02 y `06_datos_medium` describen los datos y el
+  codigo; `old_base/` (03 a 06) mide cada plan aplicado de una vez al deposito, que es el
+  techo y era el regimen hasta octubre de 2026; `correct_base/` usa el regimen vigente, en el
+  que el deposito arranca como esta y el plan entra por las mudanzas
+  ([sistema.md, seccion 7](sistema.md#7-la-simulacion)).

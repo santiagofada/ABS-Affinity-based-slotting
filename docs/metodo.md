@@ -142,7 +142,8 @@ se disponga de afinidad inyectada.
 
 | Alternativa | Supuesto | Estado |
 |---|---|---|
-| Simulacion con reposiciones | el deposito cambia: los productos se mudan al agotarse su stock | **[adoptada]** |
+| Simulacion desde el deposito real | el deposito arranca como esta en el corte; el plan entra solo por las mudanzas (regla `plan_aisle`); los batches se arman con la ubicacion del momento | **[adoptada]** (octubre de 2026) |
+| Simulacion con el plan aplicado de una vez | el plan se aplica entero en el corte, sin costo, y se mantiene (`home`) | conservada como techo de cada plan; era la adoptada hasta `old_base/06` |
 | Evaluacion estatica | el plan se respeta indefinidamente (almacenamiento dedicado) | conservada como caso de comparacion |
 
 La evaluacion estatica es el caso particular de la simulacion bajo la politica `home`;

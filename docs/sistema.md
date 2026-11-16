@@ -215,8 +215,10 @@ src/abs_affinity_based_slotting/
     ├── random_storage.py politica de hueco libre al azar
     ├── home.py          politica que mantiene el plan
     ├── objective_greedy.py  politica que minimiza el costo marginal
+    ├── plan_aisle.py    politica que lleva el plan de a una mudanza (regimen por defecto)
     ├── initial_state.py estados iniciales; regla de picking
     ├── simulator.py     bucle de eventos
+    ├── rolling.py       simulacion pool por pool desde el deposito real
     └── results.py       SimulationResult
 ```
 
@@ -278,6 +280,14 @@ comparacion.
 Evaluacion principal del trabajo. Parte de un estado del deposito y procesa los eventos en
 orden temporal.
 
+**Regimen por defecto (desde octubre de 2026).** El test es el ultimo 40% de los batches. El
+deposito arranca como esta en el corte (`state_after_history`), y el plan entra solo por las
+mudanzas que decide la regla `plan_aisle` (seccion 7.3). Los batches se re-arman pool por
+pool con el pasillo que cada producto ocupa en ese momento (`simulate_rolling`, seccion 7.7).
+Aplicar el plan entero en el corte (`reslot_state` con `home`) queda como el techo de cada
+plan. En el ejecutor de grillas lo eligen los campos `start`, `replenishment`, `rule_trigger`
+y `rule_target` de `EvalSpec`, y `test_size` de `InstanceSpec`.
+
 ```mermaid
 flowchart TB
     INIT["estado inicial<br/>producto y unidades por ubicacion"]
@@ -322,6 +332,7 @@ que la respuesta sea un hueco libre o una ubicacion que el producto ya ocupa.
 | Politica | Comportamiento | Modela |
 |---|---|---|
 | `random` | recarga en la ubicacion actual; ante quiebre de stock, muda a un hueco libre al azar (probabilidad 0,9) | deposito sin plan de slotting; coincide con la generacion del dataset |
+| `plan_aisle` | si al producto le quedan unidades, recarga en el lugar; si se agoto, lo lleva a un hueco de su pasillo del plan (el mas cercano a su ubicacion del plan; si el pasillo esta lleno, al pasillo mas cercano con lugar). Variantes: mover en cada reposicion (`trigger="always"`) y apuntar a la ubicacion exacta (`target="location"`) | sistema que implementa el plan de a una mudanza, partiendo del deposito real (regimen por defecto) |
 | `home` | entrega en la ubicacion asignada por el plan; si esta ocupada, en el hueco libre mas cercano a ella | sistema que conoce y mantiene el plan |
 | `objective_greedy` | entrega en la ubicacion de minimo costo marginal del objetivo, dado el estado vigente ([modelo.md](modelo.md#45-costo-marginal-de-una-ubicacion)) | decision en linea del algoritmo |
 
@@ -360,6 +371,22 @@ test, iterando hasta que el balance cierra.
 - Contadores: mudanzas, faltantes, fraccion de productos fuera de su ubicacion
   planificada.
 
+### 7.7 Simulacion pool por pool
+
+Partiendo del deposito real, el pasillo de un producto cambia durante el test, asi que los
+batches no se pueden armar de antemano con los pasillos del plan. `simulate_rolling` corta las
+ordenes de test en pools de $25\,W$ ordenes consecutivas y, para cada pool:
+
+1. lee el pasillo actual de cada producto (el de su ubicacion con mas unidades);
+2. re-arma el pool con `AisleCoverBatching` usando esos pasillos;
+3. simula sus batches y las reposiciones hasta su ultima linea, y deja el estado para el pool
+   siguiente.
+
+Con $W = 1$ los batches son FIFO. Cada paso registra la fraccion de la demanda de train cuyos
+productos ya estan en su pasillo del plan y los pasillos por orden (`step_log`). Con el plan
+aplicado y `home`, la simulacion pool por pool coincide exactamente con armar todos los
+batches de una vez (control del notebook `correct_base/01_transicion`).
+
 ---
 
 ## 8. Validacion del simulador
@@ -387,6 +414,11 @@ movimientos adicionales, la degradacion medida es conservadora.
 ---
 
 ## 9. Resultados de referencia
+
+Medidos con el regimen anterior, en el que el plan se aplica entero en el corte (`reslot_state`)
+y se mantiene con `home`. Con el regimen vigente (seccion 7) estas cifras son el techo de cada
+plan, no lo que se obtiene partiendo del deposito real; los resultados del regimen vigente estan
+en los notebooks de `notebooks/data2/correct_base/`.
 
 ### 9.1 v1
 

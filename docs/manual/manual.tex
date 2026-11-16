@@ -1,0 +1,2773 @@
+\documentclass[11pt,a4paper,oneside]{report}
+% Preambulo del manual del sistema.
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,array,multirow,longtable}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.geometric,shapes.misc,
+                decorations.pathreplacing,patterns,babel,matrix}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[section]{placeins}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black,citecolor=blue!50!black}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\captionsetup{font=small,labelfont=bf}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% ---------------------------------------------------------------- colores
+\definecolor{datos}{HTML}{4C78A8}
+\definecolor{modelo}{HTML}{F58518}
+\definecolor{plan}{HTML}{54A24B}
+\definecolor{batch}{HTML}{B279A2}
+\definecolor{sim}{HTML}{E45756}
+\definecolor{exp}{HTML}{72B7B2}
+\definecolor{gris}{HTML}{8C8C8C}
+\definecolor{m1}{HTML}{4C78A8}
+\definecolor{m2}{HTML}{F58518}
+\definecolor{m3}{HTML}{54A24B}
+\definecolor{m4}{HTML}{E45756}
+\definecolor{m5}{HTML}{B279A2}
+\definecolor{m6}{HTML}{EECA3B}
+\definecolor{m7}{HTML}{9D755D}
+
+% ---------------------------------------------------------------- estilos TikZ
+\tikzset{
+  caja/.style={draw, rounded corners=2pt, align=center, minimum height=8mm, inner sep=4pt, font=\small},
+  flecha/.style={-{Stealth[length=2.2mm]}, thick},
+  rotulo/.style={font=\scriptsize, align=center},
+  pasillo/.style={fill=gray!8, draw=gray!50},
+  bay/.style={draw=gray!60, fill=white, minimum width=4mm, minimum height=3.2mm, inner sep=0pt},
+  dock/.style={draw, fill=black!80, text=white, font=\scriptsize\bfseries, minimum width=9mm, minimum height=5mm},
+}
+
+% ---------------------------------------------------------------- recuadros
+\newtcolorbox{idea}[1][]{colback=plan!6, colframe=plan!70!black, fonttitle=\bfseries\small,
+  title={Idea}, #1, boxrule=0.6pt, arc=2pt, left=4pt, right=4pt, top=2pt, bottom=2pt}
+\newtcolorbox{supuesto}[1][]{colback=sim!5, colframe=sim!70!black, fonttitle=\bfseries\small,
+  title={Supuesto}, #1, boxrule=0.6pt, arc=2pt, left=4pt, right=4pt, top=2pt, bottom=2pt}
+\newtcolorbox{hiper}[1]{colback=modelo!6, colframe=modelo!75!black, fonttitle=\bfseries\small,
+  title={Hiperparámetros: #1}, boxrule=0.6pt, arc=2pt, left=4pt, right=4pt, top=2pt, bottom=2pt}
+\newtcolorbox{codigo}[1]{colback=datos!4, colframe=datos!70!black, fonttitle=\bfseries\small,
+  title={En el código: #1}, boxrule=0.6pt, arc=2pt, left=4pt, right=4pt, top=2pt, bottom=2pt}
+
+% ---------------------------------------------------------------- codigo
+\lstdefinestyle{py}{
+  language=Python, basicstyle=\ttfamily\footnotesize, keywordstyle=\color{datos!80!black}\bfseries,
+  commentstyle=\color{plan!60!black}\itshape, stringstyle=\color{modelo!80!black},
+  showstringspaces=false, frame=single, rulecolor=\color{gray!40}, backgroundcolor=\color{gray!4},
+  breaklines=true, columns=fullflexible, keepspaces=true, numbers=left, numberstyle=\tiny\color{gray},
+  xleftmargin=1.5em, framexleftmargin=1.2em, aboveskip=6pt, belowskip=6pt,
+  morekeywords={self,None,True,False}
+}
+\lstset{style=py}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% ---------------------------------------------------------------- algoritmos en castellano
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\listalgorithmname}{Lista de algoritmos}
+\algrenewcommand\algorithmicrequire{\textbf{Entrada:}}
+\algrenewcommand\algorithmicensure{\textbf{Salida:}}
+\algrenewcommand\algorithmicfor{\textbf{para}}
+\algrenewcommand\algorithmicforall{\textbf{para cada}}
+\algrenewcommand\algorithmicdo{\textbf{hacer}}
+\algrenewcommand\algorithmicwhile{\textbf{mientras}}
+\algrenewcommand\algorithmicif{\textbf{si}}
+\algrenewcommand\algorithmicthen{\textbf{entonces}}
+\algrenewcommand\algorithmicelse{\textbf{si no}}
+\algrenewcommand\algorithmicreturn{\textbf{devolver}}
+\algrenewcommand\algorithmicend{\textbf{fin}}
+\algrenewcommand\algorithmicrepeat{\textbf{repetir}}
+\algrenewcommand\algorithmicuntil{\textbf{hasta}}
+
+% ---------------------------------------------------------------- notacion
+\newcommand{\RS}{R_S}
+\newcommand{\Aisles}{\mathcal{A}}
+
+
+\title{\textbf{Slotting basado en afinidad}\\[4pt]
+  \large Manual del sistema: datos, modelo, métodos, batching, simulación y experimentos}
+\author{Santiago Fada}
+\date{Octubre de 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento explica cómo funciona el sistema que acompaña la tesis: qué datos usa, cómo
+los convierte en un problema de optimización, qué métodos resuelven ese problema, cómo se
+arman los viajes de picking, cómo se simula el depósito para medir cada propuesta y cómo se
+organizan los experimentos. Cada pieza se presenta con su definición, sus hiperparámetros y
+un diagrama. El código aparece como mapa de módulos en el capítulo~\ref{cap:arquitectura} y
+como fragmentos comentados en el apéndice~\ref{ap:codigo}. Los resultados se resumen en el
+capítulo~\ref{cap:resultados}, solo como contexto: el detalle está en los notebooks.
+\end{abstract}
+
+\tableofcontents
+
+\chapter{Introducción}
+\label{cap:introduccion}
+
+\section{El problema}
+
+En un depósito de e-commerce, un \emph{picker} recorre los pasillos con un carro y junta los
+productos de varias órdenes en un mismo viaje. La mayor parte del costo de preparar un pedido
+es ese recorrido (Bartholdi y Hackman, 2014). Dos decisiones lo determinan:
+
+\begin{itemize}
+  \item \textbf{Slotting}: en qué ubicación del depósito se guarda cada producto (SKU).
+  \item \textbf{Batching}: qué órdenes se recogen juntas en un mismo viaje.
+\end{itemize}
+
+La tesis estudia el slotting basado en \emph{afinidad}: ubicar cerca los productos que se
+piden juntos, además de ubicar cerca del despacho los que se piden mucho. El sistema
+descrito aquí permite construir el problema a partir de los datos de ShipHero, resolverlo con
+distintos métodos, armar los viajes de picking de distintas formas y medir cada combinación
+con una simulación del depósito.
+
+\section{El recorrido completo}
+
+La figura~\ref{fig:pipeline} muestra el camino de los datos hasta una medición. Cada caja es
+una etapa del sistema y un capítulo de este documento.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[e/.style={caja, minimum width=29mm, minimum height=11mm}]
+  \node[e, fill=datos!15, draw=datos] (tablas) at (0,0) {Cinco tablas\\\scriptsize del depósito};
+  \node[e, fill=datos!15, draw=datos] (split) at (3.8,0) {Corte\\\scriptsize train / test};
+  \node[e, fill=modelo!15, draw=modelo] (inst) at (7.6,0) {Instancia\\\scriptsize $f$, $c$, $A$, $D$ (de train)};
+  \node[e, fill=plan!15, draw=plan] (plan) at (11.4,0) {Plan de slotting\\\scriptsize SKU $\to$ ubicación};
+  \node[e, fill=batch!15, draw=batch] (batch) at (11.4,-2.4) {Batching\\\scriptsize órdenes de test $\to$ viajes};
+  \node[e, fill=sim!15, draw=sim] (sim) at (7.6,-2.4) {Simulación\\\scriptsize del período de test};
+  \node[e, fill=sim!15, draw=sim] (met) at (3.8,-2.4) {Métricas\\\scriptsize caminata por viaje};
+  \node[e, fill=exp!20, draw=exp] (expe) at (0,-2.4) {Experimentos\\\scriptsize grillas de configuraciones};
+  \draw[flecha] (tablas) -- (split);
+  \draw[flecha] (split) -- (inst);
+  \draw[flecha] (inst) -- node[above, rotulo]{método} (plan);
+  \draw[flecha] (plan) -- node[right, rotulo]{pasillo de\\cada SKU} (batch);
+  \draw[flecha] (batch) -- node[above, rotulo]{viajes} (sim);
+  \draw[flecha] (plan.south west) -- node[above, sloped, rotulo]{estado inicial} (sim.north east);
+  \draw[flecha] (sim) -- (met);
+  \draw[flecha] (met) -- (expe);
+\end{tikzpicture}
+\caption{Del dato a la medición. Los colores se repiten en el resto del documento: azul para
+datos, naranja para el modelo, verde para el slotting, violeta para el batching, rojo para la
+simulación y celeste para los experimentos.}
+\label{fig:pipeline}
+\end{figure}
+
+En palabras:
+
+\begin{enumerate}
+  \item Se leen las cinco tablas de un depósito y se cortan en un período de entrenamiento
+        (\emph{train}) y uno de prueba (\emph{test}) (capítulo~\ref{cap:datos}).
+  \item Con train se construye la \emph{instancia}: cuánto se pide cada producto ($f$), cuánto
+        cuesta llegar a cada ubicación ($c$), qué productos aparecen juntos ($A$) y qué
+        distancia separa a dos ubicaciones ($D$) (capítulo~\ref{cap:modelo}).
+  \item Un \emph{método de slotting} usa la instancia para producir un \emph{plan}: la
+        ubicación de cada producto (capítulo~\ref{cap:metodos}).
+  \item Las órdenes de test se agrupan en viajes, por orden de llegada o con un algoritmo que
+        junta órdenes que comparten pasillos (capítulo~\ref{cap:batching}).
+  \item La simulación aplica el plan al depósito, reproduce el período de test y mide cuánto
+        camina el picker en cada viaje, con una política de recorrido
+        (capítulo~\ref{cap:ruteo}) y una política de reposición (capítulo~\ref{cap:simulacion}).
+  \item Los experimentos repiten todo lo anterior para muchas combinaciones de datos, métodos
+        y parámetros (capítulo~\ref{cap:experimentos}).
+\end{enumerate}
+
+\section{Dos medidas distintas}
+
+El sistema separa dos cosas que conviene no confundir:
+
+\begin{itemize}
+  \item El \textbf{objetivo} que optimiza un método, calculado sobre train. Es una fórmula
+        rápida de evaluar que guía la búsqueda (sección~\ref{sec:formulacion}).
+  \item La \textbf{medida} con que se juzga un plan: la caminata simulada sobre los viajes de
+        test. Es lo que se reporta.
+\end{itemize}
+
+Un método puede mejorar su objetivo y empeorar la medida. Por eso toda comparación del
+documento se hace con la simulación.
+
+\section{Cómo leer este documento}
+
+Los capítulos~\ref{cap:datos} a~\ref{cap:simulacion} explican cada etapa: qué es, cómo
+funciona, qué hiperparámetros tiene y qué efecto tienen. Cada uno usa tres tipos de
+recuadros:
+
+\begin{idea}
+La razón de una decisión de diseño.
+\end{idea}
+\begin{supuesto}
+Algo que el sistema asume porque los datos no lo informan. Se nombra siempre.
+\end{supuesto}
+\begin{hiper}{nombre de la pieza}
+Los parámetros de la pieza, sus valores posibles y su valor por defecto.
+\end{hiper}
+
+El capítulo~\ref{cap:arquitectura} es el mapa del código, el~\ref{cap:experimentos}
+describe cómo se corren los experimentos, y el~\ref{cap:resultados} resume lo que se obtuvo.
+El apéndice~\ref{ap:codigo} reúne los fragmentos de código que implementan las ideas
+centrales, para quien quiera retomar el proyecto.
+
+% =============================================================================
+\chapter{El depósito y los datos}
+\label{cap:datos}
+
+Los datos son depósitos sintéticos que ShipHero generó a partir de su operación. Hay dos
+versiones. La v1 (abril de 2026) es un único depósito con 30 días de historia y sin
+identificador de orden. La v2 (septiembre de 2026) trae tres tamaños, \code{small},
+\code{medium} y \code{big}, con seis meses de historia cada uno y el identificador de la orden
+en cada línea de picking. En octubre de 2026 se sumó \code{medium-alpha-1.3}, una variante de
+\code{medium}. Este documento trabaja con la v2.
+
+% ----------------------------------------------------------------------------- layout
+\newcommand{\layout}{%
+  \fill[gray!8] (0.3,-0.8) rectangle (8.1,-0.2);
+  \fill[gray!8] (0.3,4.75) rectangle (8.1,5.35);
+  \fill[gray!8] (0.3,1.98) rectangle (8.1,2.53);
+  \foreach \a in {0,...,3} {
+    \pgfmathsetmacro{\cx}{2.0*\a+1.2}
+    \fill[gray!8] (\cx-0.3,-0.8) rectangle (\cx+0.3,5.35);
+    \foreach \j in {0,...,9} {
+      \pgfmathsetmacro{\yy}{0.4*\j + (\j>4)*0.55}
+      \draw[gray!60, fill=white] (\cx-0.7,\yy) rectangle (\cx-0.32,\yy+0.36);
+      \draw[gray!60, fill=white] (\cx+0.32,\yy) rectangle (\cx+0.7,\yy+0.36);
+    }
+    \pgfmathtruncatemacro{\num}{\a+1}
+    \node[font=\scriptsize] at (\cx,5.6) {pasillo \num};
+  }
+  \node[dock] (dock) at (-0.4,-0.5) {dock};
+}
+
+\section{El espacio}
+
+El depósito es una zona de pasillos paralelos (figura~\ref{fig:layout}). A cada lado de un
+pasillo hay una hilera de \textbf{bays}, que son columnas de estantería. Un bay se nombra por
+su pasillo y su número: \code{A03-07} es el bay 7 del pasillo 3. Los bays impares quedan del
+lado de menor coordenada $x$ y los pares enfrente, de modo que \code{A03-07} y \code{A03-08}
+están a la misma altura y a distancia cero entre sí.
+
+Cada bay tiene varios \textbf{estantes} y cada estante seis \textbf{bins}. La combinación de
+bay, estante y bin es una \textbf{ubicación}, el hueco donde vive un producto
+(figura~\ref{fig:bay}). Los \textbf{pasillos transversales} cortan las estanterías y
+permiten pasar de un pasillo a otro sin ir hasta la punta. El \textbf{dock} es la mesa de
+empaque: ahí empieza y termina cada recorrido.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \layout
+  \node[rotulo, anchor=west] at (8.2,-0.5) {frente};
+  \node[rotulo, anchor=west] at (8.2,5.05) {fondo};
+  \node[rotulo, anchor=west] at (8.2,2.25) {pasillo\\transversal};
+  \draw[datos, very thick] (0.5,0.8) rectangle (0.88,1.16);
+  \draw[datos, -{Stealth}] (-0.6,1.6) node[left, rotulo, text=datos]{bay \code{A01-03}\\lado impar} -- (0.5,1.05);
+  \draw[datos, very thick] (1.52,0.8) rectangle (1.9,1.16);
+  \draw[datos, -{Stealth}] (2.6,-1.3) node[below, rotulo, text=datos]{bay \code{A01-04}, enfrente} -- (1.75,0.8);
+  \draw[|-|, gris] (10.3,-0.2) -- node[right, rotulo]{largo $L$\\del pasillo} (10.3,4.75);
+\end{tikzpicture}
+\caption{Plano esquemático de \code{small}: 4 pasillos, 10 bays por lado y un pasillo
+transversal. \code{medium} tiene 8 pasillos y \code{big} 16, con más bays y más
+transversales.}
+\label{fig:layout}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[scale=0.55]
+  \foreach \s [count=\i from 0] in {A,B,C,D} {
+    \node[font=\scriptsize] at (-0.7,\i+0.5) {\s};
+    \foreach \b in {1,...,6} {
+      \draw[gray!70, fill=white] (\b-1,\i) rectangle (\b,\i+1);
+    }
+  }
+  \foreach \b in {1,...,6} { \node[font=\scriptsize] at (\b-0.5,-0.5) {\b}; }
+  \fill[plan!40] (1,1) rectangle (2,2);
+  \draw[plan!70!black, very thick] (1,1) rectangle (2,2);
+  \draw[-{Stealth}, plan!70!black] (8,1.5) node[right, rotulo, text=black]{ubicación \code{A03-07-B-02}\\estante B, bin 2} -- (2,1.5);
+  \node[rotulo] at (3,-1.4) {bins};
+  \node[rotulo, rotate=90] at (-1.6,2) {estantes};
+\end{tikzpicture}
+\caption{Un bay visto de frente: estantes por bins. Cada casilla es una ubicación.}
+\label{fig:bay}
+\end{figure}
+
+\begin{codigo}{coordenadas y distancias}
+La tabla \code{coordinates} da para cada bay su pasillo, número, lado y coordenadas $(x, y)$
+en pulgadas. La tabla \code{distances} da la distancia caminando entre cada par de bays,
+incluido el dock, calculada como camino mínimo por los pasillos. La distancia de una
+ubicación es la de su bay: el movimiento dentro de un bay no se modela.
+\end{codigo}
+
+% ----------------------------------------------------------------------------- actores
+\section{Productos, órdenes y viajes}
+
+\begin{itemize}
+  \item Un \textbf{SKU} es un producto distinto. Al empezar la historia cada SKU ocupa una
+        ubicación y cada ubicación tiene a lo sumo un SKU; el 10\% de las ubicaciones está
+        vacía.
+  \item Un \textbf{merchant} es el vendedor dueño del SKU. El depósito es compartido por
+        varios merchants.
+  \item Una \textbf{orden} es lo que pidió un cliente: entre 2 y 5 SKUs distintos de un mismo
+        merchant, con 1 a 3 unidades de cada uno.
+  \item Un \textbf{batch} es un viaje de picking: 25 órdenes que un picker recoge en una sola
+        pasada. En los datos son 25 órdenes consecutivas, en el orden en que llegaron, así que
+        un batch mezcla merchants y junta entre 60 y 90 SKUs distintos
+        (figura~\ref{fig:ordenes}).
+  \item Un \textbf{picker} recorre el depósito recogiendo; un \textbf{repositor} repone stock.
+\end{itemize}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=5mm,y=5mm]
+  \foreach \o/\m/\n in {0/m1/3, 1/m3/2, 2/m2/5, 3/m1/4, 4/m4/3} {
+    \node[font=\scriptsize, anchor=east] at (-0.4,-\o*1.3) {orden \the\numexpr\o+1\relax};
+    \foreach \k in {1,...,\n} { \fill[\m] (\k-1,-\o*1.3-0.45) rectangle (\k-0.1,-\o*1.3+0.45); }
+  }
+  \node[font=\scriptsize] at (2,-6.9) {$\vdots$ \; (25 órdenes)};
+  \draw[decorate, decoration={brace, amplitude=5pt, mirror}] (5.6,-7.5) -- (5.6,0.6);
+  \node[caja, fill=batch!12, draw=batch, anchor=west] (b) at (7,-3.2) {batch = un viaje\\\scriptsize la unión de los SKUs\\\scriptsize de sus 25 órdenes};
+  \foreach \c/\t [count=\i] in {m1/merchant A, m2/merchant B, m3/merchant C, m4/merchant D} {
+    \fill[\c] (15,-\i*0.9+0.3) rectangle (15.7,-\i*0.9+0.9);
+    \node[font=\scriptsize, anchor=west] at (15.9,-\i*0.9+0.6) {\t};
+  }
+\end{tikzpicture}
+\caption{Cada orden tiene SKUs de un solo merchant (color). Un batch junta 25 órdenes y, por
+lo tanto, SKUs de varios merchants.}
+\label{fig:ordenes}
+\end{figure}
+
+\begin{idea}
+Que dos productos se \emph{compren} juntos es un hecho de la orden. Que se \emph{recojan}
+juntos es un hecho del batch, y depende de cómo se arme el batch. Con el identificador de
+orden se puede medir lo primero y construir lo segundo con la regla que se quiera
+(capítulo~\ref{cap:batching}).
+\end{idea}
+
+% ----------------------------------------------------------------------------- tablas
+\section{Las cinco tablas}
+
+Cada depósito es una carpeta con cinco tablas (tabla~\ref{tab:tablas}). Se unen por la
+ubicación y por el bay (figura~\ref{fig:er}).
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l l L@{}}
+\toprule
+tabla & una fila por & columnas principales \\
+\midrule
+\code{coordinates} & bay, y el dock & \code{bay\_id}, \code{aisle}, \code{bay\_number}, \code{side}, \code{x}, \code{y} \\
+\code{distances} & par de bays & \code{bay\_a}, \code{bay\_b}, \code{distance\_in} \\
+\code{initial\_stock} & ubicación & \code{location\_id}, \code{bay\_id}, \code{sku}, \code{merchant\_account\_id}, \code{units} \\
+\code{picking\_events} & línea de pick & \code{batch\_id}, \code{order\_id}, \code{timestamp}, \code{location\_id}, \code{sku}, \code{quantity} \\
+\code{replenishment\_events} & reposición & \code{timestamp}, \code{source\_location\_id}, \code{target\_location\_id}, \code{sku}, \code{quantity} \\
+\bottomrule
+\end{tabularx}
+\caption{Las tablas de cada depósito, en formato parquet.}
+\label{tab:tablas}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[tabla/.style={draw=datos, fill=datos!8, rounded corners=2pt, align=left, font=\scriptsize, inner sep=4pt}]
+  \node[tabla] (co) at (0,0) {\textbf{coordinates}\\bay\_id\\aisle, bay\_number, side\\x, y};
+  \node[tabla] (di) at (0,-2.6) {\textbf{distances}\\bay\_a, bay\_b\\distance\_in};
+  \node[tabla] (st) at (5,0) {\textbf{initial\_stock}\\location\_id\\bay\_id\\sku, merchant, units};
+  \node[tabla] (pe) at (10.5,1.3) {\textbf{picking\_events}\\batch\_id, order\_id\\timestamp\\location\_id, sku, quantity};
+  \node[tabla] (re) at (10.5,-1.6) {\textbf{replenishment\_events}\\timestamp\\source / target\_location\_id\\sku, quantity};
+  \draw[thick, datos] (st.west) -- node[above, rotulo]{bay\_id} (co.east);
+  \draw[thick, datos] (co.south) -- node[right, rotulo]{bay\_id = bay\_a o bay\_b} (di.north);
+  \draw[thick, datos] (st.east) -- node[above, sloped, rotulo]{location\_id} (pe.west);
+  \draw[thick, datos] (st.east) -- node[below, sloped, rotulo]{source / target} (re.west);
+\end{tikzpicture}
+\caption{Cómo se unen las tablas.}
+\label{fig:er}
+\end{figure}
+
+% ----------------------------------------------------------------------------- tamanos
+\section{Los cuatro depósitos}
+
+Los cuatro depósitos de la v2 siguen la misma lógica y cambian de escala
+(tabla~\ref{tab:tamanos}).
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+ & \code{small} & \code{medium} & \code{medium-alpha-1.3} & \code{big} \\
+\midrule
+pasillos & 4 & 8 & 8 & 16 \\
+bays por lado de pasillo & 10 & 16 & 16 & 24 \\
+pasillos transversales & 1 & 2 & 2 & 3 \\
+ubicaciones & 1.920 & 7.680 & 7.680 & 27.648 \\
+SKUs & 1.728 & 6.912 & 6.912 & 24.883 \\
+merchants & 4 & 50 & 50 & 100 \\
+pickers & 5 & 20 & 20 & 60 \\
+órdenes & 27.150 & 203.625 & 203.625 & 452.500 \\
+batches & 1.086 & 8.145 & 8.145 & 18.100 \\
+batches por día & --- & 45 & 45 & 100 \\
+SKUs que explican el 50\% de las líneas & --- & 318 & 227 & 755 \\
+reposiciones & 9.417 & 76.966 & 77.016 & 171.333 \\
+\bottomrule
+\end{tabular}
+\caption{Tamaños de la v2. \code{medium-alpha-1.3} es \code{medium} generado con la demanda
+más concentrada en pocos SKUs (parámetro \code{pareto\_alpha} del generador).}
+\label{tab:tamanos}
+\end{table}
+
+% ----------------------------------------------------------------------------- reposiciones
+\section{Stock y reposiciones}
+
+Cada línea de picking descuenta unidades de la ubicación del SKU. Cuando un pick dejaría el
+stock en negativo, justo antes ocurre una reposición (figura~\ref{fig:reposicion}). Alrededor
+del 45\% de las reposiciones son \emph{mudanzas}: el SKU cambia de ubicación. Por eso el
+plano del depósito cambia durante los seis meses.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=5mm and 8mm]
+  \node[caja] (pick) {línea de pick\\del SKU $s$};
+  \node[caja, diamond, aspect=2.2, inner sep=1pt, right=of pick] (alc) {¿alcanza\\el stock?};
+  \node[caja, right=of alc] (desc) {se descuentan\\las unidades};
+  \node[caja, diamond, aspect=2.2, inner sep=1pt, below=of alc] (quedan) {¿quedaban\\unidades?};
+  \node[caja, left=of quedan] (rec) {se recarga\\en el lugar};
+  \node[caja, fill=sim!10, draw=sim, right=of quedan] (mud) {con probabilidad 0,9 se muda a\\una ubicación libre al azar;\\si no, se recarga en el lugar};
+  \draw[flecha] (pick) -- (alc);
+  \draw[flecha] (alc) -- node[above, rotulo]{sí} (desc);
+  \draw[flecha] (alc) -- node[right, rotulo]{no: reposición} (quedan);
+  \draw[flecha] (quedan) -- node[above, rotulo]{sí} (rec);
+  \draw[flecha] (quedan) -- node[above, rotulo]{no} (mud);
+\end{tikzpicture}
+\caption{Cómo generó los datos el simulador de ShipHero. En la simulación de este sistema el
+momento, el SKU y la cantidad de cada reposición se copian de los datos; lo único que se
+decide es el destino (sección~\ref{sec:reposicion}).}
+\label{fig:reposicion}
+\end{figure}
+
+% ----------------------------------------------------------------------------- hechos
+\section{Hechos verificados de los datos}
+\label{sec:hechos}
+
+Varias decisiones del sistema se apoyan en propiedades de los datos. Cada una está
+verificada en un notebook de \code{notebooks/data2/}.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}L l@{}}
+\toprule
+hecho & dónde se verifica \\
+\midrule
+Cada orden tiene SKUs de un solo merchant (203.625 de 203.625 en \code{medium}). & 04, hecho 1 \\
+Todos los batches tienen 25 órdenes. Sale uno cada 32 minutos en \code{medium} y cada 14,4 en \code{big}. & 04, hecho 2; 05, sec.~5 \\
+Agrupar las órdenes de a 25 por hora de su primera línea reproduce el 100\% de los batches. & 04, sec.~3.1 \\
+Ninguna orden pide el mismo SKU en dos líneas. & 05, sec.~6 \\
+En el corte train/test cada SKU está en exactamente una ubicación. & 04, hecho 3 \\
+El volumen es constante mes a mes y la popularidad de cada SKU es estable. & 01 \\
+La co-ocurrencia por orden no se distingue de la que darían órdenes armadas al azar según la popularidad de cada SKU dentro de su merchant: para los pares con al menos 20 co-ocurrencias esperadas, el cociente entre observado y esperado queda entre 0,65 y 1,19 (percentiles 5 y 99). & 01 \\
+\bottomrule
+\end{tabularx}
+\caption{Propiedades de la v2 que usa el sistema.}
+\label{tab:hechos}
+\end{table}
+
+\begin{idea}
+El último hecho dice que los datos no tienen \emph{afinidad plantada}: dos SKUs aparecen
+juntos tanto como lo predice su popularidad. La única estructura conjunta es la del merchant:
+dos SKUs de merchants distintos nunca comparten una orden. Esto explica buena parte de los
+resultados del capítulo~\ref{cap:resultados}.
+\end{idea}
+
+\begin{supuesto}
+Los datos no traen la hora en que llega cada orden, solo el orden en que entraron a los
+batches. Donde hace falta un tiempo de llegada (la espera de las órdenes en el
+capítulo~\ref{cap:batching}) se usa la posición en esa secuencia.
+\end{supuesto}
+
+% ----------------------------------------------------------------------------- split
+\section{Entrenamiento y prueba}
+\label{sec:split}
+
+Los batches se ordenan por la hora de su primera línea y el último 40\% queda como test,
+72 días, unas 10 semanas (figura~\ref{fig:split}). Los notebooks de \code{old\_base/} usaron el último
+20\%; se pasó a 40\% para ver cómo evoluciona el depósito mientras el plan entra por las
+mudanzas (capítulo~\ref{cap:simulacion}). El corte se hace por batch, nunca a mitad de uno, porque el batch es
+la unidad que se mide; y como una orden nunca se reparte entre batches, tampoco parte órdenes.
+Todo lo que un método aprende (la demanda, la afinidad) sale de train. Todo lo que se reporta
+sale de test.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+  \fill[datos!20] (0,0) rectangle (7.2,0.6);
+  \fill[sim!25] (7.2,0) rectangle (12,0.6);
+  \draw (0,0) rectangle (12,0.6);
+  \node[font=\small] at (3.6,0.3) {train: 60\% de los batches};
+  \node[font=\small] at (9.6,0.3) {test: 40\%};
+  \draw[thick] (7.2,-0.2) -- (7.2,0.9) node[above, rotulo]{corte};
+  \node[rotulo, anchor=north west] at (0,-0.1) {1 de enero};
+  \node[rotulo, anchor=north east] at (12,-0.1) {30 de junio};
+  \draw[flecha, datos] (3.6,-0.6) -- (3.6,-1.2) node[below, rotulo]{demanda $f$, afinidad $A$, estado al corte};
+  \draw[flecha, sim] (9.6,-0.6) -- (9.6,-1.2) node[below, rotulo]{caminata simulada};
+\end{tikzpicture}
+\caption{Corte temporal por batch.}
+\label{fig:split}
+\end{figure}
+
+Las reposiciones necesitan un corte propio. Un corte por fecha deja ubicaciones con stock
+negativo en train, porque algunas mudanzas quedan registradas después de los picks que ya las
+presuponen. La función \code{split\_replenishments} corrige el borde: cada ubicación que
+terminaría train con stock negativo recupera su primera reposición de test, y se repite hasta
+que todas cierran.
+
+\begin{hiper}{corte train/test}
+\begin{itemize}
+  \item \code{test\_size}: fracción de batches que va a test. Valor por defecto: 0,4 (era 0,2 en
+        \code{old\_base/}). Es un campo de \code{InstanceSpec}.
+\end{itemize}
+\end{hiper}
+
+% =============================================================================
+\chapter{El modelo de slotting}
+\label{cap:modelo}
+
+Este capítulo convierte los datos de train en un problema de optimización: la
+\emph{instancia}. La instancia guarda cuatro parámetros (figura~\ref{fig:parametros}) y
+define el objetivo que optimizan los métodos del capítulo~\ref{cap:metodos}.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+  \tikzset{d/.style={caja, fill=datos!12, draw=datos, minimum width=30mm}, p/.style={caja, fill=modelo!15, draw=modelo, minimum width=34mm}}
+  \node[d] (pe) at (0,1.6) {\code{picking\_events} de train};
+  \node[d] (is) at (0,0.4) {\code{initial\_stock}};
+  \node[d] (di) at (0,-0.8) {\code{distances}};
+  \node[d] (co) at (0,-2.0) {\code{coordinates}};
+  \node[p] (f) at (5.2,2.0) {demanda $f_i$};
+  \node[p] (a) at (5.2,1.0) {afinidad $a_{ij}$};
+  \node[p] (u) at (5.2,0.0) {SKUs y ubicaciones};
+  \node[p] (c) at (5.2,-1.0) {costo de acceso $c_\ell$};
+  \node[p] (d) at (5.2,-2.0) {distancia $d_{\ell k}$};
+  \node[caja, fill=modelo!25, draw=modelo, very thick, minimum height=14mm] (inst) at (10,0) {\textbf{instancia}\\\code{SlottingInstance}};
+  \draw[flecha] (pe.east) -- (f.west);
+  \draw[flecha] (pe.east) -- (a.west);
+  \draw[flecha] (is.east) -- (u.west);
+  \draw[flecha] (is.east) -- (c.west);
+  \draw[flecha] (di.east) -- (c.west);
+  \draw[flecha] (di.east) -- (d.west);
+  \draw[flecha, dashed] (co.east) -- node[below, rotulo, pos=0.4]{si $D$ = \code{aisle}} (d.west);
+  \foreach \n in {f,a,u,c,d} { \draw[flecha] (\n.east) -- (inst.west); }
+\end{tikzpicture}
+\caption{De las tablas a la instancia. Todo sale de train salvo la geometría, que es fija.}
+\label{fig:parametros}
+\end{figure}
+
+\section{Notación}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+símbolo & significado \\
+\midrule
+$I$, $n = |I|$ & SKUs a ubicar (todos los del stock inicial) \\
+$\mathcal{L}$, $m = |\mathcal{L}|$ & ubicaciones, $m \ge n$ \\
+$f_i$ & demanda del SKU $i$ \\
+$c_\ell$ & costo de acceso de la ubicación $\ell$: distancia caminando de su bay al dock \\
+$a_{ij}$ & afinidad entre los SKUs $i$ y $j$; simétrica, $a_{ii} = 0$ \\
+$d_{\ell k}$ & distancia entre las ubicaciones $\ell$ y $k$, a través de sus bays \\
+$x_{i\ell} \in \{0,1\}$ & vale 1 si el SKU $i$ va a la ubicación $\ell$ \\
+$\lambda \in [0,1]$ & peso del término de demanda frente al de afinidad \\
+\bottomrule
+\end{tabular}
+\caption{Notación del modelo.}
+\end{table}
+
+% ----------------------------------------------------------------------------- f
+\section{Demanda $f$}
+
+La demanda dice cuánto se pide cada SKU en train. Hay cuatro formas de contarla, y la
+instancia usa una.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\code{demand\_metric} & cuenta, para cada SKU \\
+\midrule
+\code{pick\_lines} & las líneas de picking (por defecto) \\
+\code{unique\_orders} & las órdenes distintas que lo piden \\
+\code{unique\_batches} & los batches distintos que lo visitan \\
+\code{total\_units} & las unidades \\
+\bottomrule
+\end{tabular}
+\caption{Definiciones de la demanda.}
+\end{table}
+
+En la v2 \code{unique\_orders} es idéntica a \code{pick\_lines}, porque ninguna orden pide el
+mismo SKU en dos líneas (sección~\ref{sec:hechos}).
+
+% ----------------------------------------------------------------------------- c
+\section{Costo de acceso $c$}
+
+El costo de una ubicación es la distancia caminando desde su bay hasta el dock, tomada de la
+tabla \code{distances}. Todas las ubicaciones de un mismo bay tienen el mismo costo.
+
+% ----------------------------------------------------------------------------- A
+\section{Afinidad $A$}
+\label{sec:afinidad}
+
+La afinidad mide qué tanto aparecen juntos dos SKUs. Se construye en cuatro pasos
+(figura~\ref{fig:afinidad}).
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=5mm and 6mm]
+  \node[caja, fill=datos!12, draw=datos] (p) {líneas de\\picking de train};
+  \node[caja, fill=modelo!12, draw=modelo, right=of p] (u) {1. unidad\\\scriptsize orden o batch};
+  \node[caja, fill=modelo!12, draw=modelo, right=of u] (n) {2. conteos\\\scriptsize $n_{ij}$, $s_i$};
+  \node[caja, fill=modelo!12, draw=modelo, right=of n] (m) {3. métrica\\\scriptsize jaccard, cosine,\\\scriptsize cooccurrence};
+  \node[caja, fill=modelo!12, draw=modelo, right=of m] (fl) {4. filtro\\\scriptsize top-$k$, mutuo,\\\scriptsize umbral};
+  \node[caja, fill=modelo!25, draw=modelo, right=of fl] (a) {$A$};
+  \draw[flecha] (p) -- (u); \draw[flecha] (u) -- (n); \draw[flecha] (n) -- (m);
+  \draw[flecha] (m) -- (fl); \draw[flecha] (fl) -- (a);
+\end{tikzpicture}
+\caption{Construcción de la afinidad.}
+\label{fig:afinidad}
+\end{figure}
+
+\paragraph{1. Unidad de co-ocurrencia.} Dos SKUs co-ocurren cuando aparecen en la misma
+\emph{orden} o en el mismo \emph{batch}. Con la orden se mide qué se compra junto. Con el
+batch se mide qué se recoge junto, que en los datos mezcla 25 órdenes de varios merchants.
+
+\paragraph{2. Conteos.} Con la matriz binaria $B$ de unidades por SKUs ($B_{ui} = 1$ si el SKU
+$i$ está en la unidad $u$), $n_{ij} = (B^\top B)_{ij}$ cuenta las unidades que contienen a los
+dos SKUs y el soporte $s_i = (B^\top B)_{ii}$ las que contienen a $i$.
+
+\paragraph{3. Métrica.} Convierte los conteos en un puntaje:
+\[
+\text{cooccurrence: } a_{ij} = n_{ij}, \qquad
+\text{jaccard: } a_{ij} = \frac{n_{ij}}{s_i + s_j - n_{ij}}, \qquad
+\text{cosine: } a_{ij} = \frac{n_{ij}}{\sqrt{s_i\, s_j}}.
+\]
+El conteo crudo favorece a los SKUs populares, que co-ocurren mucho solo por ser populares.
+Jaccard y coseno lo corrigen dividiendo por los soportes.
+
+\paragraph{4. Filtro.} La matriz completa es densa y casi todo es ruido de baja frecuencia.
+Los filtros conservan los vínculos fuertes y devuelven siempre una matriz simétrica:
+\begin{itemize}
+  \item \code{top\_k}: cada SKU conserva sus $k$ vecinos de mayor afinidad, y un vínculo
+        sobrevive si está en el top-$k$ de \emph{alguno} de los dos (unión).
+  \item \code{mutual\_top\_k}: sobrevive solo si está en el top-$k$ de \emph{los dos}
+        (intersección).
+  \item \code{threshold}: sobrevive si supera un valor mínimo.
+\end{itemize}
+
+\paragraph{Un ejemplo.} Cuatro órdenes: $\{a,b\}$, $\{a,b,c\}$, $\{a,c\}$ y $\{b,d\}$. Los
+soportes son $s_a = 3$, $s_b = 3$, $s_c = 2$, $s_d = 1$, y los pares que co-ocurren son
+$n_{ab} = 2$, $n_{ac} = 2$, $n_{bc} = 1$, $n_{bd} = 1$. La figura~\ref{fig:filtros} muestra
+la afinidad Jaccard y lo que conserva cada filtro con $k = 1$.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[sku/.style={circle, draw, fill=white, minimum size=6mm, font=\small}]
+  \begin{scope}
+    \node[sku] (a) at (0,1.4) {$a$}; \node[sku] (b) at (1.8,1.4) {$b$};
+    \node[sku] (c) at (0,0) {$c$}; \node[sku] (d) at (1.8,0) {$d$};
+    \draw (a) -- node[above, rotulo]{0,50} (b);
+    \draw (a) -- node[left, rotulo]{0,67} (c);
+    \draw (b) -- node[above, rotulo, sloped]{0,25} (c);
+    \draw (b) -- node[right, rotulo]{0,33} (d);
+    \node[rotulo] at (0.9,-0.8) {Jaccard, sin filtro};
+  \end{scope}
+  \begin{scope}[xshift=4.2cm]
+    \node[sku] (a) at (0,1.4) {$a$}; \node[sku] (b) at (1.8,1.4) {$b$};
+    \node[sku] (c) at (0,0) {$c$}; \node[sku] (d) at (1.8,0) {$d$};
+    \draw[very thick, modelo] (a) -- (b); \draw[very thick, modelo] (a) -- (c); \draw[very thick, modelo] (b) -- (d);
+    \node[rotulo] at (0.9,-0.8) {\code{top\_k}, $k = 1$};
+  \end{scope}
+  \begin{scope}[xshift=8.4cm]
+    \node[sku] (a) at (0,1.4) {$a$}; \node[sku] (b) at (1.8,1.4) {$b$};
+    \node[sku] (c) at (0,0) {$c$}; \node[sku] (d) at (1.8,0) {$d$};
+    \draw[very thick, modelo] (a) -- (c);
+    \node[rotulo] at (0.9,-0.8) {\code{mutual\_top\_k}, $k = 1$};
+  \end{scope}
+\end{tikzpicture}
+\caption{El mejor vecino de $a$ es $c$; el de $b$, $a$; el de $c$, $a$; el de $d$, $b$. La
+unión conserva $ac$, $ab$ y $bd$. La intersección solo $ac$, el único par que se elige
+mutuamente.}
+\label{fig:filtros}
+\end{figure}
+
+\begin{hiper}{afinidad}
+\begin{itemize}
+  \item \code{cooccurrence\_col}: \code{"order\_id"} o \code{"batch\_id"}. Por defecto
+        \code{"batch\_id"}, la única posible en la v1; con la v2 se usa \code{"order\_id"}.
+  \item \code{affinity\_metric}: \code{"jaccard"} (por defecto), \code{"cosine"} o
+        \code{"cooccurrence"}.
+  \item \code{affinity\_filter}: \code{TopKFilter(k)}, \code{MutualTopKFilter(k)},
+        \code{ThresholdFilter(t)} o ninguno (matriz completa, por defecto). Valor base de
+        los experimentos: \code{TopKFilter(10)}.
+  \item \code{normalize}: si $f$ y $A$ se pasan a proporciones (sección~\ref{sec:escala}).
+        Por defecto \code{False}; los experimentos usan \code{True}.
+\end{itemize}
+\end{hiper}
+
+% ----------------------------------------------------------------------------- D
+\section{Distancia entre productos $D$}
+\label{sec:distanciaD}
+
+El término de afinidad cobra la distancia entre las ubicaciones de dos SKUs afines. Hay dos
+formas de medirla (figura~\ref{fig:distD}):
+
+\begin{itemize}
+  \item \code{walking}: la distancia caminando entre los dos bays, de la tabla
+        \code{distances}.
+  \item \code{aisle}: lo que cuesta ese par en un recorrido en S (capítulo~\ref{cap:ruteo}),
+        donde cada pasillo con algún pick se recorre entero. Dos SKUs en el mismo pasillo no se
+        agregan nada; en pasillos distintos cuestan un pasillo entero más el cruce lateral:
+        \[
+        d(\ell, k) = \begin{cases}
+          0 & \text{si } \ell \text{ y } k \text{ están en el mismo pasillo,} \\
+          L + |x_{\text{pasillo}(\ell)} - x_{\text{pasillo}(k)}| & \text{si no,}
+        \end{cases}
+        \]
+        con $L$ el largo de un pasillo y $x$ la coordenada lateral del centro del pasillo.
+\end{itemize}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[scale=0.8]
+  \foreach \cx in {0,2.4} {
+    \fill[gray!8] (\cx-0.35,0) rectangle (\cx+0.35,4);
+    \foreach \j in {0,...,7} {
+      \draw[gray!60, fill=white] (\cx-0.8,\j*0.5) rectangle (\cx-0.37,\j*0.5+0.45);
+      \draw[gray!60, fill=white] (\cx+0.37,\j*0.5) rectangle (\cx+0.8,\j*0.5+0.45);
+    }
+  }
+  \fill[modelo] (-0.8,0.5) rectangle (-0.37,0.95); \node[rotulo] at (-1.15,0.72) {$i$};
+  \fill[modelo] (0.37,3.0) rectangle (0.8,3.45); \node[rotulo] at (1.15,3.22) {$j$};
+  \fill[plan] (2.77,2.0) rectangle (3.2,2.45); \node[rotulo] at (3.5,2.22) {$k$};
+  \node[rotulo, align=left, anchor=west] at (4.3,3.0) {$i, j$ en el mismo pasillo:\\
+     \code{walking} = el tramo entre sus bays\\ \code{aisle} = 0};
+  \node[rotulo, align=left, anchor=west] at (4.3,1.2) {$i, k$ en pasillos distintos:\\
+     \code{walking} = camino más corto\\ \code{aisle} = $L$ + distancia lateral};
+\end{tikzpicture}
+\caption{Las dos distancias entre productos.}
+\label{fig:distD}
+\end{figure}
+
+\begin{hiper}{distancia entre productos}
+\begin{itemize}
+  \item \code{pair\_distance\_model}: \code{"walking"} (por defecto) o \code{"aisle"}. Los
+        modelos distintos de \code{walking} necesitan la tabla \code{coordinates}. Solo lo usa
+        el término de afinidad; el costo de acceso $c$ y la simulación usan siempre la
+        geometría física.
+\end{itemize}
+\end{hiper}
+
+% ----------------------------------------------------------------------------- formulacion
+\section{La formulación}
+\label{sec:formulacion}
+
+El plan es una asignación de cada SKU a una ubicación. El objetivo combina dos términos:
+
+\begin{equation}
+\min_{x} \; C(x) \;=\; \lambda \underbrace{\sum_{i \in I} \sum_{\ell \in \mathcal{L}} f_i\, c_\ell\, x_{i\ell}}_{L:\ \text{demanda por costo de acceso}}
+\;+\; (1-\lambda) \underbrace{\sum_{i,j \in I} \sum_{\ell, k \in \mathcal{L}} a_{ij}\, d_{\ell k}\, x_{i\ell}\, x_{jk}}_{Q:\ \text{afinidad por distancia entre ubicaciones}}
+\label{eq:qap}
+\end{equation}
+\begin{align*}
+\text{s.a.}\quad & \sum_{\ell \in \mathcal{L}} x_{i\ell} = 1 \quad \forall i \in I && \text{(cada SKU en una ubicación)}\\
+& \sum_{i \in I} x_{i\ell} \le 1 \quad \forall \ell \in \mathcal{L} && \text{(a lo sumo un SKU por ubicación)}\\
+& x_{i\ell} \in \{0, 1\}.
+\end{align*}
+
+$L$ es chico cuando los SKUs más pedidos están cerca del dock. $Q$ es chico cuando los pares
+afines están cerca entre sí. Los dos tiran en direcciones distintas, y $\lambda$ decide cuánto
+pesa cada uno: con $\lambda = 1$ solo importa la demanda; con $\lambda = 0$, solo la
+afinidad.
+
+El problema es un \emph{Quadratic Assignment Problem} (QAP) en la forma de Koopmans y
+Beckmann (1957), con término lineal. Es NP-difícil, y el límite práctico de la resolución
+exacta ronda las 30 instalaciones (Loiola et al., 2007). Kofler et al. (2014) usan la misma
+combinación de popularidad y afinidad, ponderada por un parámetro; Li et al. (2015) deciden a
+nivel de fila con capacidad, como los métodos por pasillo de la
+sección~\ref{sec:aislefill}. Con 6.912 SKUs y 7.680 ubicaciones (\code{medium}) tiene unos 53 millones de
+variables binarias. El método exacto del sistema (sección~\ref{sec:exacto}) prueba
+optimalidad hasta unos 20 SKUs. Por eso los métodos que se usan en la práctica son
+heurísticas.
+
+% ----------------------------------------------------------------------------- escala
+\section{La escala de los dos términos y el significado de $\lambda$}
+\label{sec:escala}
+
+$L$ suma líneas por pulgadas y $Q$ suma afinidades (con Jaccard, números menores que 1) por
+pulgadas. Sin corregir, $L$ es unas 1.500 veces más grande que $Q$, y $\lambda = 0{,}5$ no
+pesa la afinidad en absoluto.
+
+La corrección (\code{normalize=True}) divide $f$ y $A$ por su suma:
+\[
+\tilde f_i = \frac{f_i}{\sum_k f_k}, \qquad \tilde a_{ij} = \frac{a_{ij}}{\sum_{k,l} a_{kl}}.
+\]
+Con eso $L$ es la distancia media al dock de una línea de picking y $Q$ la distancia media
+entre dos SKUs de un par afín, las dos en pulgadas. $\lambda = 0{,}5$ significa que las dos
+distancias medias pesan igual.
+
+% ----------------------------------------------------------------------------- deltas
+\section{Cambios incrementales}
+\label{sec:deltas}
+
+Las heurísticas mueven un SKU por vez y necesitan saber cuánto cambia $C$ sin recalcularlo
+entero. Sea $\ell_i$ la ubicación del SKU $i$ y $N(i)$ sus vecinos de afinidad.
+
+\paragraph{Intercambiar dos SKUs $a$ y $b$.}
+\[
+\Delta L = (f_a - f_b)(c_{\ell_b} - c_{\ell_a}), \qquad
+\Delta Q = 2 \sum_{k \neq a,b} (a_{ak} - a_{bk})\,(d_{\ell_b \ell_k} - d_{\ell_a \ell_k}).
+\]
+
+\paragraph{Mudar un SKU $s$ a una ubicación libre $y$.}
+\[
+\Delta L = f_s\,(c_y - c_{\ell_s}), \qquad
+\Delta Q = 2 \sum_{k \in N(s)} a_{sk}\,(d_{y \ell_k} - d_{\ell_s \ell_k}).
+\]
+
+En los dos casos $\Delta C = \lambda\, \Delta L + (1-\lambda)\, \Delta Q$. El factor 2 cuenta
+cada par en sus dos órdenes y vale porque $A$ es simétrica. Con un filtro top-$k$ cada SKU
+tiene pocos vecinos, así que cada cálculo cuesta $O(k)$ en lugar de $O(n)$.
+
+\begin{idea}
+$C$ es un \emph{sustituto}: se calcula con datos de train y es rápido de evaluar. El plan se
+juzga con otra medida, la caminata simulada sobre test. Si las dos medidas no van en la misma
+dirección, la simulación manda.
+\end{idea}
+
+% =============================================================================
+\chapter{El recorrido del picker}
+\label{cap:ruteo}
+
+Para medir un plan hay que saber por dónde camina el picker en cada viaje. Eso lo decide una
+\emph{política de ruteo}: recibe los bays que el batch tiene que visitar y devuelve la
+distancia caminada desde el dock y de vuelta. El sistema tiene dos.
+
+\section{Recorrido en S estricto}
+\label{sec:sshape}
+
+Es el recorrido de la operación de ShipHero. El picker sale del dock y va al frente del
+pasillo con picks que está más a la izquierda. Lo recorre entero hasta el fondo, cruza al
+siguiente pasillo con picks y lo recorre entero hacia el frente, y así alternando. Los
+pasillos sin picks se saltean. Si recorrió una cantidad impar de pasillos termina en el
+fondo, y vuelve al frente recorriendo el último otra vez. Después regresa al dock
+(figura~\ref{fig:sshape}).
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \layout
+  % picks del batch
+  \foreach \x/\y in {0.51/0.4, 1.53/3.75, 2.51/1.2, 3.53/4.15, 6.51/0.8, 7.53/3.35} {
+    \fill[sim] (\x,\y) rectangle (\x+0.37,\y+0.36);
+  }
+  % recorrido
+  \draw[sim, very thick, -{Stealth}] (0.05,-0.5) -- (1.2,-0.5) -- (1.2,5.05) -- (3.2,5.05) -- (3.2,-0.5)
+        -- (7.2,-0.5) -- (7.2,5.05);
+  \draw[sim, very thick, dashed, -{Stealth}] (7.32,5.05) -- (7.32,-0.62) -- (0.05,-0.62);
+  \node[rotulo, text=sim, anchor=west] at (8.2,0.8) {vuelve por el último\\(3 pasillos: impar)};
+  \node[rotulo, anchor=west] at (8.2,3.8) {el pasillo 3 no tiene\\picks: se saltea};
+\end{tikzpicture}
+\caption{Recorrido en S para un batch con picks (rojo) en los pasillos 1, 2 y 4.}
+\label{fig:sshape}
+\end{figure}
+
+Para un batch que visita los pasillos $S = \{a_1 < \dots < a_m\}$:
+
+\begin{equation}
+\RS(S) = \underbrace{d_0(a_1)}_{\text{ida}} + \underbrace{m\,L}_{\text{recorrer cada pasillo}}
++ \underbrace{x_{a_m} - x_{a_1}}_{\text{cruces}}
++ \underbrace{[\,m \text{ impar}\,]\,L}_{\text{volver al frente}} + \underbrace{d_0(a_m)}_{\text{regreso}}
+\label{eq:rs}
+\end{equation}
+\[
+d_0(a) = |x_a - x_{\text{dock}}| + (y_0 - y_{\text{dock}}),
+\]
+
+con $L$ el largo de un pasillo, $x_a$ la coordenada lateral de su centro, $y_0$ la del frente
+de los pasillos y $d_0(a)$ la distancia del dock al frente del pasillo $a$. Los cruces suman
+$x_{a_m} - x_{a_1}$ porque los pasillos se visitan de izquierda a derecha.
+
+\begin{idea}
+Ningún término de~\eqref{eq:rs} depende de en qué bay del pasillo está cada pick. \textbf{El
+largo del recorrido depende solo de qué pasillos se visitan.} Para el slotting, eso cambia el
+objetivo: no importa poner un producto cerca del frente, importa que los batches entren a pocos
+pasillos.
+\end{idea}
+
+La S es una heurística de ruteo, no el recorrido más corto. Valle et al. (2017) miden que
+las mejores heurísticas quedan en promedio a 2,4\% del ruteo óptimo, y que la brecha baja
+cuando los pedidos son grandes, como los batches de 60 a 90 SKUs de estos datos.
+
+\paragraph{El efecto de la paridad.} Con una cantidad impar de pasillos hay que recorrer el
+último dos veces. Por eso agregar un pasillo puede costar casi nada, o nada. La
+tabla~\ref{tab:paridad} lo muestra con la geometría de \code{medium}.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrl@{}}
+\toprule
+pasillos visitados & $\RS$ (pulgadas) & \\
+\midrule
+$\{1\}$ & 4.480 & uno solo: se recorre dos veces \\
+$\{1, 2\}$ & 4.864 & solo 384 más que un pasillo \\
+$\{1, 3, 5\}$ & 9.568 & \\
+$\{1, 3, 4, 5\}$ & 9.568 & agregar el 4 no cuesta nada \\
+los 8 pasillos & 17.824 & \\
+\bottomrule
+\end{tabular}
+\caption{Valores de $\RS$ en \code{medium} ($L = 1.776$ pulgadas). Calculados en el notebook 04.}
+\label{tab:paridad}
+\end{table}
+
+\paragraph{Cálculo.} Como $\RS$ depende solo del conjunto de pasillos, se calcula una vez para
+todos los conjuntos posibles y se guarda en una tabla. Cada conjunto se codifica como un entero
+con un bit por pasillo: $\{1, 3\}$ son los bits 0 y 2, o sea $101_2 = 5$. Con 8 pasillos son
+$2^8 = 256$ valores; con 16, $65.536$. La unión de dos conjuntos es el \emph{o} bit a bit de
+sus enteros. Esto es lo que hace rápido al algoritmo de batching del
+capítulo~\ref{cap:batching}.
+
+\section{Recorrido serpenteante (\code{snake})}
+
+Es la política con la que se midieron los resultados anteriores a octubre de 2026. Ordena los
+bays a visitar por (pasillo, número de bay) y suma el camino más corto entre cada par
+consecutivo, más la ida y la vuelta al dock:
+\begin{equation}
+R_E = D(\text{dock}, \beta_1) + \sum_{t=1}^{T-1} D(\beta_t, \beta_{t+1}) + D(\beta_T, \text{dock}).
+\end{equation}
+Como el camino más corto entre el último pick de un pasillo y el primero del siguiente suele
+volver por el frente, en la práctica el picker entra en cada pasillo hasta el pick más lejano y
+sale por donde entró (figura~\ref{fig:snake}). Esta medida cobra la \emph{profundidad} a la que
+se entra en cada pasillo, que la S no cobra.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[scale=0.95]
+  \layout
+  \foreach \x/\y in {0.51/0.4, 1.53/3.75, 2.51/1.2, 3.53/4.15, 6.51/0.8, 7.53/3.35} {
+    \fill[sim] (\x,\y) rectangle (\x+0.37,\y+0.36);
+  }
+  \draw[datos, very thick, -{Stealth}] (0.05,-0.5) -- (1.15,-0.5) -- (1.15,3.93);
+  \draw[datos, very thick, -{Stealth}] (1.25,3.93) -- (1.25,-0.45) -- (3.15,-0.45) -- (3.15,4.33);
+  \draw[datos, very thick, -{Stealth}] (3.25,4.33) -- (3.25,-0.45) -- (7.15,-0.45) -- (7.15,3.53);
+  \draw[datos, very thick, dashed, -{Stealth}] (7.25,3.53) -- (7.25,-0.6) -- (0.05,-0.6);
+  \node[rotulo, text=datos, anchor=west] at (8.2,2.0) {entra hasta el pick\\más lejano y vuelve};
+\end{tikzpicture}
+\caption{El mismo batch con la política \code{snake}: la caminata depende de la profundidad
+de cada pick, no solo de los pasillos.}
+\label{fig:snake}
+\end{figure}
+
+\section{Qué cambia para el slotting}
+
+Con la S, lo que el slotting puede bajar es la cantidad de pasillos que visita un batch. Un
+razonamiento sencillo muestra qué conviene.
+
+\begin{supuesto}
+Si las $N$ líneas de un batch se eligieran al azar e independientes, cada una con probabilidad
+igual a la demanda de su SKU, un pasillo $a$ que concentra una fracción $F_a$ de la demanda
+quedaría sin visitar con probabilidad $(1 - F_a)^N$, y la cantidad esperada de pasillos
+visitados sería
+\[
+\mathbb{E}[\text{pasillos}] = \sum_{a \in \Aisles} \bigl(1 - (1 - F_a)^N\bigr).
+\]
+Los datos son compatibles con ese supuesto (sección~\ref{sec:hechos}).
+\end{supuesto}
+
+Cada sumando es una función cóncava de $F_a$. Para una misma demanda total, la suma es menor
+cuando la demanda se concentra en pocos pasillos que cuando se reparte. El greedy por demanda
+hace lo contrario: pone lo más pedido cerca del dock, que es el frente de \emph{todos} los
+pasillos. De ahí salen los planes que llenan el depósito pasillo por pasillo
+(sección~\ref{sec:aislefill}). Este es el mismo argumento que Schleyer y Gue (2012) usan para
+la distribución de pasillos visitados con recorrido en S.
+
+\begin{hiper}{ruteo}
+\begin{itemize}
+  \item \code{routing} del simulador: \code{"snake"} (por defecto, para no cambiar los
+        resultados anteriores) o \code{"s\_shape"}. Todos los resultados desde el notebook 04
+        usan \code{"s\_shape"}.
+\end{itemize}
+\end{hiper}
+
+% =============================================================================
+\chapter{Los métodos de slotting}
+\label{cap:metodos}
+
+Un método de slotting recibe la instancia y devuelve un \emph{plan}: la ubicación de cada SKU.
+Todos cumplen el mismo contrato, \code{solve(instance) -> Assignment}, y se registran con un
+nombre para pedirlos sin acoplarse a su clase (sección~\ref{sec:registros}). La
+tabla~\ref{tab:metodos} los resume.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L c >{\raggedright\arraybackslash}p{4.4cm}@{}}
+\toprule
+nombre & idea & afinidad & hiperparámetros \\
+\midrule
+\code{current} / vigente & lo que hay en el depósito & no & --- \\
+\code{random} & cada SKU en una ubicación sorteada: el plan que no usa datos & no & semilla \\
+\code{demand\_greedy} & lo más pedido, lo más cerca del dock & no & --- \\
+\code{linear\_assignment} & óptimo exacto de $L$ & no & --- \\
+\code{aisle\_fill} & lo más pedido, llenando un pasillo por vez & no & --- \\
+\code{merchant\_aisle\_fill} & igual, agrupando cada merchant & no & --- \\
+\code{bilevel} & agrupar, repartir bloques, resolver cada bloque & según el bloque & agrupamiento, costo de zona, método interno \\
+\code{swap\_search} & búsqueda local sobre $C$ & sí & $\lambda$, vecindad, plan inicial, pasadas \\
+\code{exact\_qap} & resolver $C$ exacto con un solver & sí & $\lambda$, tiempo, gap \\
+\bottomrule
+\end{tabularx}
+\caption{Métodos de slotting del sistema.}
+\label{tab:metodos}
+\end{table}
+
+\section{El plan vigente}
+
+Es la línea de base de la operación: dónde está cada SKU. Hay dos versiones. El método
+\code{current} lee el stock del día cero. Los experimentos usan el \emph{vigente al corte}: la
+ubicación de cada SKU en el estado real del depósito al terminar train, calculado por la
+simulación (sección~\ref{sec:estados}). Como en el corte cada SKU está en una sola ubicación
+(sección~\ref{sec:hechos}), ese estado define un plan.
+
+\section{Greedy por demanda y asignación lineal}
+
+\code{demand\_greedy} ordena los SKUs por demanda de mayor a menor, ordena las ubicaciones por
+costo de acceso de menor a mayor, y manda el $i$-ésimo SKU a la $i$-ésima ubicación. No usa la
+afinidad: es el método natural cuando $\lambda = 1$.
+
+\begin{idea}
+Con $\lambda = 1$ el objetivo es $L = \sum_i f_i\, c_{\ell_i}$. Por la desigualdad de
+reordenamiento, una suma de productos se minimiza emparejando el mayor de un lado con el menor
+del otro. El greedy es entonces óptimo para $L$, sin necesidad de un solver.
+\end{idea}
+
+\code{linear\_assignment} resuelve el mismo problema con el algoritmo húngaro. Sirve como
+control: su valor de $L$ coincide con el del greedy, y en las simulaciones su caminata queda a
+0,4\% o menos. Trabaja con una matriz densa de SKUs por ubicaciones, así que en \code{big}
+(24.883 por 27.648) no entra en memoria y no se corre.
+
+\section{Llenado por pasillos}
+\label{sec:aislefill}
+
+Los dos métodos de esta sección salen del capítulo~\ref{cap:ruteo}: con recorrido en S
+conviene concentrar la demanda en pocos pasillos. Ordenan las ubicaciones de otra forma:
+
+\begin{enumerate}
+  \item Cada pasillo tiene un \emph{rango}: el costo de su ubicación más barata, o sea qué tan
+        cerca del dock está su frente. Con el dock en una esquina, el pasillo 1 es el primero.
+  \item Las ubicaciones se ordenan por rango de su pasillo y, dentro del pasillo, por costo.
+        Así se llena un pasillo entero antes de pasar al siguiente.
+\end{enumerate}
+
+Los dos métodos difieren en cómo ordenan los SKUs:
+
+\begin{itemize}
+  \item \code{aisle\_fill}: por demanda de mayor a menor. El pasillo 1 recibe los SKUs más
+        pedidos, el 2 los siguientes, y así.
+  \item \code{merchant\_aisle\_fill}: por merchant y después por demanda. Los merchants se
+        ordenan por demanda total, y dentro de cada merchant los SKUs por demanda. Como cada
+        merchant tiene menos SKUs que las ubicaciones de un pasillo, queda entero en un pasillo
+        o partido entre dos consecutivos.
+\end{itemize}
+
+\begin{idea}
+Cada orden es de un solo merchant (sección~\ref{sec:hechos}). Si los SKUs de un merchant
+están en el mismo pasillo, una orden se recoge entrando a un solo pasillo. Con FIFO eso
+sirve de poco, porque un batch junta 25 órdenes de merchants distintos. Con re-batching
+(capítulo~\ref{cap:batching}) es lo que permite armar batches que entran a dos o tres
+pasillos.
+\end{idea}
+
+\begin{figure}[ht]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \foreach \panel/\titulo [count=\p from 0] in {g/\code{demand\_greedy}, a/\code{aisle\_fill}, m/\code{merchant\_aisle\_fill}, b/\code{bilevel merchant/dock}} {
+    \begin{scope}[xshift=\p*4.4cm]
+      \foreach \a in {0,...,3} {
+        \foreach \s in {0,1} {
+          \foreach \j in {0,...,9} {
+            \pgfmathsetmacro{\xx}{\a*0.85+\s*0.32}
+            \pgfmathsetmacro{\yy}{\j*0.28}
+            \pgfmathtruncatemacro{\k}{\a*20+\j*2+\s}
+            \pgfmathsetmacro{\dist}{(\xx+0.5)+(\yy+0.5)}
+            \ifcase\p
+              \pgfmathtruncatemacro{\pct}{max(5,100-(\dist-1)*100/3.6)}
+              \fill[plan!\pct] (\xx,\yy) rectangle (\xx+0.3,\yy+0.26);
+            \or
+              \pgfmathtruncatemacro{\pct}{max(5,100-\k*100/80)}
+              \fill[plan!\pct] (\xx,\yy) rectangle (\xx+0.3,\yy+0.26);
+            \or
+              \pgfmathtruncatemacro{\mm}{int(\k/12)+1}
+              \pgfmathtruncatemacro{\pp}{100-mod(\k,12)*55/12}
+              \fill[m\mm!\pp] (\xx,\yy) rectangle (\xx+0.3,\yy+0.26);
+            \or
+              \pgfmathtruncatemacro{\mm}{min(7,int((\dist-1)*7/3.6)+1)}
+              \fill[m\mm!75] (\xx,\yy) rectangle (\xx+0.3,\yy+0.26);
+            \fi
+            \draw[white, line width=0.2pt] (\xx,\yy) rectangle (\xx+0.3,\yy+0.26);
+          }
+        }
+      }
+      \node[dock, minimum width=6mm, minimum height=3mm, font=\tiny\bfseries] at (-0.35,-0.3) {dock};
+      \node[rotulo] at (1.55,3.15) {\titulo};
+    \end{scope}
+  }
+\end{tikzpicture}}
+\caption{Dónde termina la demanda con cada regla, en un depósito de 4 pasillos. Verde más
+oscuro: SKUs más pedidos. Colores: merchants. El greedy reparte lo más pedido por el frente de
+todos los pasillos; \code{aisle\_fill} lo concentra en el pasillo 1;
+\code{merchant\_aisle\_fill} pone cada merchant en un bloque de pasillo; \code{bilevel} con
+costo por distancia al dock reparte cada merchant en una franja que cruza todos los pasillos.}
+\label{fig:reglas}
+\end{figure}
+
+\begin{hiper}{llenado por pasillos}
+\begin{itemize}
+  \item No tienen hiperparámetros propios. Necesitan la tabla \code{coordinates} para saber
+        el pasillo de cada bay. La demanda que usan es la de la instancia
+        (\code{demand\_metric}).
+\end{itemize}
+\end{hiper}
+
+\section{Bi-nivel}
+\label{sec:bilevel}
+
+\code{bilevel} descompone el problema en dos niveles (figura~\ref{fig:bilevel}):
+
+\begin{enumerate}
+  \item \textbf{Agrupar} los SKUs con una estrategia de agrupamiento:
+        \begin{itemize}
+          \item \code{merchant}: un grupo por merchant.
+          \item \code{demand\_class}: clases A, B y C por demanda acumulada. Se ordenan los
+                SKUs por demanda y los cortes están donde la demanda acumulada pasa el 80\% y
+                el 95\%.
+        \end{itemize}
+  \item \textbf{Repartir bloques de ubicaciones} entre los grupos. Con $y_{\ell g} = 1$ si la
+        ubicación $\ell$ va al grupo $g$, $F_g$ la demanda del grupo y $n_g$ su cantidad de
+        SKUs:
+        \[
+        \min \sum_{\ell, g} F_g\, \kappa_\ell\, y_{\ell g} \quad \text{s.a.} \quad
+        \sum_g y_{\ell g} \le 1 \;\; \forall \ell, \qquad
+        \sum_\ell y_{\ell g} = n_g \;\; \forall g, \qquad y \in \{0,1\}.
+        \]
+        Es un problema de transporte: su matriz es totalmente unimodular y la relajación
+        lineal ya da una solución entera. Lo resuelve el solver. $\kappa_\ell$ es el
+        \emph{costo de zona}, el criterio con que se ordenan las ubicaciones.
+  \item \textbf{Resolver cada bloque} como un problema independiente, restringido a los SKUs
+        del grupo y a sus ubicaciones, con cualquier método. En los experimentos, el greedy.
+\end{enumerate}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=5mm and 9mm]
+  \node[caja, fill=modelo!15, draw=modelo] (i) {instancia};
+  \node[caja, fill=plan!12, draw=plan, right=of i] (g) {1. agrupar\\\scriptsize merchant o A/B/C};
+  \node[caja, fill=plan!12, draw=plan, right=of g] (t) {2. repartir bloques\\\scriptsize transporte, con solver};
+  \node[caja, fill=plan!12, draw=plan, right=of t, yshift=7mm] (z1) {3. bloque 1\\\scriptsize método interno};
+  \node[caja, fill=plan!12, draw=plan, right=of t, yshift=-7mm] (z2) {3. bloque $G$\\\scriptsize método interno};
+  \node[caja, fill=plan!25, draw=plan, right=of z1, yshift=-7mm] (p) {plan};
+  \draw[flecha] (i) -- (g); \draw[flecha] (g) -- (t);
+  \draw[flecha] (t) -- (z1); \draw[flecha] (t) -- (z2);
+  \draw[flecha] (z1) -- (p); \draw[flecha] (z2) -- (p);
+  \node[rotulo] at ($(z1)!0.5!(z2)$) {$\vdots$};
+\end{tikzpicture}
+\caption{Los tres pasos de \code{bilevel}.}
+\label{fig:bilevel}
+\end{figure}
+
+\paragraph{El costo de zona decide la forma de los bloques.} Con $\kappa_\ell$ = distancia al
+dock, el grupo de más demanda recibe las ubicaciones más cercanas al dock, que están en el
+frente de todos los pasillos: los bloques son franjas (último panel de la
+figura~\ref{fig:reglas}). Con $\kappa_\ell$ = posición en el orden de \code{aisle\_fill}, los
+bloques son pasillos consecutivos. La combinación \code{bilevel merchant/aisle\_order} es la
+versión con solver de \code{merchant\_aisle\_fill}.
+
+\begin{hiper}{bilevel}
+\begin{itemize}
+  \item \code{clustering}: \code{merchant} o \code{demand\_class}; esta última con
+        \code{thresholds}, por defecto $(0{,}8;\ 0{,}95)$.
+  \item \code{zone\_solver}: el método de cada bloque; en los experimentos,
+        \code{demand\_greedy}.
+  \item \code{location\_cost} ($\kappa$): ninguno (distancia al dock, por defecto) o un vector
+        por ubicación. En los experimentos se llama \code{zone\_cost} y vale \code{dock} o
+        \code{aisle\_order}.
+\end{itemize}
+\end{hiper}
+
+\section{Búsqueda por intercambios}
+\label{sec:swap}
+
+\code{swap\_search} parte de un plan y lo mejora moviendo SKUs, guiada por el objetivo $C$ de
+la ecuación~\eqref{eq:qap}. La idea es acercar cada SKU a sus vecinos de afinidad: para un
+SKU $i$ y cada vecino $k$, los destinos candidatos son las ubicaciones del bay donde está $k$.
+Si un candidato está libre, $i$ se muda; si está ocupado por $j$, $i$ y $j$ se intercambian,
+aunque $i$ y $j$ no sean afines. Se aplica el primer cambio que baje $C$
+(algoritmo~\ref{alg:swap}).
+
+\begin{algorithm}[ht]
+\caption{Búsqueda por intercambios (\code{swap\_search}).}
+\label{alg:swap}
+\begin{algorithmic}[1]
+\Require instancia, plan inicial $x$, $\lambda$, \code{max\_passes}, vecindad
+\For{$p = 1, \dots, \code{max\_passes}$}
+  \State mejoró $\gets$ falso
+  \ForAll{SKU $i$ con vecinos de afinidad}
+    \ForAll{vecino $k$ de $i$}
+      \State candidatos $\gets$ ubicaciones del bay de $k$ \Comment{vecindad \code{bay}}
+      \State \hphantom{candidatos $\gets$} o solo la ubicación de $k$ \Comment{vecindad \code{neighbor}}
+      \ForAll{$\ell \in$ candidatos}
+        \If{$\ell$ libre \textbf{y} $\Delta C(\text{mudar } i \to \ell) < 0$}
+          \State mudar $i$ a $\ell$; mejoró $\gets$ verdadero; pasar al siguiente vecino
+        \ElsIf{$\ell$ ocupada por $j \ne i$ \textbf{y} $\Delta C(\text{intercambiar } i, j) < 0$}
+          \State intercambiar $i$ y $j$; mejoró $\gets$ verdadero; pasar al siguiente vecino
+        \EndIf
+      \EndFor
+    \EndFor
+  \EndFor
+  \If{no mejoró} \Return $x$ \EndIf
+\EndFor
+\State \Return $x$
+\end{algorithmic}
+\end{algorithm}
+
+Cada $\Delta C$ se calcula con las fórmulas de la sección~\ref{sec:deltas}, en tiempo
+proporcional a la cantidad de vecinos. La vecindad \code{neighbor} es la versión original:
+solo intercambia $i$ con su vecino $k$, lo que pone a $i$ en el bay de $k$ pero saca a $k$ de
+ahí (figura~\ref{fig:vecindad}).
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=6mm,y=6mm]
+  \begin{scope}
+    \foreach \j in {0,...,4} { \draw[gray!60] (0,\j) rectangle (1,\j+1); }
+    \fill[modelo] (0.1,2.1) rectangle (0.9,2.9); \node[font=\scriptsize, text=white] at (0.5,2.5) {$k$};
+    \fill[gray!25] (0.1,0.1) rectangle (0.9,0.9);
+    \node[font=\scriptsize] at (0.5,0.5) {$j$};
+    \node[draw, circle, minimum size=5mm, font=\scriptsize, fill=plan!20] (i) at (4,2.5) {$i$};
+    \draw[flecha, plan] (i) to[bend right=20] (1,0.5);
+    \draw[flecha, plan] (i) to[bend left=10] (1,1.5);
+    \draw[flecha, plan] (i) to[bend left=20] (1,3.5);
+    \draw[flecha, plan] (i) to[bend left=30] (1,4.5);
+    \node[rotulo, align=center] at (2,-0.9) {\code{bay}: cualquier ubicación del bay de $k$\\(libre: mudanza; ocupada: intercambio)};
+  \end{scope}
+  \begin{scope}[xshift=6cm]
+    \foreach \j in {0,...,4} { \draw[gray!60] (0,\j) rectangle (1,\j+1); }
+    \fill[modelo] (0.1,2.1) rectangle (0.9,2.9); \node[font=\scriptsize, text=white] at (0.5,2.5) {$k$};
+    \node[draw, circle, minimum size=5mm, font=\scriptsize, fill=plan!20] (i) at (4,2.5) {$i$};
+    \draw[{Stealth}-{Stealth}, thick, plan] (i) -- (1,2.5);
+    \node[rotulo, align=center] at (2,-0.9) {\code{neighbor}: solo intercambiar $i$ con $k$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Las dos vecindades de \code{swap\_search} para un SKU $i$ y su vecino $k$.}
+\label{fig:vecindad}
+\end{figure}
+
+\begin{hiper}{swap\_search}
+\begin{itemize}
+  \item \code{lam} ($\lambda$): peso de $L$ en $C$; por defecto 0,5. Con $\lambda = 1$ y el
+        greedy como plan inicial no cambia nada, porque el greedy ya es óptimo para $L$.
+  \item \code{neighborhood}: \code{"bay"} (por defecto) o \code{"neighbor"}.
+  \item \code{seed\_method}: el plan inicial; por defecto \code{demand\_greedy}. En los
+        experimentos también \code{aisle\_fill} y \code{merchant\_aisle\_fill}.
+  \item \code{max\_passes}: tope de pasadas; por defecto 50. Se corta antes si una pasada
+        no mejora.
+  \item Además dependen de la instancia: la afinidad (métrica, unidad, filtro), la
+        normalización y la distancia $D$.
+\end{itemize}
+El tiempo crece con la cantidad de vecinos: en \code{medium}, con \code{top\_k:10} tarda unos
+35 minutos; sin filtro, 7,7 horas.
+\end{hiper}
+
+\section{Exacto}
+\label{sec:exacto}
+
+\code{exact\_qap} escribe el programa~\eqref{eq:qap} y lo resuelve con un solver de
+programación entera (Gurobi). Sirve como vara para medir las heurísticas en instancias
+chicas: con $\lambda = 0{,}01$ prueba optimalidad en segundos hasta unos 20 SKUs y corta por
+tiempo a los 30; con $\lambda = 0$ no cierra en un minuto ni con 20. En esas
+subinstancias la búsqueda por intercambios quedó a menos de 0,2\% del óptimo.
+
+\begin{hiper}{exact\_qap}
+\begin{itemize}
+  \item \code{lam} ($\lambda$), por defecto 0,5.
+  \item \code{time\_limit}: segundos antes de devolver la mejor solución encontrada.
+  \item \code{mip\_gap}: brecha relativa aceptada.
+  \item La licencia del solver se lee de las variables \code{SOLVER\_LICENSE\_*} del archivo
+        \code{.env}, que no se versiona.
+\end{itemize}
+\end{hiper}
+
+% =============================================================================
+\chapter{El batching}
+\label{cap:batching}
+
+El batching decide qué órdenes recoge juntas un picker en un mismo viaje. Una política de
+batching recibe las líneas de picking de un período y devuelve las mismas líneas con un
+\code{batch\_id} nuevo. No cambia nada más: los SKUs, las cantidades y las horas quedan como
+estaban, así que el resultado entra a la simulación igual que los datos originales.
+
+\section{FIFO}
+
+Es lo que hacen los datos. Las órdenes se ordenan por la hora de su primera línea y se agrupan
+de a 25 consecutivas. La clase \code{FifoBatching} reproduce el 100\% de los batches de los
+datos (sección~\ref{sec:hechos}).
+
+\section{Re-batching: qué se decide}
+
+En vez de cerrar un batch apenas hay 25 órdenes, se espera a juntar $W \cdot 25$ órdenes
+consecutivas, y recién ahí se decide cómo repartirlas en $W$ batches de 25. Ese grupo es un
+\textbf{pool} y $W$ es la \textbf{ventana} (figura~\ref{fig:pools}). Con $W = 1$ el pool es
+un solo batch y no hay nada que decidir: es FIFO.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1.15mm,y=1mm]
+  % FIFO
+  \node[rotulo, anchor=east] at (-2,4) {FIFO};
+  \foreach \i in {0,...,99} {
+    \pgfmathtruncatemacro{\b}{int(\i/25)+1}
+    \fill[m\b!70] (\i,2) rectangle (\i+0.8,6);
+  }
+  % re-armado
+  \node[rotulo, anchor=east] at (-2,-6) {re-armado};
+  \foreach \i in {0,...,99} {
+    \pgfmathtruncatemacro{\b}{mod(\i*7+3,4)+1}
+    \fill[m\b!70] (\i,-8) rectangle (\i+0.8,-4);
+  }
+  \draw[decorate, decoration={brace, amplitude=4pt}] (0,8) -- (99.8,8) node[midway, above=3pt, rotulo]{un pool: $W \cdot 25$ órdenes consecutivas ($W = 4$)};
+  \draw[-{Stealth}] (0,-11) -- (100,-11) node[right, rotulo]{orden de llegada};
+  \foreach \b in {1,2,3,4} {
+    \fill[m\b!70] (14+\b*14,-16) rectangle (17+\b*14,-14);
+    \node[rotulo, anchor=west] at (17.5+\b*14,-15) {batch \b};
+  }
+\end{tikzpicture}
+\caption{Cada barra es una orden y su color, el batch al que va. Con FIFO los batches son
+tramos consecutivos. Con re-batching, las 100 órdenes del pool se reparten entre los 4
+batches según los pasillos que necesitan.}
+\label{fig:pools}
+\end{figure}
+
+\paragraph{Qué queda fijo.} Las mismas órdenes con sus mismas líneas; 25 órdenes por batch
+(ShipHero arma batches de hasta 25 órdenes, una por tote); la misma cantidad de batches; y el
+slotting, del que el re-batching solo lee en qué pasillo está cada SKU.
+
+\section{Por qué acorta la caminata}
+
+Para cada orden $o$, $A(o)$ es el conjunto de pasillos donde están sus SKUs según el plan. Un
+batch entra a todos los pasillos que necesita alguna de sus órdenes, o sea a la unión de sus
+$A(o)$, y con recorrido en S su caminata depende solo de esa unión
+(capítulo~\ref{cap:ruteo}). Con \code{merchant\_aisle\_fill} casi todas las órdenes necesitan
+un solo pasillo; con FIFO cada batch junta 25 órdenes cualesquiera y entre todas necesitan
+casi todos los pasillos. Juntar órdenes que necesitan los mismos pasillos reduce la unión
+(figura~\ref{fig:pool_ejemplo}).
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=5mm,y=5mm]
+  \newcommand{\fila}[3]{%
+    \node[rotulo, anchor=east] at (-0.3,#1+0.5) {#2};
+    \foreach \a in {1,...,8} { \draw[gray!50] (\a-1,#1) rectangle (\a,#1+1); }
+    \foreach \a in {#3} { \fill[batch!70] (\a-1+0.08,#1+0.08) rectangle (\a-0.08,#1+0.92); }
+  }
+  \begin{scope}
+    \node[font=\small\bfseries] at (4,5.6) {FIFO};
+    \fila{3.6}{batch 1}{1,2,3,4,5,6,7}
+    \fila{2.4}{batch 2}{1,2,3,4,5,6,7,8}
+    \fila{1.2}{batch 3}{1,2,3,4,5,6,7,8}
+    \fila{0}{batch 4}{1,2,3,4,5,6,7}
+    \foreach \a in {1,...,8} { \node[rotulo] at (\a-0.5,-0.6) {\a}; }
+    \node[rotulo] at (4,-1.5) {pasillo};
+    \node[rotulo, anchor=west] at (8.3,2.3) {total 70.528};
+  \end{scope}
+  \begin{scope}[xshift=7.5cm]
+    \node[font=\small\bfseries] at (4,5.6) {re-armado};
+    \fila{3.6}{batch 1}{5,6,7,8}
+    \fila{2.4}{batch 2}{3,4,5,6}
+    \fila{1.2}{batch 3}{1,5}
+    \fila{0}{batch 4}{2,3,4}
+    \foreach \a in {1,...,8} { \node[rotulo] at (\a-0.5,-0.6) {\a}; }
+    \node[rotulo] at (4,-1.5) {pasillo};
+    \node[rotulo, anchor=west] at (8.3,2.3) {total 35.872};
+  \end{scope}
+\end{tikzpicture}
+\caption{El primer pool de test de \code{medium} con $W = 4$ y el plan
+\code{merchant\_aisle\_fill} (notebook 04). Casillas llenas: pasillos que visita cada batch. La
+caminata total del pool, en pulgadas, baja casi a la mitad.}
+\label{fig:pool_ejemplo}
+\end{figure}
+
+\section{El problema de optimización}
+
+\paragraph{Datos de un pool.} El conjunto de órdenes $P$ con $|P| = 25\,W$, los batches
+$K = \{1, \dots, W\}$ y $A(o)$ para cada orden.
+
+\paragraph{Variables.} $z_{ok} = 1$ si la orden $o$ va al batch $k$, y 0 si no.
+
+\paragraph{Pasillos de un batch.} $M_k = \bigcup_{o\,:\,z_{ok} = 1} A(o)$.
+
+\paragraph{Problema.}
+\begin{align*}
+\min_{z}\quad & \sum_{k \in K} \RS(M_k) && \text{(caminata total del pool)}\\
+\text{s.a.}\quad & \sum_{k \in K} z_{ok} = 1 \quad \forall o \in P && \text{(cada orden en un batch)}\\
+& \sum_{o \in P} z_{ok} = 25 \quad \forall k \in K && \text{(batches de 25 órdenes)}\\
+& z_{ok} \in \{0,1\}.
+\end{align*}
+El último pool del período puede tener menos órdenes; ahí el último batch queda más chico,
+igual que con FIFO.
+
+\paragraph{Por qué no se resuelve exacto.} La cantidad de formas de repartir el pool es
+\[
+\frac{(25W)!}{(25!)^W\, W!}:
+\]
+unas $10^{13}$ con $W = 2$, $10^{55}$ con $W = 4$ y
+$10^{452}$ con $W = 16$. Además $\RS(M_k)$ no es lineal en $z$: depende de qué pasillos hay
+en la unión, de cuántos son y de su paridad. Por eso se usa una heurística, que no garantiza
+el óptimo.
+
+\section{El algoritmo}
+
+\code{AisleCoverBatching} trabaja pool por pool en dos pasos (algoritmo~\ref{alg:batching}).
+
+\paragraph{1. Construcción.} Los batches se arman de a uno. Se abre el batch con la orden libre
+que sola pide más caminata, $o^\ast = \arg\max_{o} \RS(A(o))$. Después, con $M$ los pasillos
+que ya visita, se agrega la orden libre que menos agrega,
+\[
+\Delta(o \mid M) = \RS\bigl(M \cup A(o)\bigr) - \RS(M),
+\]
+hasta tener 25 órdenes; en un empate gana la que llegó antes. Abrir con una semilla y crecer
+por menor incremento es la familia de algoritmos \emph{seed} de order batching (Yang et al.,
+2020; Deng et al., 2025). Que la semilla sea la orden más cara es una elección: es la que más
+restringe con quién conviene juntarla.
+
+\paragraph{2. Intercambios.} Se prueba cambiar una orden $o$ del batch $k_1$ por una orden $o'$
+del batch $k_2$. Con $M_{k}^{-o}$ los pasillos de $k$ sin la orden $o$ (la unión de las
+demás, porque otra orden puede usar los mismos pasillos), el cambio en la caminata es
+\[
+\delta(o, o') = \RS\bigl(M_{k_1}^{-o} \cup A(o')\bigr) + \RS\bigl(M_{k_2}^{-o'} \cup A(o)\bigr)
+- \RS(M_{k_1}) - \RS(M_{k_2}).
+\]
+Para cada orden se busca la $o'$ de otro batch con menor $\delta$, y si $\delta < 0$ se
+aplica. Se repite hasta una pasada sin intercambios, con un tope. Cada intercambio baja
+estrictamente la caminata y los repartos son finitos, así que termina; el resultado es un
+óptimo local, no necesariamente el óptimo del problema.
+
+\begin{algorithm}[ht]
+\caption{Re-batching de un pool (\code{AisleCoverBatching}).}
+\label{alg:batching}
+\begin{algorithmic}[1]
+\Require órdenes del pool en orden de llegada, $A(o)$ de cada una, tabla de $\RS$, tamaño $Q = 25$
+\State libres $\gets$ todas las órdenes
+\While{quedan libres} \Comment{1. construcción}
+  \State $o^\ast \gets$ la libre de mayor $\RS(A(o))$; abrir batch con $o^\ast$; $M \gets A(o^\ast)$
+  \While{el batch tiene menos de $Q$ órdenes \textbf{y} quedan libres}
+    \State $o \gets$ la libre de menor $\Delta(o \mid M)$; agregarla; $M \gets M \cup A(o)$
+  \EndWhile
+\EndWhile
+\Repeat \Comment{2. intercambios}
+  \ForAll{orden $o$, en el batch $k_1$}
+    \State $o' \gets$ la orden de otro batch con menor $\delta(o, o')$
+    \If{$\delta(o, o') < 0$} intercambiar $o$ y $o'$ \EndIf
+  \EndFor
+\Until{una pasada sin intercambios o \code{max\_passes} pasadas}
+\end{algorithmic}
+\end{algorithm}
+
+La figura~\ref{fig:traza} muestra la construcción del primer batch del ejemplo. Las primeras
+once órdenes necesitan los pasillos 7 u 8 y no agregan caminata. En el paso 12 ya no queda
+ninguna así, y la más barata abre el pasillo 6: $\Delta = 3.552 = 2L$, porque el batch pasa de
+2 a 3 pasillos, uno más para recorrer y, por ser impar, uno más para volver. En el paso 14
+entra el pasillo 5 sin costo: con 4 pasillos ya no hay que volver por el último.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=12cm, height=4.6cm, xlabel={orden agregada (paso)}, ylabel={$\RS$ del batch},
+  xmin=0.5, xmax=25.5, ymin=6000, ymax=11800, xtick={1,5,10,12,14,20,25}, ytick={7168,10720},
+  scaled y ticks=false, yticklabel style={/pgf/number format/.cd, 1000 sep={.}}, grid=major, grid style={gray!20},
+  tick label style={font=\scriptsize}, label style={font=\small}]
+  \addplot[const plot, batch, very thick] coordinates {(0.5,7168) (11.5,7168) (11.5,10720) (25.5,10720)};
+  \node[rotulo, anchor=south west] at (axis cs:1,7250) {pasillos 7 y 8};
+  \node[rotulo, anchor=south west] at (axis cs:12,10800) {pasillo 6 ($\Delta = 2L$)};
+  \node[rotulo, anchor=north west] at (axis cs:14.2,10650) {pasillo 5 ($\Delta = 0$)};
+\end{axis}
+\end{tikzpicture}
+\caption{Caminata del primer batch del ejemplo mientras se construye (notebook 04,
+sección 3.6).}
+\label{fig:traza}
+\end{figure}
+
+\section{Cómo se calcula rápido}
+
+El paquete hace las mismas cuentas con tres recursos (figura~\ref{fig:mascaras}):
+
+\begin{itemize}
+  \item \textbf{Máscaras.} Cada $A(o)$ es un entero con un bit por pasillo, y la unión es el
+        \emph{o} bit a bit.
+  \item \textbf{Tabla de $\RS$.} $\RS$ de cualquier conjunto se lee de la tabla calculada una
+        vez (sección~\ref{sec:sshape}).
+  \item \textbf{Conteos por pasillo.} Para cada batch $k$ y pasillo $a$ se guarda $c_{ka}$, la
+        cantidad de órdenes del batch que necesitan ese pasillo. El batch sin la orden $o$
+        entra a $M_k^{-o} = \{a : c_{ka} - [a \in A(o)] > 0\}$, sin recorrer sus 25 órdenes.
+\end{itemize}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=5mm,y=5mm, bit/.style={draw, minimum size=5mm, inner sep=0pt, font=\scriptsize}]
+  \foreach \v [count=\i from 0] in {0,0,0,0,0,1,0,1} { \ifnum\v=1 \def\col{batch!40}\else\def\col{white}\fi \node[bit, fill=\col] at (\i,2) {\v}; }
+  \node[rotulo, anchor=east] at (-0.8,2) {$A(o) = \{6, 8\}$};
+  \foreach \v [count=\i from 0] in {0,0,1,0,0,1,0,0} { \ifnum\v=1 \def\col{batch!40}\else\def\col{white}\fi \node[bit, fill=\col] at (\i,0.8) {\v}; }
+  \node[rotulo, anchor=east] at (-0.8,0.8) {$M = \{3, 6\}$};
+  \draw (-0.5,0.1) -- (7.5,0.1);
+  \foreach \v [count=\i from 0] in {0,0,1,0,0,1,0,1} { \ifnum\v=1 \def\col{batch!40}\else\def\col{white}\fi \node[bit, fill=\col] at (\i,-0.6) {\v}; }
+  \node[rotulo, anchor=east] at (-0.8,-0.6) {$M \cup A(o)$: \emph{o} bit a bit};
+  \foreach \a in {1,...,8} { \node[rotulo] at (\a-1,3.1) {\a}; }
+  \node[rotulo, anchor=west] at (8.2,-0.6) {$\to$ $\RS$ = tabla[entero]};
+\end{tikzpicture}
+\caption{Conjuntos de pasillos como máscaras de bits (el pasillo 1 a la izquierda).}
+\label{fig:mascaras}
+\end{figure}
+
+Con eso evaluar un intercambio son cuatro lecturas de la tabla, y se evalúa contra todas las
+órdenes del pool a la vez. Re-armar todo el período de test de \code{medium} tarda unos 2
+segundos.
+
+\section{Cuánto espera una orden}
+\label{sec:espera}
+
+Juntar más órdenes antes de decidir tiene un costo: la orden espera más. Como los datos no
+traen la hora de llegada, se fija una regla:
+
+\begin{supuesto}
+\textbf{Llegada.} Las órdenes llegan en el orden de la FIFO y parejas, 25 por \emph{franja}.
+Una franja es el tiempo entre un batch y el siguiente: 32 minutos en \code{medium}, 14,4 en
+\code{big}. \textbf{Salida.} Un pool se completa cuando llega su última orden. Desde ahí sus
+$W$ batches salen de a uno por franja, al mismo ritmo que con FIFO, para que los pickers
+tengan la misma carga; sale primero el batch con la orden que llegó antes.
+\end{supuesto}
+
+Para la orden que llega en el lugar $r$ (contando desde 0), en el pool $p$, en un batch que sale
+en el turno $t$ ($t = 0$ el primero), la espera en franjas es
+\[
+\text{espera} = \underbrace{\frac{r_{\max}(p) + 1}{25}}_{\text{se completa el pool}}
++ \underbrace{t}_{\text{turno de su batch}} - \underbrace{\frac{r}{25}}_{\text{llega}},
+\]
+con $r_{\max}(p)$ el lugar de la última orden del pool (figura~\ref{fig:espera}). Con FIFO la
+espera va de $1/25$ de franja a una franja: la primera orden de un batch espera a las otras 24.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1.6cm,y=1cm]
+  \draw[-{Stealth}] (0,0) -- (4.6,0) node[right, rotulo]{tiempo (franjas)};
+  \foreach \t in {0,...,4} { \draw (\t,0.08) -- (\t,-0.08) node[below, rotulo]{\t}; }
+  \fill[datos!25] (0,0.3) rectangle (2,0.7); \node[rotulo] at (1,0.5) {llegan las 50 órdenes del pool};
+  \fill[batch!40] (2,0.9) rectangle (3,1.3); \node[rotulo] at (2.5,1.1) {sale el batch 1};
+  \fill[batch!25] (3,1.5) rectangle (4,1.9); \node[rotulo] at (3.5,1.7) {sale el batch 2};
+  \draw[flecha, sim] (0,2.4) -- node[above, rotulo]{espera de la orden 1 si va en el batch 1: 2 franjas} (2,2.4);
+\end{tikzpicture}
+\caption{Ventana $W = 2$. Con FIFO la orden 1 saldría en la franja 1, al llegar la orden 25.}
+\label{fig:espera}
+\end{figure}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ventana $W$ & 1 (FIFO) & 2 & 4 & 8 & 16 & 32 \\
+\midrule
+espera media en \code{medium} (min) & 17 & 49 & 113 & 240 & 496 & 1.007 \\
+espera máxima en \code{medium} (min) & 32 & 95 & 220 & 462 & 881 & --- \\
+espera media en \code{big} (min) & 7 & 22 & 51 & 108 & 223 & 453 \\
+\bottomrule
+\end{tabular}
+\caption{Espera de las órdenes según la ventana, con la regla de arriba (notebooks 04 y 05).
+En \code{big} sale un batch más seguido, así que la misma ventana significa menos espera.}
+\label{tab:espera}
+\end{table}
+
+\begin{hiper}{batching}
+\begin{itemize}
+  \item \code{batch\_size} ($Q$): órdenes por batch; 25, como en la operación.
+  \item \code{window} ($W$): batches FIFO que se re-arman juntos; 1 equivale a FIFO. Valores
+        probados: 1, 2, 4, 8, 16 y 32.
+  \item \code{max\_passes}: tope de pasadas de intercambios; por defecto 20; con 0 queda solo
+        la construcción.
+  \item Entradas: el pasillo de cada SKU según el plan (\code{sku\_aisle}) y la tabla de $\RS$
+        (\code{aisle\_set\_cost}). El re-batching agrupa siempre con la caminata en S, también
+        cuando después se mide con \code{snake}.
+\end{itemize}
+\end{hiper}
+
+% =============================================================================
+\chapter{La simulación}
+\label{cap:simulacion}
+
+La simulación es la medida de todo el sistema. Parte del estado real del depósito al
+terminar train y reproduce el período de test: cada línea de picking y cada reposición, en
+orden. De cada reposición los datos dan el momento, el SKU y la cantidad; la simulación decide
+solo adónde van las unidades. Para cada batch mide la caminata con una política de ruteo.
+
+\textbf{El régimen.} Ningún depósito se reordena entero de un día para el otro, así que el plan
+no se aplica de una vez: el depósito arranca como está al corte y el plan entra por las
+mudanzas que ocurren de todos modos. Cuando un SKU se agota y hay que darle lugar, la regla
+\code{plan\_aisle} lo lleva a su pasillo del plan (sección~\ref{sec:reposicion}). Como el pasillo de cada SKU cambia durante
+el test, los batches se arman pool por pool con el pasillo que cada SKU tiene en ese momento
+(sección~\ref{sec:rolling}). Aplicar el plan entero en el corte, el régimen de los notebooks de
+\code{old\_base/}, queda como el \emph{techo} de cada plan.
+
+\section{Los objetos}
+
+Cuatro objetos pasan de una etapa a la otra (figura~\ref{fig:objetos}). La distinción entre
+\code{Assignment} y \code{WarehouseState} es la central: el primero es el plan, sin unidades y
+sin dinámica; el segundo es el depósito real, que cambia.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=8mm and 14mm, every node/.append style={font=\footnotesize}]
+  \node[caja, fill=modelo!15, draw=modelo, text width=29mm] (i) {\code{SlottingInstance}\\\scriptsize el problema;\\\scriptsize inmutable};
+  \node[caja, fill=plan!15, draw=plan, text width=29mm, right=of i] (a) {\code{Assignment}\\\scriptsize el plan:\\\scriptsize SKU $\to$ ubicación};
+  \node[caja, fill=sim!15, draw=sim, text width=29mm, right=of a] (s) {\code{WarehouseState}\\\scriptsize SKU y unidades\\\scriptsize por ubicación; cambia};
+  \node[caja, fill=sim!25, draw=sim, text width=29mm, below=of s] (r) {\code{SimulationResult}\\\scriptsize métricas y registros};
+  \draw[flecha] (i) -- node[above, rotulo]{método} (a);
+  \draw[flecha] (a) -- node[above, rotulo]{\code{reslot\_state}} (s);
+  \draw[flecha] (s) -- node[right, rotulo]{\code{Simulator.run}} (r);
+\end{tikzpicture}
+\caption{Los objetos de la simulación.}
+\label{fig:objetos}
+\end{figure}
+
+Un SKU puede ocupar varias ubicaciones a la vez (pasa en los datos durante una mudanza) y una
+ubicación aloja a lo sumo un SKU.
+
+\section{El estado inicial}
+\label{sec:estados}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L@{}}
+\toprule
+función & produce \\
+\midrule
+\code{state\_from\_initial\_stock} & el estado del día cero, leído del stock inicial \\
+\code{state\_after\_history} & el estado al terminar train. No recorre los eventos uno por uno: lo calcula por aritmética (stock inicial más entregas menos picks, por ubicación), y asigna cada ubicación al último SKU que se repuso ahí. Así no le afectan los timestamps desordenados de algunas mudanzas \\
+\code{reslot\_state} & el estado que resulta de aplicar un plan: cada SKU se muda a su ubicación del plan con las unidades que tenía. El costo de esa mudanza no se cuenta \\
+\bottomrule
+\end{tabularx}
+\caption{Cómo se arma el estado inicial de una simulación.}
+\end{table}
+
+En el régimen vigente la simulación arranca de \code{state\_after\_history}: el depósito real al
+corte. \code{reslot\_state} se usa solo para el techo; en los notebooks de \code{old\_base/}
+era el punto de partida de todas las corridas.
+
+\section{Los eventos}
+
+Las tablas se convierten en una secuencia ordenada por tiempo con dos tipos de evento
+(figura~\ref{fig:eventos}):
+
+\begin{itemize}
+  \item \code{PickBatch}: un batch completo, con sus líneas (SKU, cantidad, hora). Se procesa
+        de una vez y su caminata se mide al final.
+  \item \code{ReplenEvent}: una reposición (hora, SKU, cantidad). Solo falta decidir su
+        destino.
+\end{itemize}
+
+Dentro de un batch, antes de cada línea se aplican todas las reposiciones con hora anterior o
+igual. El generador de los datos inserta cada reposición justo antes de la línea que la
+dispara; intercalarlas más grueso, por ejemplo al inicio del batch, encontraría al SKU con
+stock y convertiría mudanzas en recargas.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1.1cm]
+  \draw[-{Stealth}] (0,0) -- (11,0) node[right, rotulo]{tiempo};
+  \foreach \x in {0.5,1.2,1.9,2.6,3.3} { \fill[sim] (\x,0.2) rectangle (\x+0.3,0.5); }
+  \foreach \x in {6,6.7,7.4,8.1,8.8} { \fill[sim] (\x,0.2) rectangle (\x+0.3,0.5); }
+  \draw[decorate, decoration={brace, amplitude=4pt}] (0.5,0.7) -- (3.6,0.7) node[midway, above=4pt, rotulo]{batch 1: líneas de pick};
+  \draw[decorate, decoration={brace, amplitude=4pt}] (6,0.7) -- (9.1,0.7) node[midway, above=4pt, rotulo]{batch 2};
+  \foreach \x in {2.3, 7.2} { \draw[thick, plan, -{Stealth}] (\x,-0.7) -- (\x,-0.05); }
+  \node[rotulo, text=plan] at (2.3,-1.0) {reposición};
+  \node[rotulo, text=plan] at (7.2,-1.0) {reposición};
+  \node[rotulo, align=left, anchor=west] at (3.9,-0.6) {se aplica justo antes\\de la línea siguiente};
+\end{tikzpicture}
+\caption{Picks y reposiciones intercalados a su hora exacta.}
+\label{fig:eventos}
+\end{figure}
+
+\section{La regla de picking}
+
+Cuando un SKU ocupa varias ubicaciones, el picker va a la de menor stock que cubra la línea
+sola. Si ninguna la cubre, junta de varias, de menor a mayor stock. Lo que el stock no cubre
+se cuenta como \emph{faltante}, sin detener la simulación. Una ubicación que queda en cero se
+libera si el SKU tiene otra; la única ubicación de un SKU no se libera.
+
+\section{Las políticas de reposición}
+\label{sec:reposicion}
+
+La política decide adónde van las unidades de cada reposición. Es el único punto donde un
+plan de slotting actúa durante el test.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L L@{}}
+\toprule
+política & qué hace & representa \\
+\midrule
+\code{plan\_aisle} & si al SKU le quedan unidades, recarga en el lugar; si se agotó, lo lleva a una ubicación libre de su pasillo del plan, la más cercana a su ubicación del plan, o al pasillo más cercano con lugar & un sistema que implementa el plan de a una mudanza; es la regla del régimen vigente \\
+\code{home} & a la ubicación del SKU en el plan; si está ocupada por otro, a la libre más cercana a ella & un sistema que conoce el plan y lo mantiene; se usa para el techo \\
+\code{random} & recarga donde está el SKU; si se quedó sin stock, con probabilidad 0,9 se muda a una ubicación libre al azar & un depósito sin plan; así se generaron los datos \\
+\code{objective\_greedy} & a la ubicación libre o propia que menos sube $C$ con el $\lambda$ dado & una decisión en línea guiada por el objetivo \\
+\bottomrule
+\end{tabularx}
+\caption{Políticas de reposición.}
+\end{table}
+
+\code{objective\_greedy} evalúa, para cada ubicación candidata $\ell$ del SKU $s$,
+\[
+\text{costo}(\ell) = \lambda\, f_s\, c_\ell + (1-\lambda)\, 2 \sum_{j \in N(s)} a_{sj}\,
+\bar d(\ell, j),
+\]
+con $\bar d(\ell, j)$ la distancia media de $\ell$ a las ubicaciones que ocupa el vecino $j$.
+
+\code{plan\_aisle} tiene dos variantes. Con \code{trigger="always"} mueve al SKU en cualquier
+reposición, aunque le queden unidades (las que quedan se pican en la ubicación vieja, que se
+libera al vaciarse); con \code{target="location"} apunta a la ubicación exacta del plan, o a la
+libre más cercana caminando, en vez de al pasillo. Bajo el recorrido en S la caminata depende
+solo de los pasillos, y por eso la variante por defecto apunta al pasillo.
+
+\begin{hiper}{simulación}
+\begin{itemize}
+  \item Punto de partida (\code{start}): \code{real}, el depósito al corte (por defecto), o
+        \code{plan}, el plan aplicado de una vez (el techo).
+  \item Política de reposición: \code{plan\_aisle} (por defecto), \code{home}, \code{random} o
+        \code{objective\_greedy}.
+  \item \code{rule\_trigger} y \code{rule\_target} de \code{plan\_aisle}: \code{stockout} y
+        \code{aisle} por defecto.
+  \item \code{relocation\_probability} de \code{random}: por defecto 0,9, la de los datos.
+  \item \code{lam} de \code{objective\_greedy}: se pasa al simulador; en los experimentos 0,5.
+  \item \code{routing}: \code{snake} o \code{s\_shape} (capítulo~\ref{cap:ruteo}).
+  \item \code{seed}: la semilla del sorteo de \code{random}.
+\end{itemize}
+\end{hiper}
+
+\section{El ciclo completo}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=6mm and 6mm]
+  \node[caja, fill=sim!10, draw=sim] (ini) {estado real\\\scriptsize al corte};
+  \node[caja, fill=sim!10, draw=sim, right=of ini] (ev) {próximo evento};
+  \node[caja, fill=sim!10, draw=sim, above right=4mm and 6mm of ev] (pick) {línea de pick\\\scriptsize consume stock, anota la ubicación};
+  \node[caja, fill=plan!12, draw=plan, below right=4mm and 6mm of ev] (rep) {reposición\\\scriptsize la política elige el destino};
+  \node[caja, fill=sim!10, draw=sim, right=of pick] (cierre) {fin del batch\\\scriptsize caminata con la política de ruteo};
+  \node[caja, fill=sim!25, draw=sim, below=14mm of cierre] (res) {\code{SimulationResult}};
+  \draw[flecha] (ini) -- (ev);
+  \draw[flecha] (ev) |- (pick);
+  \draw[flecha] (ev) |- (rep);
+  \draw[flecha] (pick) -- (cierre);
+  \draw[flecha] (rep.west) -| ([xshift=-3mm]ev.south);
+  \draw[flecha] (cierre) -- node[right, rotulo]{al terminar\\el test} (res);
+\end{tikzpicture}
+\caption{El ciclo de la simulación.}
+\label{fig:ciclo}
+\end{figure}
+
+\section{Pool por pool, con el depósito del momento}
+\label{sec:rolling}
+
+Partiendo del depósito real, el pasillo de un SKU cambia durante el test, así que los batches
+no se pueden armar de antemano con los pasillos del plan. La función \code{simulate\_rolling}
+corta las órdenes de test en pools de $25\,W$ órdenes consecutivas y, para cada pool:
+
+\begin{enumerate}
+  \item lee el pasillo actual de cada SKU, el de su ubicación con más unidades;
+  \item re-arma el pool con \code{AisleCoverBatching} usando esos pasillos
+        (capítulo~\ref{cap:batching});
+  \item simula sus batches y las reposiciones hasta su última línea, y deja el estado para el
+        pool siguiente.
+\end{enumerate}
+
+Con $W = 1$ los batches son FIFO y no dependen del estado. Cada paso registra cuánto avanzó el
+plan: la fracción de la demanda de train cuyos SKUs ya están en su pasillo del plan, y los
+pasillos que toca en promedio una orden con los SKUs donde están.
+
+Las medidas de una corrida son dos: la caminata media por batch en todo el test
+(\emph{promedio}), que incluye la transición, y la de los batches de los últimos 14 días
+(\emph{final}), que muestra hasta dónde se llega. Ambas se comparan con \emph{hoy}: el depósito
+real con reposición \code{random}, como se generaron los datos, y batches FIFO.
+
+\section{Salidas y controles}
+
+El resultado de una corrida tiene:
+
+\begin{itemize}
+  \item las métricas de la caminata por batch: total, media, mediana y percentil 95;
+  \item un registro por batch (hora, distancia, pasillos visitados, líneas, faltantes);
+  \item un registro por reposición (destino, si fue mudanza, si fue a la ubicación del plan);
+  \item contadores: mudanzas, líneas y unidades faltantes, y la fracción de SKUs que terminan
+        fuera de su ubicación del plan.
+\end{itemize}
+
+Controles que se verificaron:
+
+\begin{itemize}
+  \item Con la política \code{home} y un plan que entra en el depósito, ningún SKU se mueve y
+        la caminata simulada es idéntica a la que calcula el algoritmo de re-batching
+        (diferencia 0 en todas las evaluaciones con \code{home} y recorrido en S del notebook 05).
+  \item Con el plan aplicado y \code{home}, la simulación pool por pool da exactamente lo mismo
+        que armar todos los batches de una vez (notebook \code{correct\_base/01\_transicion}).
+  \item \code{reslot\_state} conserva las unidades de cada SKU.
+  \item En la v1, reproducir la historia completa da el mismo stock final que un cálculo
+        independiente, y los quiebres de stock del test coinciden con los de los datos.
+  \item En \code{medium} y \code{medium-alpha-1.3} no hay faltantes. En \code{big} hay entre 1
+        y 25 líneas sin stock por corrida, de unas 317.000, y aparecen igual con FIFO: vienen
+        del borde entre train y test.
+\end{itemize}
+
+% =============================================================================
+\chapter{Arquitectura del código}
+\label{cap:arquitectura}
+
+El código es un paquete de Python, \code{abs\_affinity\_based\_slotting}, en
+\code{src/}. Tiene unas 5.200 líneas repartidas en diez subpaquetes, uno por concepto.
+
+\section{Las capas}
+
+Cada subpaquete depende solo de los de capas anteriores (figura~\ref{fig:capas}).
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=4mm and 4mm, pk/.style={caja, minimum width=26mm, font=\footnotesize}]
+  \node[pk, fill=datos!15, draw=datos] (data) {\code{data}\\\scriptsize lectura y corte};
+  \node[pk, fill=modelo!15, draw=modelo, above left=7mm and -6mm of data] (demand) {\code{demand}\\\scriptsize $f$, co-ocurrencia, $A$};
+  \node[pk, fill=modelo!15, draw=modelo, above right=7mm and -6mm of data] (wh) {\code{warehouse}\\\scriptsize $c$, distancias, $D$};
+  \node[pk, fill=modelo!25, draw=modelo, above=19mm of data] (slot) {\code{slotting}\\\scriptsize instancia, plan, objetivo};
+  \node[pk, fill=plan!15, draw=plan, above left=7mm and -2mm of slot] (clu) {\code{clustering}\\\scriptsize agrupamientos};
+  \node[pk, fill=plan!15, draw=plan, above right=7mm and -2mm of slot] (meth) {\code{methods}\\\scriptsize métodos de slotting};
+  \node[pk, fill=batch!15, draw=batch, above=7mm of meth] (bat) {\code{batching}\\\scriptsize FIFO, re-batching};
+  \node[pk, fill=sim!15, draw=sim, above=19mm of slot] (eval) {\code{evaluation}\\\scriptsize ruteo, métricas};
+  \node[pk, fill=sim!15, draw=sim, above left=7mm and -2mm of eval] (simu) {\code{simulation}\\\scriptsize estado, eventos, políticas};
+  \node[pk, fill=exp!25, draw=exp, above=19mm of eval] (exp) {\code{experiments}\\\scriptsize tareas, ejecución};
+  \draw[flecha] (data) -- (demand); \draw[flecha] (data) -- (wh);
+  \draw[flecha] (demand) -- (slot); \draw[flecha] (wh) -- (slot);
+  \draw[flecha] (slot) -- (clu); \draw[flecha] (slot) -- (meth); \draw[flecha] (clu) -- (meth);
+  \draw[flecha] (meth) -- (bat);
+  \draw[flecha] (slot) -- (eval); \draw[flecha] (eval) -- (simu); \draw[flecha] (slot.north west) to[bend left=20] (simu.south);
+  \draw[flecha] (simu) -- (exp); \draw[flecha] (bat) -- (exp); \draw[flecha] (meth.east) to[bend right=30] (exp.east);
+\end{tikzpicture}
+\caption{Subpaquetes y dependencias. Cada flecha va de un subpaquete a otro que lo usa.}
+\label{fig:capas}
+\end{figure}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L L@{}}
+\toprule
+subpaquete & recibe & devuelve \\
+\midrule
+\code{data} & las cinco tablas & tablas en memoria; corte train/test \\
+\code{demand} & picking de train & demanda $f$; co-ocurrencia; afinidad $A$ \\
+\code{warehouse} & stock, distancias, coordenadas & costo $c$; matrices de distancia $D$ \\
+\code{slotting} & lo anterior & \code{SlottingInstance}; \code{Assignment}; objetivo y deltas \\
+\code{clustering} & una instancia & un grupo por SKU \\
+\code{methods} & una instancia & un plan (\code{Assignment}) \\
+\code{batching} & picking de un período y el pasillo de cada SKU & el mismo picking con otros \code{batch\_id} \\
+\code{evaluation} & bays a visitar & caminata de un batch; métricas \\
+\code{simulation} & estado, eventos, política & \code{SimulationResult} \\
+\code{experiments} & tareas & resultados en disco \\
+\bottomrule
+\end{tabularx}
+\caption{Qué entra y qué sale de cada subpaquete.}
+\end{table}
+
+\section{Registros}
+\label{sec:registros}
+
+Cada familia de piezas intercambiables tiene un \emph{registro}: un diccionario de nombre a
+implementación. El código pide las piezas por nombre y no depende de las clases concretas.
+Agregar una variante es escribir una clase y registrarla con un decorador.
+
+\begin{lstlisting}
+@method_registry.register("aisle_fill")
+class AisleFillSlotting: ...
+
+metodo = method_registry.get("swap_search")(lam=0.5, neighborhood="bay")
+plan = metodo.solve(instancia)
+\end{lstlisting}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l l L@{}}
+\toprule
+registro & subpaquete & nombres registrados \\
+\midrule
+\code{affinity\_registry} & \code{demand} & \code{cooccurrence}, \code{jaccard}, \code{cosine} \\
+\code{filter\_registry} & \code{demand} & \code{top\_k}, \code{mutual\_top\_k}, \code{threshold} \\
+\code{distance\_registry} & \code{warehouse} & \code{walking}, \code{aisle} \\
+\code{clustering\_registry} & \code{clustering} & \code{merchant}, \code{demand\_class} \\
+\code{method\_registry} & \code{methods} & \code{current}, \code{random}, \code{demand\_greedy}, \code{linear\_assignment}, \code{aisle\_fill}, \code{merchant\_aisle\_fill}, \code{swap\_search}, \code{bilevel}, \code{exact\_qap} \\
+\code{batching\_registry} & \code{batching} & \code{fifo}, \code{aisle\_cover} \\
+\code{routing\_registry} & \code{evaluation} & \code{snake}, \code{s\_shape} \\
+\code{replenishment\_policy\_registry} & \code{simulation} & \code{home}, \code{random}, \code{objective\_greedy} \\
+\bottomrule
+\end{tabularx}
+\caption{Los registros del sistema.}
+\end{table}
+
+\section{El árbol del paquete}
+
+\begin{lstlisting}[language={}, numbers=none, basicstyle=\ttfamily\scriptsize]
+src/abs_affinity_based_slotting/
+  config.py           dataset_dir(version, size); constantes; licencia del solver
+  registry.py         el mecanismo nombre -> implementacion
+  data/               loaders.py (las 5 tablas), split.py (corte train/test)
+  demand/             sku_demand.py (f), cooccurrence.py (n_ij, s_i),
+                      affinity.py (metricas), filter.py (filtros)
+  warehouse/          locations.py (universo), distances.py (D: walking, aisle),
+                      costs.py (c: distancia al dock)
+  slotting/           instance.py (SlottingInstance), build.py (build_full_instance),
+                      assignment.py (Assignment), objective.py (C y deltas)
+  clustering/         merchant.py, abc.py (clases A/B/C)
+  methods/            current, demand_greedy, linear_assignment, aisle_fill,
+                      local_search (swap_search), two_stage (bilevel), exact
+  batching/           fifo.py, aisle_cover.py (re-batching), waits.py (espera)
+  evaluation/         routing.py (snake, s_shape), routes.py, metrics.py, evaluator.py
+  simulation/         state.py, events.py, initial_state.py, simulator.py, results.py,
+                      home.py, random_storage.py, objective_greedy.py,
+                      plan_aisle.py (la regla), rolling.py (pool por pool)
+  experiments/        specs.py (tareas), runner.py (ejecucion en paralelo),
+                      registry.py (registro de experimentos)
+\end{lstlisting}
+
+\section{Convenciones}
+
+\begin{itemize}
+  \item \textbf{Núcleo numérico por posiciones.} En \code{slotting}, \code{simulation} y
+        \code{batching} se trabaja con índices enteros, numpy y scipy. Pandas aparece solo en
+        los bordes: al leer datos y al devolver resultados.
+  \item \textbf{Nombres por lo que hace, no por la herramienta.} El método exacto se llama
+        \code{exact} y el entorno del solver \code{make\_solver\_env}; si cambia el solver, los
+        nombres siguen valiendo.
+  \item \textbf{Un subpaquete por concepto.}
+  \item \textbf{Falla temprana.} La instancia valida dimensiones, valores y simetría al
+        construirse; un dato inconsistente lanza una excepción. La excepción a la regla son los
+        faltantes de stock en la simulación, que son dinámica legítima y se cuentan.
+  \item \textbf{Los datos y los resultados no se versionan} salvo la v1; los resultados de los
+        experimentos van a \code{results/}, fuera de git.
+\end{itemize}
+
+\section{Un recorrido de punta a punta}
+
+El fragmento siguiente arma la instancia de \code{medium}, calcula un plan, re-arma los
+batches de test con ventana 4 y simula con recorrido en S. Es la misma tubería de los
+notebooks 04 y 05.
+
+\begin{lstlisting}
+ds = WarehouseDataLoader(dataset_dir("v2", "medium")).load_all()
+split = split_picking_events(ds.picking_events, test_size=0.2)
+inst = build_full_instance(split.train, ds.initial_stock, ds.distances,
+                           affinity_metric="jaccard", cooccurrence_col="order_id",
+                           affinity_filter=TopKFilter(k=10), normalize=True,
+                           pair_distance_model="aisle", coordinates=ds.coordinates)
+
+# estado real al corte
+replen_train, replen_test = split_replenishments(ds.replenishment_events, split.train,
+                                                 ds.initial_stock, split.cutoff)
+state0 = state_from_initial_stock(inst, ds.initial_stock)
+state_cut, _ = state_after_history(state0, build_event_stream(split.train, replen_train, inst), inst)
+
+# plan y re-batching
+plan = method_registry.get("merchant_aisle_fill")(ds.coordinates).solve(inst)
+sim = Simulator.from_tables(inst, ds.coordinates, routing="s_shape")
+loc = np.array([inst.location_index(plan.location_of(k)) for k in inst.sku_ids])
+sku_aisle = pd.Series(sim.routing.bay_aisle[inst.location_bay[loc]], index=inst.sku_ids)
+batching = AisleCoverBatching(sku_aisle, sim.routing.mask_costs(), window=4)
+picking = batching.make_batches(split.test)
+
+# simulacion
+res = sim.run(reslot_state(state_cut, plan, inst), build_event_stream(picking, replen_test, inst),
+              replenishment_policy_registry.get("home")(), planned=plan)
+print(res.route_metrics.mean_batch_distance)
+\end{lstlisting}
+
+% =============================================================================
+\chapter{Los experimentos}
+\label{cap:experimentos}
+
+\section{Los notebooks}
+
+Cada experimento es un notebook numerado en \code{notebooks/data2/}. Contiene la formulación,
+el código que lo corre y una lectura de los resultados. Los notebooks de la v1 quedaron en
+\code{notebooks/data1/}. Los de la v2 se ordenan por régimen de simulación: los que describen
+los datos y el código quedan en \code{data2/}; los que aplican el plan de una vez, que miden el
+techo, en \code{old\_base/}; y los del régimen vigente, que parten del depósito real, en
+\code{correct\_base/}.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L@{}}
+\toprule
+notebook & contenido \\
+\midrule
+\code{00\_el\_deposito.md} & el depósito contado en palabras \\
+\code{01\_EDA\_v2} & análisis exploratorio de la v2: volumen, demanda, co-ocurrencia \\
+\code{02\_el\_codigo} & recorrido por el código: cada clase, sus valores y las piezas intercambiables; el exacto en subinstancias \\
+\code{06\_datos\_medium} & los datos de \code{medium}, hecho por hecho, para el capítulo del depósito de la tesis \\
+\midrule
+\code{old\_base/03\_techo\_pasillos} & recorrido en S contra el evaluador viejo; problema de asignar SKUs a pasillos para minimizar pasillos por batch \\
+\code{old\_base/04\_rebatching} & re-batching paso a paso, con la grilla de slotting por ventana \\
+\code{old\_base/05\_combinatoria} & 138 tareas y 948 evaluaciones: depósito, slotting, ventana, recorrido, frecuencia, parámetros del QAP y reposición \\
+\code{old\_base/06\_experimento\_ganador} & el plan por merchant con re-batching, con todos sus modelos y parámetros \\
+\midrule
+\code{correct\_base/01\_transicion} & el plan entrando por las mudanzas: semana a semana, contra hoy y contra el techo \\
+\code{correct\_base/02\_combinatoria} & la grilla del régimen vigente: slotting, ventana, regla, frecuencia, QAP, batching y recorrido \\
+\bottomrule
+\end{tabularx}
+\caption{Los notebooks de la v2.}
+\end{table}
+
+\section{El ejecutor de experimentos}
+
+El subpaquete \code{experiments} corre grillas grandes de configuraciones. Describe cada corrida
+con tres especificaciones y una tarea (figura~\ref{fig:tarea}):
+
+\begin{itemize}
+  \item \code{InstanceSpec}: cómo se arma la instancia (depósito, frecuencia, afinidad,
+        normalización, $D$, fracción de test).
+  \item \code{SlottingSpec}: el método y sus parámetros.
+  \item \code{EvalSpec}: cómo se mide el plan (ventana, pasadas del re-batching, recorrido,
+        punto de partida, reposición y sus variantes). Con
+        \code{start="real"} la evaluación usa \code{simulate\_rolling}; con
+        \code{start="plan"} arma los batches de una vez con los pasillos del plan.
+  \item \code{Task}: una instancia, un plan y una lista de evaluaciones.
+\end{itemize}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=5mm and 7mm]
+  \node[caja, fill=exp!20, draw=exp] (t) {\code{Task}};
+  \node[caja, fill=modelo!15, draw=modelo, right=of t] (c) {contexto\\\scriptsize instancia, estado al\\\scriptsize corte, simuladores};
+  \node[caja, fill=plan!15, draw=plan, right=of c] (p) {plan\\\scriptsize una vez};
+  \node[caja, fill=batch!15, draw=batch, right=of p, yshift=8mm] (e1) {evaluación 1\\\scriptsize re-batching y simulación};
+  \node[caja, fill=batch!15, draw=batch, right=of p, yshift=-8mm] (e2) {evaluación $n$};
+  \node[caja, fill=exp!20, draw=exp, right=of p, xshift=36mm] (disk) {una fila por\\evaluación\\\scriptsize \code{tareas/<clave>.parquet}};
+  \draw[flecha] (t) -- (c); \draw[flecha] (c) -- (p); \draw[flecha] (p) -- (e1); \draw[flecha] (p) -- (e2);
+  \draw[flecha] (e1) -- (disk); \draw[flecha] (e2) -- (disk);
+  \node[rotulo] at ($(e1)!0.5!(e2)$) {$\vdots$};
+\end{tikzpicture}
+\caption{Una tarea: el plan, que es lo caro, se calcula una vez y se mide de varias formas.}
+\label{fig:tarea}
+\end{figure}
+
+\paragraph{Cómo corre.} \code{run\_tasks} recibe la lista de tareas y las corre en paralelo, un
+depósito por vez. Cada tarea tiene una clave fija que sale de sus especificaciones. Al terminar
+guarda su resultado en un archivo con esa clave, que aparece solo cuando está completo. Si la
+corrida se corta, al repetirla se saltean las tareas que ya tienen archivo. Dentro de una tarea,
+el re-batching de cada ventana se calcula una vez y se reusa para los dos recorridos.
+
+\paragraph{Memoria y licencia.} Un proceso de \code{big} ocupa unos 3 GB, así que \code{big}
+corre de a un proceso; los demás depósitos, de a cuatro. Las tareas que usan el solver
+(\code{bilevel}) corren de a una, porque la licencia limita las sesiones simultáneas. El avance
+queda en \code{progreso.log}.
+
+\paragraph{Salidas.} Una fila por evaluación con todas las especificaciones y las métricas:
+caminata media y percentil 95, pasillos por batch, espera media y máxima, la caminata que
+calcula el algoritmo de re-batching (FIFO, construcción y final), faltantes, mudanzas, fracción
+fuera del plan y tiempos; con \code{start="real"}, además, la caminata de los últimos 14 días,
+la demanda en su pasillo del plan al final y los pasillos por orden al final. Aparte, un
+archivo con la caminata de cada batch simulado, para analizar por semana, y otro con el registro
+de cada paso de \code{simulate\_rolling} (\code{pasos/}).
+
+\paragraph{Registro de experimentos.} Un experimento es una configuración: la instancia, el plan
+y cómo se mide. \code{register\_results} lleva cada una a \code{results/registro.db}. El nombre
+es el plan; el dataset, el depósito con su partición train/test; los parámetros, todos los
+campos de la configuración, con \code{-} donde la especificación los deja vacíos (los de
+\code{swap\_search} y \code{bilevel} en los otros métodos), y también en un
+\code{configuracion.json}; los resultados son la caminata promedio y
+final, su diferencia contra hoy, pasillos por batch, espera y mudanzas; y la descripción dice la
+configuración en palabras y en qué bloques aparece. Una configuración que
+aparece en varios bloques da el mismo resultado en todos y se registra una vez, con la lista de
+sus bloques; las que ya están no se repiten. La grilla del régimen vigente tiene 807
+configuraciones. El registro se mira con
+\code{mlflow ui --backend-store-uri sqlite:///results/registro.db}: una tabla con una fila por
+configuración, que se puede filtrar y ordenar por cualquier parámetro o resultado.
+
+\paragraph{Claves de las tareas viejas.} Los campos que se agregaron después de la grilla 05
+(\code{test\_size}, \code{start}, \code{rule\_trigger}, \code{rule\_target}) quedan fuera de la clave cuando tienen el valor que esa grilla usaba
+sin decirlo, así su caché sigue sirviendo. El notebook 05 fija esos valores en su celda de
+configuración.
+
+\section{El diseño de la grilla del régimen vigente}
+
+La grilla de \code{correct\_base/02\_combinatoria} busca descartar las opciones que no suman y
+elegir el valor más útil de cada factor. Usa la misma idea que la del notebook 05: una grilla
+completa con slotting por ventana y barridos de a un factor para el resto
+(tabla~\ref{tab:bloques02}). Cada evaluación se compara con \emph{hoy} en dos medidas, el
+promedio de todo el test y el final (los últimos 14 días).
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L L@{}}
+\toprule
+bloque & qué varía & dónde \\
+\midrule
+A & 11 planes (6 en \code{big}) $\times$ ventanas 1, 2, 4, 8, 16, con la regla y con el techo; hoy con el vigente & 4 depósitos \\
+R & regla \code{plan\_aisle} (\code{stockout}/\code{always} $\times$ \code{aisle}/\code{location}) con 4 planes; \code{objective\_greedy} con $\lambda$ = 0, 0,5 y 1; hoy & 4 depósitos \\
+F & las 4 frecuencias con 3 planes & 3 depósitos \\
+Q & 14 variantes de \code{swap\_search} ($\lambda$, $D$, métrica, unidad y filtro de la afinidad, normalización, vecindad, plan inicial) & 3 depósitos \\
+B & pasadas del re-batching: 0 y 20 & 3 depósitos \\
+G & recorrido \code{s\_shape} y \code{snake} & 3 depósitos \\
+\bottomrule
+\end{tabularx}
+\caption{Los bloques de la grilla del régimen vigente.}
+\label{tab:bloques02}
+\end{table}
+
+\paragraph{Configuración base.} Igual que la del notebook 05, con el régimen vigente: test del
+último 40\%, depósito real al empezar, regla \code{plan\_aisle} con \code{stockout} y
+\code{aisle}.
+
+\section{El diseño del notebook 05}
+
+Todas las combinaciones de todos los factores son decenas de miles de corridas, y
+\code{swap\_search} tarda de 5 minutos a varias horas por plan. El diseño tiene una grilla
+completa con los factores que más mueven el resultado y barridos de a un factor para el resto
+(tabla~\ref{tab:bloques}). Un barrido parte de una configuración base y cambia un solo factor
+por vez: muestra el efecto de ese factor con todo lo demás fijo, pero no cómo interactúan dos
+factores barridos.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l L L r@{}}
+\toprule
+bloque & qué varía & evaluaciones por plan & tareas \\
+\midrule
+A, principal & 4 depósitos $\times$ 10 planes (\code{swap\_search} y \code{linear\_assignment} no en \code{big}) & 6 ventanas $\times$ 2 recorridos & 38 \\
+B, frecuencia & 3 frecuencias más $\times$ 3 planes $\times$ 4 depósitos & 3 ventanas, recorrido en S & 36 \\
+C, QAP & 16 variantes de \code{swap\_search} $\times$ 3 depósitos & 3 ventanas $\times$ 2 recorridos & 48 \\
+D, reposición & 4 planes $\times$ 4 depósitos & 2 ventanas $\times$ 3 políticas & 16 \\
+\midrule
+total & & & 138 \\
+\bottomrule
+\end{tabularx}
+\caption{Los bloques del notebook 05: 138 tareas y 948 evaluaciones. La corrida completa tardó
+unas 20 horas, casi todo en las variantes lentas de \code{swap\_search}.}
+\label{tab:bloques}
+\end{table}
+
+\paragraph{Configuración base.} Frecuencia \code{pick\_lines}; afinidad \code{jaccard} por
+orden con \code{top\_k:10}; normalización; $D$ = \code{aisle}; reposición \code{home}. Para
+\code{swap\_search}: $\lambda = 0{,}5$, vecindad \code{bay}, plan inicial
+\code{demand\_greedy}.
+
+\section{Catálogo de hiperparámetros}
+
+\begin{footnotesize}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{2.6cm}@{}}
+\toprule
+parámetro & pieza & valores & por defecto & en el notebook 05 \\
+\midrule
+\endhead
+\multicolumn{5}{@{}l}{\textbf{Datos}} \\
+\code{dataset\_dir} & \code{config} & \code{v1}; \code{v2} con \code{small}, \code{medium}, \code{big} o una variante & --- & los 4 de la v2 \\
+\code{test\_size} & corte & fracción en $(0, 1)$ & 0,4 & 0,2 \\
+\multicolumn{5}{@{}l}{\textbf{Instancia}} \\
+\code{demand\_metric} & $f$ & \code{pick\_lines}, \code{unique\_orders}, \code{unique\_batches}, \code{total\_units} & \code{pick\_lines} & las 4 \\
+\code{cooccurrence\_col} & $A$ & \code{order\_id}, \code{batch\_id} & \code{batch\_id} & las 2 \\
+\code{affinity\_metric} & $A$ & \code{jaccard}, \code{cosine}, \code{cooccurrence} & \code{jaccard} & las 3 \\
+\code{affinity\_filter} & $A$ & \code{TopKFilter(k)}, \code{MutualTopKFilter(k)}, \code{ThresholdFilter(t)}, ninguno & ninguno & top-5, 10, 20; mutuo 10; ninguno \\
+\code{normalize} & $f$ y $A$ & sí, no & no & los 2 \\
+\code{pair\_distance\_model} & $D$ & \code{walking}, \code{aisle} & \code{walking} & los 2 \\
+\multicolumn{5}{@{}l}{\textbf{Slotting}} \\
+método & \code{methods} & ver tabla~\ref{tab:metodos} & --- & 10 planes \\
+\code{lam} & \code{swap\_search} & $[0, 1]$ & 0,5 & 0; 0,25; 0,5; 0,75 \\
+\code{neighborhood} & \code{swap\_search} & \code{bay}, \code{neighbor} & \code{bay} & los 2 \\
+\code{seed\_method} & \code{swap\_search} & cualquier método & \code{demand\_}\allowbreak\code{greedy} & greedy, \code{aisle\_}\allowbreak\code{fill}, \code{merchant\_}\allowbreak\code{aisle\_fill} \\
+\code{max\_passes} & \code{swap\_search} & entero & 50 & 50 \\
+\code{clustering} & \code{bilevel} & \code{merchant}, \code{demand\_class} & --- & los 2 \\
+\code{thresholds} & \code{demand\_class} & cortes de demanda acumulada & $(0{,}8;\ 0{,}95)$ & por defecto \\
+\code{zone\_cost} & \code{bilevel} & \code{dock}, \code{aisle\_order} & \code{dock} & los 2 \\
+\code{zone\_solver} & \code{bilevel} & cualquier método & --- & \code{demand\_greedy} \\
+\code{lam}, \code{time\_limit}, \code{mip\_gap} & \code{exact\_qap} & --- & 0,5; sin límite & no se usa \\
+\multicolumn{5}{@{}l}{\textbf{Batching}} \\
+\code{batch\_size} & \code{batching} & entero & 25 & 25 \\
+\code{window} & \code{aisle\_cover} & entero $\ge 1$ & 1 & 1, 2, 4, 8, 16, 32 \\
+\code{max\_passes} & \code{aisle\_cover} & entero $\ge 0$ & 20 & 20 \\
+\multicolumn{5}{@{}l}{\textbf{Simulación}} \\
+\code{routing} & simulador & \code{snake}, \code{s\_shape} & \code{snake} & los 2 \\
+\code{start} & \code{EvalSpec} & \code{real}, \code{plan} & \code{real} & \code{plan} \\
+política de reposición & simulador & \code{plan\_aisle}, \code{home}, \code{random}, \code{objective\_greedy} & \code{plan\_aisle} & las 3 últimas \\
+\code{trigger} & \code{plan\_aisle} & \code{stockout}, \code{always} & \code{stockout} & no existía \\
+\code{target} & \code{plan\_aisle} & \code{aisle}, \code{location} & \code{aisle} & no existía \\
+\code{relocation\_}\allowbreak\code{probability} & \code{random} & $[0, 1]$ & 0,9 & 0,9 \\
+\code{lam} & \code{objective\_}\allowbreak\code{greedy} & $[0, 1]$ & 0,5 & 0,5 \\
+\code{seed} & simulador & entero & 0 & 0 \\
+\bottomrule
+\caption{Todos los hiperparámetros del sistema.}
+\label{tab:catalogo}
+\end{longtable}
+\end{footnotesize}
+
+\section{Cómo reproducir}
+
+\begin{lstlisting}[language=bash, numbers=none]
+# entorno
+source .venv/bin/activate
+
+# un notebook, ejecutado en el lugar; las grillas retoman desde su carpeta de results/
+jupyter nbconvert --to notebook --execute --inplace notebooks/data2/old_base/05_combinatoria.ipynb
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 \
+    notebooks/data2/correct_base/02_combinatoria.ipynb
+
+# este documento
+make manual
+\end{lstlisting}
+
+La licencia del solver va en el archivo \code{.env} de la raíz, con tres variables:
+\begin{itemize}
+  \item \code{SOLVER\_LICENSE\_ACCESS\_ID},
+  \item \code{SOLVER\_LICENSE\_SECRET},
+  \item \code{SOLVER\_LICENSE\_ID}.
+\end{itemize} Solo \code{bilevel} y \code{exact\_qap} usan el solver; el
+resto del sistema no lo necesita.
+
+% =============================================================================
+\chapter{Resultados}
+\label{cap:resultados}
+
+Las cifras de este capítulo salen de tres notebooks de \code{correct\_base/}: la grilla
+\code{02\_combinatoria}, \code{04\_experimento\_ganador} y \code{05\_convergencia}. Todas son la caminata media por
+batch con recorrido en S, simulando el período de test (72 días, unas 10 semanas) desde el
+depósito real al corte, como diferencia porcentual contra \emph{hoy}: el plan vigente, reposición \code{random} y batches
+FIFO, en el mismo depósito. El \emph{final} es la caminata de los últimos 14 días y muestra
+hasta dónde llega cada configuración; el \emph{promedio}, la de todo el test, incluye la
+transición. El \emph{techo} es el plan aplicado de una vez con reposición \code{home}: las
+cifras de los notebooks de \code{old\_base/} son techos.
+
+\section{Lo que dicen los datos}
+
+La co-ocurrencia por orden no se distingue de la que darían órdenes armadas al azar según la
+popularidad (sección~\ref{sec:hechos}). No hay afinidad plantada entre SKUs; la única
+estructura conjunta es que una orden nunca mezcla merchants.
+
+\section{El experimento ganador}
+
+El ganador combina el plan por merchant (\code{merchant\_aisle\_fill}), la regla de reposición
+\code{plan\_aisle} con sus valores base (mover solo al agotarse, a un hueco del pasillo del
+plan) y re-batching con ventana 4 y 20 pasadas. El plan entra solo por las mudanzas de las
+reposiciones. En \code{medium} gana 27,4\% al final y 21,5\% en promedio, algo más de la mitad
+de su techo, 46,3\% (tabla~\ref{tab:ganador}). Al final del test el 88\% de la demanda está en
+su pasillo del plan y una orden toca 1,34 pasillos, contra 1,03 con el plan completo: lo que
+falta son los SKUs que casi no se agotan y por eso casi no se mudan. En los 72 días del test
+la caminata no se estabiliza: entre las semanas 5 y 9 el ganador sigue bajando unas 170
+pulgadas por semana, el doble de lo que explica la variación semanal del techo, y al final
+recorrió la mitad del camino entre un plan aleatorio y el techo (notebook 05).
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+corrida & promedio & final & mudanzas & espera (min) \\
+\midrule
+hoy & 0,0 & 0,0 & 13.608 & 17 \\
+hoy con re-batching & $-4{,}1$ & $-4{,}2$ & 12.570 & 113 \\
+solo la regla & $-0{,}2$ & $-0{,}4$ & 3.366 & 17 \\
+aleatorio & $-8{,}1$ & $-9{,}3$ & 3.328 & 113 \\
+greedy & $-13{,}7$ & $-17{,}1$ & 4.398 & 113 \\
+\textbf{ganador} & $\mathbf{-21{,}5}$ & $\mathbf{-27{,}4}$ & 3.362 & 113 \\
+techo & $-47{,}1$ & $-46{,}3$ & 0 & 113 \\
+\bottomrule
+\end{tabular}
+\caption{El ganador y sus piezas en \code{medium}: diferencia porcentual contra hoy, mudanzas
+por reposición en todo el test y espera media de una orden. El aleatorio es un plan sorteado
+(\code{random}) y el greedy, \code{demand\_greedy}, los dos con la misma regla y el mismo
+re-batching que el ganador.}
+\label{tab:ganador}
+\end{table}
+
+\begin{itemize}
+  \item \textbf{El plan vale 20\% contra un plan sin datos.} Simulado igual que un plan
+        aleatorio, el ganador camina 19,9\% menos al final y 14,6\% menos en promedio (24,3\% y
+        18,0\% en \code{big}); tres sorteos del aleatorio difieren en menos de un punto. Contra el
+        greedy simulado igual gana 12,4\% al final (6,7\% en \code{big}): el greedy pone la mitad
+        de la demanda en el pasillo 1, y la regla no logra vaciarlo de los SKUs que no van ahí. Contra
+        hoy, el aleatorio ya gana 9,3\%: 4,2 puntos del re-batching y 5,1 de la regla, que muda
+        menos SKUs, así que los batches se arman con pasillos que siguen siendo ciertos mientras
+        se recorren.
+  \item \textbf{Hacen falta las dos piezas.} Sin re-armar los batches, el plan gana 0,4\%; sin
+        plan, re-armar los batches gana 4,2\%.
+  \item \textbf{La regla no agrega mudanzas:} hace 3.362 en el test contra 13.608 de hoy, porque
+        mueve un SKU solo cuando se agota y no está en su pasillo, cuando hoy se muda casi
+        siempre que se agota.
+  \item \textbf{El costo es la espera:} 113 minutos de media con ventana 4, contra 17 con FIFO.
+        Con el plan por merchant, la ventana 2 da $-13{,}8\%$ con 49 minutos y la 16,
+        $-37{,}1\%$ con 496.
+\end{itemize}
+
+En \code{medium-alpha-1.3} y en \code{big} el patrón se repite: el ganador llega a algo más de
+la mitad de su techo (tabla~\ref{tab:depositos}). En \code{small} ningún plan gana: con 4
+pasillos, mientras quede demanda fuera de su pasillo casi cualquier batch entra a los 4, y
+además sale un batch cada 240 minutos, así que con ventana 4 una orden espera 843 minutos de
+media.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+depósito & promedio & final & techo (final) & espera con $W = 4$ (min) \\
+\midrule
+\code{small} & $-0{,}1$ & $-0{,}2$ & $-28{,}3$ & 843 \\
+\code{medium} & $-21{,}5$ & $-27{,}4$ & $-46{,}3$ & 113 \\
+\code{medium-alpha-1.3} & $-23{,}3$ & $-28{,}9$ & $-48{,}1$ & 113 \\
+\code{big} & $-30{,}8$ & $-36{,}5$ & $-59{,}8$ & 51 \\
+\bottomrule
+\end{tabular}
+\caption{El ganador contra hoy en los cuatro depósitos, y su techo.}
+\label{tab:depositos}
+\end{table}
+
+\section{Slotting}
+
+Con FIFO casi ningún plan gana: en \code{medium} ninguno pasa de 1\%, porque un batch FIFO
+junta 25 órdenes de casi todos los pasillos y entra a los 8 igual. En \code{big}, con 16
+pasillos, los planes por demanda llegan a 8,0\%. Con re-batching ganan los dos planes que
+agrupan por merchant, en todos los depósitos y desde la ventana 2 (tabla~\ref{tab:principal} y
+figura~\ref{fig:principal}). Los planes por demanda y los otros tres binivel quedan entre
+$-16{,}8\%$ y $-17{,}4\%$ en \code{medium} con ventana 4, y \code{swap\_search} en el medio. El
+vigente con la regla ya gana 11,0\%: dejar de mudar SKUs al azar vale algo por sí solo.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+ & & \multicolumn{5}{c}{ventana $W$} \\
+\cmidrule(l){3-7}
+depósito & plan & 1 & 2 & 4 & 8 & 16 \\
+\midrule
+\code{medium} & hoy con re-batching & 0,0 & $-0{,}5$ & $-4{,}2$ & $-5{,}2$ & $-5{,}0$ \\
+ & vigente & 0,0 & $-1{,}7$ & $-11{,}0$ & $-15{,}1$ & $-18{,}0$ \\
+ & \code{demand\_greedy} & $-0{,}6$ & $-11{,}1$ & $-17{,}1$ & $-21{,}7$ & $-24{,}0$ \\
+ & \code{aisle\_fill} & $-1{,}0$ & $-10{,}5$ & $-16{,}8$ & $-19{,}9$ & $-22{,}6$ \\
+ & \code{swap\_search} & $-0{,}3$ & $-12{,}5$ & $-21{,}7$ & $-27{,}1$ & $-30{,}4$ \\
+ & \code{bilevel merchant/aisle\_order} & $-0{,}3$ & $-13{,}2$ & $-26{,}6$ & $-33{,}2$ & $-36{,}8$ \\
+ & \code{merchant\_aisle\_fill} & $-0{,}4$ & $-13{,}8$ & $\mathbf{-27{,}4}$ & $-34{,}1$ & $-37{,}1$ \\
+ & techo de \code{merchant\_aisle\_fill} & $-3{,}0$ & $-32{,}9$ & $-46{,}3$ & $-57{,}9$ & $-61{,}9$ \\
+\midrule
+\code{big} & hoy con re-batching & 0,0 & & $-13{,}4$ & & $-23{,}8$ \\
+ & vigente & 0,0 & & $-16{,}6$ & & $-31{,}8$ \\
+ & \code{demand\_greedy} & $-8{,}0$ & & $-32{,}0$ & & $-40{,}8$ \\
+ & \code{aisle\_fill} & $-7{,}4$ & & $-29{,}1$ & & $-38{,}4$ \\
+ & \code{bilevel merchant/aisle\_order} & $-5{,}7$ & & $-36{,}5$ & & $-53{,}0$ \\
+ & \code{merchant\_aisle\_fill} & $-6{,}0$ & & $-36{,}5$ & & $-53{,}1$ \\
+ & techo de \code{merchant\_aisle\_fill} & $-18{,}9$ & & $-59{,}8$ & & $-75{,}8$ \\
+\bottomrule
+\end{tabular}
+\caption{Final contra hoy con la regla base. En \code{big} se corrieron las ventanas 1, 4 y 16. La espera media con cada ventana está en la
+tabla~\ref{tab:espera}.}
+\label{tab:principal}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=8.6cm, height=7cm, xmode=log, log basis x=2, grid=major, grid style={gray!20}, xlabel={espera media (horas)}, ylabel={final contra hoy (\%)}, tick label style={font=\scriptsize}, label style={font=\small}, ymin=-68, ymax=4, xtick={0.25,0.5,1,2,4,8}, xticklabels={{0,25},{0,5},1,2,4,8},
+  legend pos=outer north east, legend style={font=\scriptsize, draw=none}, legend cell align=left]
+  \addplot[gris, dashed, mark=o, mark size=1.2pt] coordinates {(0.283,0) (0.817,-0.5) (1.883,-4.2) (4.017,-5.2) (8.267,-5.0)};
+  \addlegendentry{hoy con re-batching}
+  \addplot[gris, mark=*, mark size=1.2pt] coordinates {(0.283,0) (0.817,-1.7) (1.883,-11.0) (4.017,-15.1) (8.267,-18.0)};
+  \addlegendentry{vigente}
+  \addplot[datos, mark=*, mark size=1.2pt] coordinates {(0.283,-0.6) (0.817,-11.1) (1.883,-17.1) (4.017,-21.7) (8.267,-24.0)};
+  \addlegendentry{\code{demand\_greedy}}
+  \addplot[plan, mark=*, mark size=1.2pt] coordinates {(0.283,-1.0) (0.817,-10.5) (1.883,-16.8) (4.017,-19.9) (8.267,-22.6)};
+  \addlegendentry{\code{aisle\_fill}}
+  \addplot[modelo, mark=triangle*, mark size=1.4pt] coordinates {(0.283,-0.3) (0.817,-12.5) (1.883,-21.7) (4.017,-27.1) (8.267,-30.4)};
+  \addlegendentry{\code{swap\_search}}
+  \addplot[batch, dashed, mark=square*, mark size=1.2pt] coordinates {(0.283,-0.3) (0.817,-13.2) (1.883,-26.6) (4.017,-33.2) (8.267,-36.8)};
+  \addlegendentry{\code{bilevel merchant/aisle\_order}}
+  \addplot[sim, mark=*, mark size=1.4pt] coordinates {(0.283,-0.4) (0.817,-13.8) (1.883,-27.4) (4.017,-34.1) (8.267,-37.1)};
+  \addlegendentry{\code{merchant\_aisle\_fill}}
+  \addplot[sim, dotted, thick, mark=x, mark size=2pt] coordinates {(0.283,-3.0) (0.817,-32.9) (1.883,-46.3) (4.017,-57.9) (8.267,-61.9)};
+  \addlegendentry{techo de \code{merchant\_aisle\_fill}}
+\end{axis}
+\end{tikzpicture}
+\caption{\code{medium}: final contra hoy y espera media de las órdenes. Cada punto es una
+ventana: 1, 2, 4, 8 y 16 batches. El techo del plan por merchant queda entre 19 y 25 puntos
+debajo de lo que se logra partiendo del depósito real.}
+\label{fig:principal}
+\end{figure}
+
+En \code{small} ningún plan gana más de 0,3\%, aunque el techo del plan por merchant con
+ventana 4 es 28,3\%.
+
+\section{La regla de reposición}
+
+La regla base es la mejor o empata con todos los planes, y es la que menos mueve
+(tabla~\ref{tab:regla}). Mover también cuando al SKU le quedan unidades (\code{always}) o
+apuntar a la ubicación exacta del plan (\code{location}) empata con el plan por merchant y
+pierde 3 a 6 puntos con los planes por demanda, con más mudanzas; las dos cosas juntas casi
+borran la ganancia y mudan el doble que hoy. En \code{big}, \code{always/aisle} gana 0,8 puntos
+más que la base con 58\% más mudanzas.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+regla & \code{demand\_greedy} & \code{aisle\_fill} & \code{merchant\_aisle\_fill} & mudanzas \\
+\midrule
+\code{stockout/aisle} (base) & $-17{,}1$ & $-16{,}8$ & $-27{,}4$ & 3.362 \\
+\code{stockout/location} & $-11{,}1$ & $-12{,}5$ & $-27{,}1$ & 12.118 \\
+\code{always/aisle} & $-14{,}1$ & $-12{,}4$ & $-27{,}1$ & 5.172 \\
+\code{always/location} & $-2{,}2$ & $-2{,}5$ & $-3{,}5$ & 26.424 \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{sin plan}} \\
+\code{objective\_greedy}, $\lambda = 0$ & \multicolumn{3}{c}{$-20{,}2$} & 8.654 \\
+\code{objective\_greedy}, $\lambda = 0{,}5$ & \multicolumn{3}{c}{$-15{,}6$} & 5.545 \\
+\code{objective\_greedy}, $\lambda = 1$ & \multicolumn{3}{c}{$-11{,}7$} & 1.809 \\
+vigente con la regla & \multicolumn{3}{c}{$-11{,}0$} & 0 \\
+\code{random} (hoy con re-batching) & \multicolumn{3}{c}{$-4{,}2$} & 12.570 \\
+\bottomrule
+\end{tabular}
+\caption{Final contra hoy en \code{medium} con ventana 4. Las mudanzas
+son las de \code{merchant\_aisle\_fill}, o las de la política sin plan.}
+\label{tab:regla}
+\end{table}
+
+Sin plan, la mejor reposición es \code{objective\_greedy} con la afinidad: con $\lambda = 0$,
+que decide solo por afinidad, gana 20,2\% en \code{medium}, y con $\lambda = 1$, solo por
+demanda, 11,7\%. La afinidad de los datos, que es el merchant, sirve aun sin plan, pero queda
+por debajo del plan por merchant con la regla.
+
+\section{Los parámetros del QAP}
+
+Ninguna variante de \code{swap\_search} supera a \code{merchant\_aisle\_fill}
+(tabla~\ref{tab:qap}). La mejor arranca del plan por merchant, y los intercambios que bajan el
+objetivo del QAP sacan algunas órdenes de su pasillo (1,08 pasillos por orden contra 1,03).
+Arrancando de \code{demand\_greedy}, lo que más suma es lo que acerca el plan al de merchant:
+20 vecinos por SKU o \code{cosine} dejan las órdenes en 1,21 a 1,27 pasillos, contra 1,53 de la
+base. $\lambda$ entre 0 y 0,75 da casi lo mismo. Empeoran la vecindad \code{neighbor}, la
+co-ocurrencia por batch y no normalizar. \code{medium-alpha-1.3} da un orden parecido, y en
+\code{small} ninguna variante gana más de 0,5\% partiendo del depósito real.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+variante (\code{medium}) & $W = 4$ & $W = 16$ & minutos \\
+\midrule
+base ($\lambda = 0{,}5$, \code{bay}, \code{jaccard}, \code{top\_k:10}, $D$ = \code{aisle}) & $-21{,}7$ & $-30{,}4$ & 280 \\
+plan inicial \code{merchant\_aisle\_fill} & $-25{,}8$ & $-36{,}6$ & 17 \\
+plan inicial \code{aisle\_fill} & $-21{,}5$ & $-29{,}6$ & 44 \\
+filtro \code{top\_k:20} & $-24{,}2$ & $-34{,}5$ & 103 \\
+filtro \code{top\_k:5} & $-19{,}7$ & $-27{,}8$ & 10 \\
+filtro \code{mutual\_top\_k:10} & $-21{,}1$ & $-30{,}4$ & 8 \\
+métrica \code{cosine} & $-24{,}0$ & $-34{,}2$ & 51 \\
+métrica \code{cooccurrence} & $-19{,}7$ & $-25{,}7$ & 223 \\
+$\lambda = 0$ & $-22{,}2$ & $-31{,}6$ & 266 \\
+$\lambda = 0{,}25$ & $-22{,}3$ & $-31{,}0$ & 34 \\
+$\lambda = 0{,}75$ & $-22{,}1$ & $-30{,}0$ & 41 \\
+co-ocurrencia por batch & $-17{,}1$ & $-23{,}6$ & 69 \\
+sin normalizar & $-17{,}8$ & $-25{,}1$ & 35 \\
+vecindad \code{neighbor} & $-17{,}6$ & $-23{,}7$ & 1 \\
+$D$ = \code{walking} & $-19{,}7$ & $-28{,}7$ & 24 \\
+\midrule
+referencia: \code{merchant\_aisle\_fill} solo & $-27{,}4$ & $-37{,}1$ & menos de 1 \\
+\bottomrule
+\end{tabular}
+\caption{Variantes de \code{swap\_search} en \code{medium}: final contra hoy con la regla base,
+y tiempo de cálculo del plan (con otro proceso en paralelo).}
+\label{tab:qap}
+\end{table}
+
+\section{Frecuencia, batching y recorrido}
+
+\begin{itemize}
+  \item \textbf{Frecuencia.} Las cuatro definiciones de $f$ quedan a menos de un punto entre sí
+        en todos los depósitos y ventanas; se queda \code{pick\_lines}.
+  \item \textbf{Batching.} Intercambiar órdenes después de construir los batches suma entre 0,5
+        y 2,3 puntos en \code{medium} y \code{medium-alpha-1.3}; se quedan las 20 pasadas.
+  \item \textbf{Recorrido.} Con \code{snake}, contra su propio hoy, los planes por demanda ganan
+        10\% con FIFO en \code{medium}, porque ponen los SKUs más pedidos al frente de cada
+        pasillo. Con ventana 4 el plan por merchant sigue primero, con menos ventaja: $-23{,}2\%$
+        contra $-19{,}0\%$ a $-19{,}8\%$.
+\end{itemize}
+
+\section{Un techo para la asignación a pasillos}
+
+El notebook \code{old\_base/03\_techo\_pasillos}, del régimen anterior, plantea el problema de
+asignar SKUs a pasillos para minimizar los pasillos que visitan los batches, con variables
+$x_{ia}$ (el SKU $i$ va al pasillo $a$) y $y_{ba}$ (el batch $b$ entra al pasillo $a$):
+\[
+\min \sum_{b, a} w_a\, y_{ba} \quad \text{s.a.} \quad \sum_a x_{ia} = 1,\quad
+\sum_i x_{ia} \le \kappa_a,\quad |I_b|\, y_{ba} \ge \sum_{i \in I_b} x_{ia},\quad
+x, y \in \{0,1\},
+\]
+con $w_a$ el costo de entrar al pasillo $a$, $\kappa_a$ su capacidad e $I_b$ los SKUs del
+batch $b$. Resuelto sobre los batches de test (un \emph{oráculo}, que conoce el futuro), en
+\code{big} baja a 7,57 pasillos por batch y $-36{,}1\%$ contra el greedy, con batches FIFO y el
+plan aplicado de una vez. Resuelto sobre train, $-8{,}6\%$. La cota del solver queda lejos
+(brecha de 90\% o más), así que esos números no son el óptimo. El re-batching resultó una vía
+más directa para bajar los pasillos por batch.
+
+\section{Lo que no se mide}
+
+\begin{itemize}
+  \item La congestión de pickers en un mismo pasillo: el simulador no la modela.
+  \item La espera con horas de llegada reales, que los datos no traen. La ventana se cuenta en
+        batches: en \code{small}, ventana 4 son 14 horas de espera.
+  \item Merchants con demandas muy distintas: en los datos piden parecido.
+  \item Las interacciones entre los factores que se barrieron de a uno.
+\end{itemize}
+
+% =============================================================================
+\appendix
+
+\chapter{Fragmentos de código}
+\label{ap:codigo}
+
+Los fragmentos son las líneas centrales de cada pieza, recortadas donde hay validaciones o
+registro de resultados (\code{...}). La versión completa está en \code{src/}.
+
+\section{El objetivo y el cambio por mudanza}
+\code{slotting/objective.py}
+\begin{lstlisting}
+def slotting_cost(assignment, instance, *, lam):
+    location_idx = _assignment_location_indices(assignment, instance)
+    linear = float(np.dot(instance.demand, instance.location_cost[location_idx]))
+    quadratic = _quadratic_cost_from_location_indices(instance, location_idx)
+    return lam * linear + (1.0 - lam) * quadratic
+
+def move_cost_delta(assignment, instance, sku, location_id, *, lam):
+    ...
+    linear_delta = instance.demand[sku_idx] * (
+        instance.location_cost[new_idx] - instance.location_cost[old_idx])
+    quadratic_delta = 0.0
+    for neighbor_idx, weight in row.items():          # vecinos de afinidad de s
+        neighbor_loc = ...                            # ubicacion actual del vecino
+        quadratic_delta += weight * (
+            instance.distance_between_location_indices(new_idx, neighbor_loc)
+            - instance.distance_between_location_indices(old_idx, neighbor_loc))
+    return lam * linear_delta + (1.0 - lam) * 2.0 * quadratic_delta
+\end{lstlisting}
+
+\section{El orden de llenado por pasillos}
+\code{methods/aisle\_fill.py}
+\begin{lstlisting}
+def aisle_fill_location_order(instance, coordinates):
+    aisle_of_bay = coordinates.set_index("bay_id")["aisle"].reindex(instance.bay_ids).to_numpy(dtype=float)
+    location_aisle = aisle_of_bay[instance.location_bay]
+    front_cost = pd.Series(instance.location_cost).groupby(location_aisle).min()   # rango del pasillo
+    aisle_rank = front_cost.rank(method="first").reindex(location_aisle).to_numpy()
+    return np.lexsort((np.arange(instance.n_locations), instance.location_cost, aisle_rank))
+
+class MerchantAisleFillSlotting:
+    def solve(self, instance):
+        merchant = pd.Series(instance.merchant_ids)
+        merchant_demand = pd.Series(instance.demand).groupby(merchant).sum()
+        merchant_rank = merchant.map(merchant_demand.rank(ascending=False, method="first")).to_numpy()
+        sku_order = np.lexsort((np.arange(instance.n_skus), -instance.demand, merchant_rank))
+        return _assign_in_order(instance, sku_order, aisle_fill_location_order(instance, self._coordinates))
+\end{lstlisting}
+
+\section{El recorrido en S}
+\code{evaluation/routing.py}
+\begin{lstlisting}
+def distance_of_aisles(self, aisles):
+    visited = np.unique(np.asarray(aisles, dtype=np.int64))
+    m = len(visited)
+    if m == 0:
+        return 0.0
+    lateral = float(np.abs(np.diff(self.aisle_x[visited])).sum())
+    back_to_front = self.aisle_length if m % 2 == 1 else 0.0
+    return (self._to_front(visited[0]) + m * self.aisle_length + lateral
+            + back_to_front + self._to_front(visited[-1]))
+
+def mask_costs(self):
+    """R_S de todos los conjuntos de pasillos, indexado por mascara de bits."""
+    n = self.n_aisles
+    masks = np.arange(1 << n, dtype=np.int64)
+    bits = ((masks[:, None] >> np.arange(n)) & 1).astype(bool)
+    m = bits.sum(axis=1)
+    first = np.where(m > 0, bits.argmax(axis=1), 0)
+    last = np.where(m > 0, n - 1 - bits[:, ::-1].argmax(axis=1), 0)
+    to_front = np.abs(self.aisle_x - self.dock_xy[0]) + (self.front_y - self.dock_xy[1])
+    lateral = self.aisle_x[last] - self.aisle_x[first]
+    cost = to_front[first] + m * self.aisle_length + lateral \
+           + np.where(m % 2 == 1, self.aisle_length, 0.0) + to_front[last]
+    cost[0] = 0.0
+    return cost
+\end{lstlisting}
+
+\section{El pasillo de cada SKU según un plan}
+\begin{lstlisting}
+loc = np.array([inst.location_index(plan.location_of(k)) for k in inst.sku_ids])
+sku_aisle = pd.Series(routing.bay_aisle[inst.location_bay[loc]], index=inst.sku_ids)
+\end{lstlisting}
+
+\section{El re-batching}
+\code{batching/aisle\_cover.py}. Construcción:
+\begin{lstlisting}
+def _construct(self, masks):
+    n, q = len(masks), self.batch_size
+    batch = np.full(n, -1, dtype=np.int64)
+    own_cost = self.cost[masks]                       # R_S de cada orden sola
+    for k in range(math.ceil(n / q)):
+        free = np.flatnonzero(batch < 0)
+        seed = free[np.argmax(own_cost[free])]        # semilla: la orden mas cara
+        batch[seed], union, size = k, masks[seed], 1
+        while size < q:
+            free = np.flatnonzero(batch < 0)
+            if free.size == 0:
+                break
+            increase = self.cost[union | masks[free]] - self.cost[union]   # Delta(o | M)
+            pick = free[np.argmin(increase)]
+            batch[pick], union, size = k, union | masks[pick], size + 1
+    return batch
+\end{lstlisting}
+Intercambios: para cada orden $o$ se evalúa $\delta(o, o')$ contra todas las órdenes a la vez.
+\begin{lstlisting}
+for o in range(n):
+    k1 = batch[o]
+    # o va al batch de o' y o' al de o, para todas las o' del pool
+    delta = (self.cost[without[o] | masks] + self.cost[without | masks[o]]
+             - self.cost[union[k1]] - self.cost[union[batch]])
+    delta[batch == k1] = np.inf                       # solo ordenes de otros batches
+    j = int(np.argmin(delta))
+    if delta[j] >= -1e-9:
+        continue
+    ...                                               # aplicar el intercambio y actualizar
+                                                      # conteos c_ka, uniones y "without"
+\end{lstlisting}
+\code{without[o]} es la máscara de $M_k^{-o}$, calculada con los conteos por pasillo:
+\begin{lstlisting}
+without = (((count[batch] - bits) > 0) * pow2).sum(axis=1)
+\end{lstlisting}
+
+\section{La espera de las órdenes}
+\code{batching/waits.py}
+\begin{lstlisting}
+def order_waits(picking, window, batch_size=25):
+    order = orders_by_arrival(picking)
+    position = pd.Series(np.arange(len(order)), index=order)                    # r
+    batch = picking.drop_duplicates("order_id").set_index("order_id")["batch_id"].reindex(order)
+    pool = position // (window * batch_size)                                      # p
+    complete = (position.groupby(pool).transform("max") + 1) / batch_size       # se completa el pool
+    oldest = position.groupby(batch).min()
+    turn = oldest.groupby(pool.groupby(batch).first()).rank(method="first") - 1  # t
+    return complete + batch.map(turn) - position / batch_size
+\end{lstlisting}
+
+\section{El ciclo del simulador}
+\code{simulation/simulator.py}
+\begin{lstlisting}
+for batch in batches:
+    visited = set()
+    for line_ts, sku_idx, qty in zip(batch.line_timestamps, batch.sku_indices, batch.quantities):
+        while replen_ptr < len(replens) and replens[replen_ptr].timestamp <= line_ts:
+            apply_replen(replens[replen_ptr])          # la politica elige el destino
+            replen_ptr += 1
+        stops, missing = pick_units(state, int(sku_idx), int(qty))
+        visited.update(stops)
+        ...                                            # faltantes y "fuera del plan"
+    bays = np.unique(instance.location_bay[np.fromiter(visited, dtype=np.int64)])
+    distance = self._routing.distance(bays)            # s_shape o snake
+    ...
+\end{lstlisting}
+
+\section{Una tarea del ejecutor}
+\code{experiments/runner.py}
+\begin{lstlisting}
+def run_task(task, out_dir):
+    target = out_dir / "tareas" / f"{task.key}.parquet"
+    if target.exists():
+        return {"key": task.key, "status": "cached"}   # ya estaba: se saltea
+    ctx = context(task.instance)                       # instancia y estado al corte (en cache)
+    plan = build_plan(ctx, task.slotting)              # lo caro: una sola vez
+    aisle = sku_aisles(ctx, plan)
+    rows, batchings = [], {}
+    for ev in task.evals:                              # ventana, recorrido, reposicion
+        row, log = evaluate(ctx, plan, aisle, ev, batchings)
+        rows.append({...})
+    ...                                                # escribe a un .tmp y lo renombra
+\end{lstlisting}
+
+% =============================================================================
+\chapter{Glosario}
+
+\begin{description}[style=nextline, leftmargin=2.6cm, font=\normalfont\bfseries]
+  \item[Batch] viaje de picking: 25 órdenes que un picker recoge en una pasada.
+  \item[Bay] columna de estantería a un lado de un pasillo; la unidad de distancia.
+  \item[Dock] mesa de empaque; inicio y fin de cada recorrido.
+  \item[FIFO] armar los batches con órdenes consecutivas, en orden de llegada.
+  \item[Franja] tiempo entre un batch y el siguiente.
+  \item[Instancia] los datos del problema de slotting: $f$, $c$, $A$ y $D$ con sus índices.
+  \item[Merchant] vendedor dueño de un SKU; cada orden es de un solo merchant.
+  \item[Mudanza] reposición que cambia la ubicación del SKU.
+  \item[Oráculo] un problema resuelto con datos de test; da una cota, no un método.
+  \item[Orden] pedido de un cliente: de 2 a 5 SKUs de un mismo merchant.
+  \item[Plan] la ubicación de cada SKU que propone un método (\code{Assignment}).
+  \item[Pool] grupo de $W \cdot 25$ órdenes consecutivas que el re-batching reparte en $W$
+        batches.
+  \item[QAP] \emph{Quadratic Assignment Problem}; NP-difícil.
+  \item[Re-batching] armar los batches eligiendo qué órdenes van juntas.
+  \item[Recorrido en S] el picker recorre entero cada pasillo con picks, alternando el sentido.
+  \item[SKU] producto distinto.
+  \item[Slotting] asignación de una ubicación a cada SKU.
+  \item[Sustituto] función que guía la búsqueda de un método, distinta de la medida con que se
+        juzga el resultado.
+  \item[Ubicación] hueco físico: bay, estante y bin.
+  \item[Ventana] cantidad $W$ de batches FIFO que el re-batching re-arma juntos.
+\end{description}
+
+% =============================================================================
+\chapter{Referencias}
+
+\begin{itemize}[leftmargin=*, label={}]
+  \item Bartholdi, J. J. y Hackman, S. T. (2014). \emph{Warehouse \& Distribution Science}.
+        Georgia Institute of Technology.
+  \item Deng, Y., Jiang, W., Wang, Y. y Xu, B. (2025). Optimizing order batching and picking
+        problems considering the correlation between products under the scattered storage
+        mode. \emph{Sustainability}, 17, 1646.
+  \item Kofler, M., Beham, A., Wagner, S. y Affenzeller, M. (2014). Affinity based slotting in
+        warehouses with dynamic order patterns. En \emph{Advanced Methods and Applications in
+        Computational Intelligence}, Springer.
+  \item Koopmans, T. C. y Beckmann, M. (1957). Assignment problems and the location of
+        economic activities. \emph{Econometrica}, 25(1), 53--76.
+  \item Li, J., Moghaddam, M. y Nof, S. Y. (2015). Dynamic storage assignment with product
+        affinity and ABC classification: a case study. \emph{International Journal of Advanced
+        Manufacturing Technology}.
+  \item Loiola, E. M., de Abreu, N. M. M., Boaventura-Netto, P. O., Hahn, P. y Querido, T.
+        (2007). A survey for the quadratic assignment problem. \emph{European Journal of
+        Operational Research}, 176(2), 657--690.
+  \item Schleyer, M. y Gue, K. (2012). Throughput time distribution analysis for a one-block
+        warehouse. \emph{Transportation Research Part E}, 48, 652--666.
+  \item Valle, C. A., Beasley, J. E. y da Cunha, A. S. (2017). Optimally solving the joint
+        order batching and picker routing problem. \emph{European Journal of Operational
+        Research}.
+  \item Yang, P., Zhao, Z. y Guo, H. (2020). Order batch picking optimization under different
+        storage scenarios for e-commerce warehouses. \emph{Transportation Research Part E},
+        136, 101897.
+\end{itemize}
+
+Las notas de lectura de estos trabajos están en \code{docs/lecturas-2026-10.md}.
+
+\end{document}
