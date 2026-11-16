@@ -1,0 +1,996 @@
+\chapter{El depósito y sus datos}
+\label{chapter:deposito}
+
+A lo largo del capítulo anterior se mencionaron muchos aspectos a tener en cuenta en un depósito, por ejemplo la forma del edificio y las distancias que se caminan en él, cómo se agrupan y se recolectan los pedidos, cuánto se pide cada producto, con qué reglas se decide dónde guardarlo y cómo se mide qué productos se piden juntos.
+Todos ellos se vieron en términos generales, tal como los trata la literatura, y este capítulo los retoma para ver cómo se manifiestan en el depósito que estudia este trabajo.
+Para eso se apoya en sus datos, que permiten pasar de esa descripción general a cifras concretas del propio depósito.
+Se trata de conocer ese depósito antes de intentar mejorarlo, porque cuánto puede ganar una asignación de ubicaciones depende de qué productos concentran la demanda, de cómo se juntan los pedidos en cada recorrido y de cuánto cambia con el tiempo el lugar de cada producto, y sin esa información es difícil decidir qué conviene optimizar y cómo medir si una mejora es real.
+
+Los datos con los que se trabaja los proporcionó ShipHero, una empresa que desarrolla un \gls{WMS} para negocios de comercio electrónico y operadores logísticos \citep{shiphero2026}, y se obtuvieron a partir de simulaciones que reproducen su forma de operar.
+Aunque son sintéticos, cuentan con muchos de los rasgos que podemos encontrar en los depósitos reales, por lo que permiten estudiar el problema en condiciones parecidas a las de una operación real.
+
+Con esas simulaciones se generaron tres depósitos de distinto tamaño, y el capítulo los recorre en el mismo orden en que el anterior presentó los temas, empezando por el origen de los datos y por el edificio, con sus pasillos, sus ubicaciones y las distancias entre ellas.
+Sigue después por el trabajo de todos los días, desde lo que pide cada cliente hasta lo que camina el operario para juntarlo, y pasa luego a los productos, cuánto se pide cada uno, dónde está guardado y cómo cambia ese lugar con el tiempo, y cuáles se piden juntos, para cerrar con una síntesis que reúne lo encontrado y lo conecta con el capítulo siguiente.
+% Fuentes de los numeros: 3.1 y 3.2 salen de escritos/05_deposito/datos/ (resumen.json, tamanos.csv), que vienen
+% de notebooks/data2/06_datos_medium.ipynb (no tocar ni la carpeta ni el notebook). De 3.3 a 3.6 las cifras se
+% recalcularon sobre los seis meses completos y los tres depositos en el scratchpad (scripts v34/*.py), sin
+% tocar codigo ni notebooks, y cada parrafo tiene al lado un comentario con sus cifras. Solo v2.
+
+\section{Origen y descripción de los datos}
+\label{sec:origen-datos}
+
+
+Los depósitos simulados responden a uno de los tipos de operación para los que ShipHero desarrolla su sistema, el que la Tabla~\ref{tab:tipos-deposito} llama operador logístico, un mismo edificio que guarda y despacha la mercadería de varios negocios a la vez, así que en él pueden estar, por ejemplo, las remeras de una marca de ropa, las tazas de un negocio de artículos de cocina y los libros de una editorial.
+Esos negocios son los clientes del depósito, a los que también se llama \emph{merchants} o \emph{vendors}, y cada SKU pertenece a uno solo de ellos.
+Una consecuencia directa de esta organización es que cada pedido trae productos de un único merchant, porque el cliente final compra en la tienda de uno de ellos y el depósito despacha el pedido en su nombre, de modo que si ese cliente compra en dos tiendas distintas recibe dos paquetes separados, sin tener por qué enterarse de que los dos salieron del mismo depósito.
+Lo que en cambio sí comparten todos los vendedores es el espacio, ya que el depósito decide dónde guardar cada SKU sin importar de quién sea, y por eso en un mismo pasillo, e incluso en una misma estantería, pueden convivir productos de muchos clientes distintos.
+
+Los tres depósitos que se analizaron se diferencian sobre todo en el tamaño, es decir, en la cantidad de pasillos, de productos, de vendors, y cuántos pedidos despachan por día, por lo que de aquí en adelante se los llama $P$, $M$ y $G$, por pequeño, mediano y grande.
+Esa diferencia de escala importa, porque con más pasillos, más productos y más pedidos por día pueden cambiar tanto los patrones que aparecen en los datos como la conveniencia de cada forma de asignar ubicaciones propuesta, y así como hay estrategias que en un depósito chico cuestan más de lo que ahorran y empiezan a valer la pena a medida que el depósito crece, hay otras que funcionan bien en uno chico pero se vuelven impracticables en uno grande, por lo que a lo largo del capítulo se analizan los tres, cada uno con sus seis meses de operación, de enero a junio de 2026.
+
+De cada uno de esos depósitos se conoce, en primer lugar, cómo está organizado su espacio, es decir, dónde está cada estantería, en qué ubicaciones se divide y cuánto hay que caminar entre dos ubicaciones cualesquiera o entre cada una de ellas y el \emph{dock}, el lugar donde empieza y termina cada recorrido, información que la Sección~\ref{sec:geometria-deposito} describe en detalle.
+A esa descripción del espacio se suma una foto del inventario al comenzar el período, que dice qué SKU hay en cada ubicación, a qué merchant pertenece y cuántas unidades tiene, y que es por lo tanto la asignación vigente con la que arranca la operación.
+
+Por último, los datos registran el día a día del depósito durante esos seis meses, empezando por cada vez que un operario extrae unidades de un SKU para un pedido, lo que se conoce como una línea de picking, que queda anotada con la ubicación de donde salen las unidades, el momento, la cantidad y el pedido al que pertenecen.
+Como los pedidos no se recolectan de a uno, cada línea indica también la lista de recolección, o \emph{batch}, en la que se juntaron varios pedidos para buscarlos en una misma pasada, tal como se describió al hablar del batching en la Sección~\ref{sec:picking}, de modo que un pedido queda formado por varias líneas y un batch por varios pedidos.
+Ese mismo registro anota las reposiciones, que ocurren cuando el stock de una ubicación no alcanza para lo que se pide y hay que volver a llenarla, con el momento, el SKU, la cantidad y la ubicación que recibe las unidades, que a veces es la misma en la que el SKU ya estaba y otras veces es una distinta, en cuyo caso el SKU se muda y la asignación con la que arrancó el período se va modificando.
+
+Tan importante como lo que los datos registran es lo que dejan afuera, porque eso define qué partes del Capítulo~\ref{chapter:antecedentes} se pueden trasladar a estos depósitos y cuáles no.
+De los productos, por ejemplo, no se conoce nada más allá de su merchant, ni su tamaño, ni su peso, ni su categoría, de modo que no se puede calcular el COI de la Ecuación~\ref{eq:coi}, que necesita el espacio que ocupa cada SKU, ni imponer restricciones como las de la Sección~\ref{sec:slotting}, en las que lo pesado va abajo o cada ubicación admite solo ciertos tamaños, así que, a los fines de este trabajo, cualquier SKU puede ir en cualquier ubicación libre.
+La falta de atributos también impide estimar la afinidad con modelos de aprendizaje automático que relacionan los productos según sus características, una posibilidad que mencionó la Sección~\ref{sec:afinidad}, de modo que la afinidad solo puede medirse con el historial de pedidos y con el merchant al que pertenece cada SKU.
+Algo parecido pasa con el tiempo, ya que de cada pedido se sabe cuándo se recolectaron sus líneas pero no cuándo llegó, por lo que no se puede medir cuánto esperó antes de entrar en un batch, y de cada reposición se sabe a qué ubicación lleva las unidades pero no de dónde las trae, si de una zona de reserva o de la recepción, por lo que tampoco se puede medir cuánto caminan quienes reponen.
+
+\section{La geometría del depósito}
+\label{sec:geometria-deposito}
+
+Los tres depósitos comparten la forma básica que la Figura~\ref{fig:geometrias} presentó para un depósito en general, con pasillos paralelos y estanterías a ambos lados de cada uno, y se diferencian en cuántos pasillos tienen y en cuán largos son, como se ve en la Figura~\ref{fig:depositos}, que dibuja las tres plantas a la misma escala.
+A cada lado de un pasillo la estantería está dividida en tramos iguales, uno al lado del otro, que se llaman bays.
+Cada bay tiene varios estantes, uno encima del otro, y cada estante está dividido en compartimentos, como muestra la Figura~\ref{fig:bay}, de modo que cada compartimento es una ubicación, el lugar donde se guarda una SKU.
+Como los bays de dos pasillos vecinos quedan espalda con espalda, las estanterías interiores son dobles y solo las de los extremos tienen un único frente.
+Entre las estanterías, los pasillos se conectan por un corredor frontal, por uno del fondo y por pasillos transversales que cortan las estanterías, uno en $P$, dos en $M$ y tres en $G$, y que permiten pasar de un pasillo al siguiente sin llegar hasta una punta, como en la Figura~\ref{fig:geo-transversal}.
+Por último, en los tres depósitos el \emph{dock}, donde empieza y termina cada recorrido, está en la esquina del frente, del lado del primer pasillo.
+
+\begin{figure}[ht]
+    \centering
+    % Planta de un deposito a escala, en pulgadas, con la geometria de los datos: pasillos cada 192,
+    % bays a 72 del centro de su pasillo y uno cada 96 a lo largo del pasillo, transversales de 120,
+    % corredores a 108 del primer y del ultimo bay y el dock en (0, -200).
+    % #1 desplazamiento en x, #2 cantidad de pasillos, #3 tramos de bays entre transversales
+    % (primer/ultimo indice), #4 y del ultimo bay, #5 y de los transversales, #6 rotulo.
+    \newcommand{\planta}[6]{%
+        \begin{scope}[shift={(#1,0)}]
+            \fill[gray!10, rounded corners=3pt] (-110,-290) rectangle (#2*192+60, #4+168);
+            \begin{scope}[gray!60, line width=0.3pt, dash pattern=on 1.5pt off 1pt, line cap=round]
+                \foreach \a in {1,...,#2} { \draw ({96+192*(\a-1)},60) -- ({96+192*(\a-1)},#4+108); }
+                \foreach \yc in {60,#5,#4+108} { \draw (96,\yc) -- ({96+192*(#2-1)},\yc); }
+                \draw (0,-200) -- (0,60) -- (96,60);
+            \end{scope}
+            \foreach \c in {0,...,#2} {
+                \foreach \f/\l [count=\t from 0] in {#3} {
+                    \foreach \j in {\f,...,\l} {
+                        \pgfmathsetmacro{\yy}{168+96*\j+120*\t}
+                        \ifnum\c>0 \fill[azul!60] ({192*\c-45},\yy-41) rectangle ({192*\c-7},\yy+41); \fi
+                        \ifnum\c<#2 \fill[azul!60] ({192*\c+7},\yy-41) rectangle ({192*\c+45},\yy+41); \fi
+                    }
+                }
+            }
+            \fill[black!75] (0,-200) circle (32);
+            \node[anchor=north, align=center] at (#2*96,-330) {#6};
+        \end{scope}%
+    }
+    \begin{tikzpicture}[x=0.00185cm, y=0.00185cm]
+        \planta{0}{4}{0/4,5/9}{1152}{660}{$P$\\[-1pt]{\scriptsize\color{black!60} 4 pasillos}}
+        \planta{1150}{8}{0/5,6/10,11/15}{1848}{756,1356}{$M$\\[-1pt]{\scriptsize\color{black!60} 8 pasillos}}
+        \planta{3060}{16}{0/5,6/11,12/17,18/23}{2736}{756,1452,2148}{$G$\\[-1pt]{\scriptsize\color{black!60} 16 pasillos}}
+        % el bay A03-27 de M, centro en (408, 1656)
+        \fill[naranja] (1150+391,1615) rectangle (1150+429,1697);
+        \draw[black!80, line width=0.5pt] (1150+381,1605) rectangle (1150+435,1707);
+        % escala de 10 metros (393,7 pulgadas)
+        \draw[black!70, line width=0.6pt] (5698,-200) -- (6092,-200);
+        \draw[black!70, line width=0.6pt] (5698,-230) -- (5698,-170);
+        \draw[black!70, line width=0.6pt] (6092,-230) -- (6092,-170);
+        \node[font=\scriptsize, anchor=south] at (5895,-165) {10 m};
+        \node[font=\scriptsize, anchor=west] at (60,-200) {\emph{dock}};
+    \end{tikzpicture}
+    \caption{Plantas de los depósitos $P$, $M$ y $G$, dibujadas a la misma escala. Cada rectángulo azul es un bay, las líneas grises punteadas son los ejes por donde se camina y el punto negro es el \emph{dock}, donde empieza y termina cada recorrido. El bay naranja de $M$ es el que muestra la Figura~\ref{fig:bay}.}
+    \label{fig:depositos}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[x=0.7cm, y=0.7cm, font=\footnotesize]
+        \fill[azul!10] (0,0) rectangle (6,5);
+        \fill[naranja!60] (4,4) rectangle (5,5);
+        \foreach \b in {1,...,5} { \draw[azul!40, line width=0.4pt] (\b,0) -- (\b,5); }
+        \foreach \i in {1,...,4} { \draw[azul!70!black, line width=1pt] (0,\i) -- (6,\i); }
+        \draw[azul!70!black, line width=1pt] (0,0) rectangle (6,5);
+        \foreach \s [count=\i from 0] in {A,B,C,D,E} { \node at (-0.45,\i+0.5) {\s}; }
+        \foreach \b in {1,...,6} { \node at (\b-0.5,-0.4) {0\b}; }
+        \node[rotate=90] at (-1.2,2.5) {estantes};
+        \node at (3,-1.1) {compartimentos};
+        % el nombre de la ubicacion, con cada parte rotulada
+        \begin{scope}[every node/.style={font=\small, inner xsep=1pt}]
+            \node (p) at (1.1,6.3) {A03};
+            \node[right=0pt of p, inner xsep=7pt] (d1) {-};
+            \node[right=0pt of d1] (b) {27};
+            \node[right=0pt of b, inner xsep=7pt] (d2) {-};
+            \node[right=0pt of d2] (e) {E};
+            \node[right=0pt of e, inner xsep=7pt] (d3) {-};
+            \node[right=0pt of d3] (c) {05};
+        \end{scope}
+        \begin{scope}[every node/.style={font=\scriptsize, text=black!60}, black!35, line width=0.4pt]
+            \node[above=6pt of p] (lp) {pasillo}; \draw (lp.south) -- (p.north);
+            \node[above=17pt of b] (lb) {bay}; \draw (lb.south) -- (b.north);
+            \node[above=6pt of e] (le) {estante}; \draw (le.south) -- (e.north);
+            \node[above=17pt of c] (lc) {compartimento}; \draw (lc.south) -- (c.north);
+        \end{scope}
+        \draw[-{Stealth}, naranja!80!black, line width=0.6pt] (c.south) -- (4.5,5.08);
+    \end{tikzpicture}
+    \caption{El bay A03-27 de $M$ visto de frente, dividido en estantes y compartimentos. Cada casilla es una ubicación, y su nombre se arma con el pasillo, el bay, el estante y el compartimento.}
+    \label{fig:bay}
+\end{figure}
+
+Cada ubicación tiene un nombre que dice dónde está, como A03-27-E-05 en la Figura~\ref{fig:bay}, y que se lee de lo general a lo particular, primero el pasillo, después el bay, el estante y por último el compartimento.
+La letra inicial indica la zona del depósito, que en los tres casos es una sola, la A, así que en la práctica ese primer tramo identifica al pasillo.
+Dentro de cada bay, los estantes se nombran con letras desde la A, el más bajo, hacia arriba, y son cuatro en $P$, cinco en $M$ y seis en $G$, mientras que los compartimentos de cada estante se numeran del 01 al 06 en los tres depósitos.
+Los bays, por su parte, se numeran a lo largo de cada pasillo con los impares de un lado y los pares del otro, de modo que dos bays enfrentados tienen números consecutivos, como el 27 y el 28, y en los pasillos impares la numeración empieza en el frente mientras que en los pares empieza en el fondo, lo que hace que recorrer las ubicaciones en orden alfabético sea recorrer el depósito en forma de $S$, aunque se trata solo de una convención y cualquier otra forma de nombrarlas describiría el mismo depósito.
+
+Las distancias de los datos se miden entre bays, en pulgadas y por el camino más corto a lo largo de pasillos y corredores, así que todas las ubicaciones de un mismo bay quedan a la misma distancia de cualquier otro punto y dos bays enfrentados quedan a distancia cero.
+De esa distancia salen el costo de acceso $c_\ell$ de cada ubicación y la distancia $d_{\ell k}$ entre dos ubicaciones, las dos medidas geométricas que definen el problema de asignación cuadrática de la Ecuación~\ref{eq:qap}.
+
+La cantidad de ubicaciones de cada depósito sale de multiplicar las piezas de las Figuras~\ref{fig:depositos} y~\ref{fig:bay}, es decir,
+\begin{equation}
+    \text{ubicaciones} = 2 \times \text{pasillos} \times \text{bays} \times \text{estantes} \times \text{compartimentos},
+    \label{eq:ubicaciones}
+\end{equation}
+donde el 2 cuenta los dos lados de cada pasillo, los bays se cuentan a un lado de un pasillo, los estantes en cada bay y los compartimentos en cada estante.
+En $M$, por ejemplo, son $2 \times 8 \times 16 \times 5 \times 6 = 7.680$ ubicaciones, y la misma cuenta da los valores de $P$ y $G$ que reúne la Tabla~\ref{tab:tamanos-depositos}.
+No todas esas ubicaciones guardan un producto, por lo que conviene distinguir entre las ocupadas, que tienen asignada una SKU, y las libres, que están vacías y disponibles para recibir una, y como cada SKU ocupa una sola ubicación y cada ubicación guarda a lo sumo una, tal como piden las restricciones de la Ecuación~\ref{eq:qap}, la cantidad de ubicaciones ocupadas coincide con la de SKU.
+Al comenzar el período el 10\% de las ubicaciones está libre en los tres depósitos, lo que en $M$ deja 6.912 ocupadas y 768 libres, y como un producto que se muda pasa siempre a una ubicación libre y deja libre la que tenía, esas dos cantidades se mantienen durante los seis meses.
+
+De la misma manera, como los bays se suceden cada 96 pulgadas y cada pasillo transversal agrega 120, el largo de un pasillo, medido del primer al último bay, es
+\begin{equation}
+    \text{largo} = 96 \times (\text{bays} - 1) + 120 \times \text{transversales}
+    \label{eq:largo-pasillo}
+\end{equation}
+pulgadas, que en $M$ son $96 \times 15 + 120 \times 2 = 1.680$, unos 42,7 metros si se tiene en cuenta que una pulgada son 2,54 centímetros, y la ubicación más alejada del \emph{dock} es la del fondo del último pasillo, a la que se llega recorriendo 1.440 pulgadas a lo ancho y 2.048 a lo largo, en total 3.488 pulgadas, casi 89 metros.
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|l|r|r|r|}
+        \hline
+         & \textbf{$P$} & \textbf{$M$} & \textbf{$G$} \\
+        \hline
+        Pasillos & 4 & 8 & 16 \\
+        \hline
+        Bays por lado de cada pasillo & 10 & 16 & 24 \\
+        \hline
+        Estantes por bay & 4 & 5 & 6 \\
+        \hline
+        Compartimentos por estante & 6 & 6 & 6 \\
+        \hline
+        Ubicaciones & 1.920 & 7.680 & 27.648 \\
+        \hline
+        Ubicaciones ocupadas (SKU) & 1.728 & 6.912 & 24.883 \\
+        \hline
+        Ubicaciones libres & 192 & 768 & 2.765 \\
+        \hline
+        Pasillos transversales & 1 & 2 & 3 \\
+        \hline
+        Largo de un pasillo (m) & 25,0 & 42,7 & 65,2 \\
+        \hline
+        Distancia máxima al \emph{dock} (m) & 51,4 & 88,6 & 150,2 \\
+        \hline
+    \end{tabular}
+    \caption{Tamaño de los tres depósitos.}
+    \label{tab:tamanos-depositos}
+\end{table}
+
+La Tabla~\ref{tab:tamanos-depositos} resume esas cifras para los tres depósitos y muestra que el salto de uno a otro es grande, ya que de $P$ a $G$ la cantidad de pasillos se multiplica por cuatro y la de ubicaciones por más de catorce, de modo que $G$, con casi veinticinco mil SKU, alcanza la escala de decenas de miles de productos que la Sección~\ref{sec:sintesis} señaló como uno de los problemas abiertos.
+El espacio crece además en las dos direcciones, porque en $G$ hay más pasillos y cada uno es dos veces y media más largo que en $P$, así que la ubicación más alejada del \emph{dock} queda casi tres veces más lejos.
+
+\section{Órdenes, \emph{batches} y recorridos}
+\label{sec:ordenes-batches}
+
+El trabajo diario del depósito tiene dos partes que corren en paralelo, por un lado sacar la mercadería que piden los clientes y por el otro volver a llenar las ubicaciones que esas extracciones van vaciando, con reposiciones que a veces mudan una SKU a otra ubicación y que por eso van cambiando con el tiempo dónde está cada producto, un efecto que se estudia en la Sección~\ref{sec:asignacion-deposito}.
+La primera parte es la que se lleva la mayor parte del costo, como se vio en la Sección~\ref{sec:picking}, y puede describirse en tres niveles, el de las órdenes, que son lo que pide cada cliente final, el de los batches, en los que el depósito agrupa esas órdenes para recolectarlas juntas, y el de los recorridos, que son lo que efectivamente camina el operario para juntar cada batch.
+
+Para ver cómo se encadenan esos niveles alcanza con pensar en alguien que compra una remera, un buzo y una gorra en la tienda de la marca de ropa de la Sección~\ref{sec:origen-datos}, una compra que llega al depósito como una orden de tres líneas, con cada producto guardado en una ubicación que puede estar en cualquier pasillo.
+Esa orden se junta en un mismo batch con otras, como una de tazas y otra de libros, y el operario que sale del \emph{dock} con esa lista entra a cada pasillo en el que alguna de las órdenes tiene algo que buscar, así que aunque cada orden por separado necesite dos o tres pasillos, el batch puede terminar recorriendo buena parte del depósito.
+Cada nivel, entonces, aporta algo distinto al costo, ya que el tamaño de las órdenes dice cuántas ubicaciones pide cada cliente, la forma de armar los batches decide qué ubicaciones se visitan en una misma pasada y el recorrido convierte esas visitas en distancia caminada, y de ahí sale la pregunta que guía esta sección, cuánto del depósito termina recorriendo un batch, de qué depende y cómo cambia de un depósito a otro.
+
+La orden del ejemplo, con tres líneas, es una orden típica de estos datos, en los que cada orden pide entre dos y cinco SKU distintas, con una línea para cada una, y cada uno de esos cuatro tamaños aparece con la misma frecuencia, como muestra la Figura~\ref{fig:lineas-orden}, así que una orden tiene en promedio tres líneas y media.
+Esa forma, además, es la misma en los tres depósitos, que despachan 150, 1.125 y 2.500 órdenes por día, de modo que lo que distingue a $P$, $M$ y $G$ es cuántas órdenes reciben y sobre qué espacio se reparten, mientras que lo que pide cada cliente es igual en los tres.
+% Seis meses: cada orden pide de 2 a 5 SKU distintas, una linea por SKU, con 1 a 3 unidades por linea (un
+% tercio cada valor); ninguna orden repite una SKU y todas son de un solo merchant. Ordenes por dia fijas.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[width=0.85\textwidth, height=4.8cm, ybar, bar width=6pt, xlabel={Tamaño de la orden}, ylabel={\% de las órdenes}, xmin=0.4, xmax=5.6, ymin=0, ymax=40, xtick={1,...,5}, xticklabels={1 línea,2 líneas,3 líneas,4 líneas,5 líneas}, ytick={0,10,20,30,40}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, legend style={font=\scriptsize, draw=none, at={(0.5,1)}, anchor=north, legend columns=-1, /tikz/every even column/.append style={column sep=6pt}}, legend image code/.code={\draw[#1] (0cm,-0.08cm) rectangle (0.25cm,0.08cm);}, axis lines=left]
+            % Seis meses completos. P 24,6/25,7/24,9/24,9; M 25,2/24,9/25,0/24,9; G 25,0/25,1/24,9/25,0.
+            \addplot[fill=azul!25, draw=azul] coordinates {(1,0) (2,24.6) (3,25.7) (4,24.9) (5,24.9)};
+            \addplot[fill=azul!60, draw=azul] coordinates {(1,0) (2,25.2) (3,24.9) (4,25.0) (5,24.9)};
+            \addplot[fill=azul, draw=azul!70!black] coordinates {(1,0) (2,25.0) (3,25.1) (4,24.9) (5,25.0)};
+            \legend{$P$,$M$,$G$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Distribución de las órdenes según su cantidad de líneas en los tres depósitos. Cada tamaño, de dos a cinco líneas, reúne la cuarta parte de las órdenes, y no hay órdenes de una sola línea.}
+    \label{fig:lineas-orden}
+\end{figure}
+
+Comparada con el caso típico de la Figura~\ref{fig:perfil-lineas}, a esta distribución le faltan las órdenes de una sola línea, que allí eran la mayoría y que son las más fáciles de agrupar, porque cada extracción ya completa un pedido.
+Todas las órdenes caen, entonces, en la franja intermedia que la Sección~\ref{sec:picking} señaló como la más difícil, ya que una orden de tres o cuatro líneas recolectada sola obligaría al operario a hacer un viaje de ida y vuelta desde el \emph{dock} para traer apenas unos pocos productos, y al mismo tiempo juntarla con otras exige separar después qué producto va con qué orden, de modo que el depósito resuelve ese compromiso agrupándolas en batches.
+
+Cada batch se convierte en una lista de recolección, y con ella un operario sale del \emph{dock} a hacer el \emph{picking}, recorriendo el depósito de una ubicación a la siguiente hasta juntar todo lo que piden sus 25 órdenes.
+Como cada una de esas órdenes aporta entre dos y cinco líneas, el largo de la lista cambia de un batch a otro, aunque siempre ronda las 87 líneas, veinticinco veces el promedio de tres líneas y media, y nueve de cada diez listas quedan entre 78 y 97.
+Esa distribución, que muestra la Figura~\ref{fig:lineas-batch-lineas}, se repite casi idéntica en los tres depósitos, algo esperable si se piensa que depende solo de cómo son las órdenes y de cuántas entran en un batch, y ninguna de las dos cosas cambia con el tamaño del depósito.
+
+Las líneas, sin embargo, no se traducen una a una en paradas, porque cuando dos órdenes de la misma lista piden el mismo producto el operario saca las unidades de ambas en una sola visita.
+En $M$ y en $G$ esas coincidencias son raras y casi cada línea es una parada distinta, pero en $P$, con un catálogo cuatro veces más chico que el de $M$, los productos más pedidos son pocos y vuelven a aparecer en varias órdenes de la misma lista, así que un batch típico se resuelve con unas 64 paradas en lugar de 87, el corrimiento que se ve en la Figura~\ref{fig:lineas-batch-paradas}.
+
+% Seis meses completos, intervalos de 4 (44-48, 48-52, ...) marcados en su centro. Lineas por batch: media
+% 87,5 en los tres, p5-p95 78-96/97. Ubicaciones distintas por batch: mediana 64 (P), 83 (M), 86 (G). La
+% repeticion de SKU dentro del batch (27,7/4,7/2,2% de las lineas) coincide con la de sacar 87 lineas al azar
+% segun la demanda de cada SKU (27,9/4,8/2,2%). Calculo en scratchpad v34/dist_batch.py, hist.py, causa_p.py.
+\begin{figure}[ht]
+    \centering
+    \pgfplotsset{batchhist/.style={width=\linewidth, height=4.8cm, xmin=44, xmax=112, ymin=0, ymax=35, xtick={50,60,...,110}, ytick={0,10,20,30}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, ylabel={\% de los batches}, axis lines=left, legend style={font=\scriptsize, draw=none, at={(0.02,0.98)}, anchor=north west}, legend cell align=left}}
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[batchhist, xlabel={Líneas del batch}]
+                \addplot[azul!40, thick, mark=o, mark size=1.3pt] coordinates {(66,0.0) (70,0.1) (74,1.2) (78,6.1) (82,14.5) (86,27.9) (90,27.6) (94,16.1) (98,4.9) (102,1.7) (106,0.0)};
+                \addplot[azul!75, thick, mark=square, mark size=1.2pt] coordinates {(66,0.0) (70,0.2) (74,1.4) (78,6.4) (82,16.6) (86,25.7) (90,25.8) (94,16.4) (98,6.2) (102,1.1) (106,0.2) (110,0.0)};
+                \addplot[azul!70!black, thick, mark=triangle, mark size=1.5pt] coordinates {(66,0.0) (70,0.2) (74,1.5) (78,6.0) (82,16.0) (86,26.3) (90,26.2) (94,16.5) (98,5.8) (102,1.3) (106,0.2) (110,0.0)};
+                \legend{$P$,$M$,$G$}
+            \end{axis}
+        \end{tikzpicture}
+        \caption{Cuántas líneas tiene un batch}
+        \label{fig:lineas-batch-lineas}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[batchhist, xlabel={Ubicaciones distintas que visita el batch}, legend style={at={(0.98,0.98)}, anchor=north east}]
+                \addplot[azul!40, thick, mark=o, mark size=1.3pt] coordinates {(46,0.1) (50,0.3) (54,3.8) (58,12.2) (62,26.4) (66,30.8) (70,19.6) (74,5.6) (78,1.2) (82,0.0)};
+                \addplot[azul!75, thick, mark=square, mark size=1.2pt] coordinates {(62,0.0) (66,0.2) (70,1.4) (74,6.2) (78,16.2) (82,26.1) (86,25.5) (90,16.4) (94,6.7) (98,1.1) (102,0.2) (106,0.0)};
+                \addplot[azul!70!black, thick, mark=triangle, mark size=1.5pt] coordinates {(66,0.0) (70,0.6) (74,3.0) (78,10.0) (82,21.7) (86,27.6) (90,22.1) (94,11.3) (98,3.1) (102,0.6) (106,0.0)};
+                \legend{$P$,$M$,$G$}
+            \end{axis}
+        \end{tikzpicture}
+        \caption{Cuántas paradas hace el operario}
+        \label{fig:lineas-batch-paradas}
+    \end{subfigure}
+    \caption{Distribución de los batches según su cantidad de líneas y de ubicaciones distintas en los tres depósitos. Cada punto reúne los batches de un intervalo de cuatro valores.}
+    \label{fig:lineas-batch}
+\end{figure}
+
+Con la lista en la mano, lo que decide cuánto del depósito recorre el operario es por cuántos pasillos tiene que pasar, y ahí una orden y un batch quedan en extremos opuestos, porque una orden sola toca en promedio entre dos y tres pasillos, mientras que un batch, con sus 60 a 90 paradas repartidas por todo el depósito, entra a todos los pasillos de $P$ y de $M$, y en $G$ deja alguno afuera solo en uno de cada quince casos.
+% Seis meses completos (scratchpad v34/pasillos.py). Pasillos por orden: 2,46 de 4 (P), 2,93 de 8 (M), 3,20 de
+% 16 (G). Batches que entran a todos: 100% (P), 99,96% (M, 3 de 8.145 con 7), 93,26% (G, minimo 14). Todo
+% coincide con cada parada en un pasillo al azar, a[1-(1-1/a)^k] (Schleyer y Gue 2012); eso va al capitulo
+% de metodos, no aca.
+
+El recorrido, por último, sigue la política en $S$ de la Sección~\ref{sec:picking}, como muestra el orden de las extracciones, que avanzan pasillo por pasillo, hacia el fondo en uno y hacia el frente en el siguiente, y como en esa política el operario recorre entero cada pasillo al que entra, un batch que pasa por todos termina caminando el depósito completo.
+Hasta acá las listas se miraron enteras, por cuántas líneas y paradas tienen y por cuánto del depósito recorren, y queda por ver qué productos las forman y con qué frecuencia aparece cada uno, sabiendo ya, por las repeticiones de $P$, que unos pocos productos se piden mucho más que el resto, un desequilibrio que describe la Sección~\ref{sec:perfil-deposito}.
+% Sentido del recorrido en M (scratchpad v34/sentido.py): en el 99% de los tramos los pasillos impares se
+% recorren hacia el fondo y los pares hacia el frente. Las consecuencias para los metodos (posicion dentro del
+% pasillo irrelevante bajo S, juntar paradas en menos pasillos) van a resultados, no aca.
+
+\section{El perfil de actividad}
+\label{sec:perfil-deposito}
+
+Ese desequilibrio se ve completo al ordenar las SKU de la más pedida a la menos pedida y acumular sus líneas, la misma curva que la Figura~\ref{fig:perfil-pareto} mostraba en genérico, y en los tres depósitos toma la forma típica, una subida muy empinada al principio seguida de una cola larga y casi plana, con la quinta parte más pedida del catálogo reuniendo entre el 76 y el 83\% de las líneas, muy cerca de la regla del 80-20, como se ve en la Figura~\ref{fig:pareto-depositos}.
+Medida en proporción, la concentración es parecida en los tres y no sigue al tamaño, ya que la curva más empinada es la de $P$, la sigue la de $G$ y la más suave es la de $M$, pero en números absolutos la diferencia es enorme, porque en $P$ bastan 36 SKU para juntar la mitad de todas las líneas, contra 319 en $M$ y 756 en $G$, y son esos pocos productos de $P$ los que reaparecen una y otra vez dentro de un mismo batch.
+Los datos traen, además, una variante de $M$ con el mismo depósito y las mismas reglas, salvo que la demanda está más concentrada, de modo que la mitad de las líneas la juntan 228 SKU en lugar de 319.
+
+% Seis meses completos, lineas por SKU (scratchpad v34/perfil.py). Quinta parte mas pedida: P 82,9%, M 76,3%,
+% G 80,1%, variante 81,8%. Mitad de las lineas: 36 SKU (P), 319 (M), 756 (G), 228 (variante). Clases ABC
+% 80/15/5 (no se usan en el texto): A 275/1.734/4.958, B 725/2.926/10.463, C 728/2.252/9.459.
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[width=0.7\textwidth, height=5.6cm, xmin=0, xmax=100, ymin=0, ymax=100, xtick={0,20,40,60,80,100}, ytick={0,20,40,60,80,100}, xlabel={\% de las SKU, de la más pedida a la menos pedida}, ylabel={\% acumulado de las líneas}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, axis lines=left, legend style={font=\scriptsize, draw=none, at={(0.97,0.05)}, anchor=south east}, legend cell align=left]
+            \addplot[azul!40, very thick] coordinates {(0,0.0) (1,38.3) (2,49.7) (3,56.3) (4,60.8) (5,64.0) (6,66.7) (7,68.9) (8,70.8) (9,72.4) (10,73.9) (11,75.2) (12,76.4) (13,77.4) (14,78.4) (15,79.3) (16,80.1) (17,80.9) (18,81.6) (19,82.2) (20,82.9) (21,83.5) (22,84.1) (23,84.6) (24,85.1) (25,85.6) (26,86.1) (27,86.5) (28,86.9) (29,87.4) (30,87.8) (31,88.1) (32,88.5) (33,88.9) (34,89.2) (35,89.5) (36,89.8) (37,90.2) (38,90.5) (39,90.7) (40,91.0) (41,91.3) (42,91.6) (43,91.8) (44,92.1) (45,92.3) (46,92.5) (47,92.8) (48,93.0) (49,93.2) (50,93.5) (51,93.7) (52,93.9) (53,94.1) (54,94.3) (55,94.5) (56,94.7) (57,94.8) (58,95.0) (59,95.2) (60,95.4) (61,95.6) (62,95.7) (63,95.9) (64,96.1) (65,96.2) (66,96.4) (67,96.5) (68,96.7) (69,96.8) (70,97.0) (71,97.1) (72,97.3) (73,97.4) (74,97.5) (75,97.7) (76,97.8) (77,97.9) (78,98.0) (79,98.2) (80,98.3) (81,98.4) (82,98.5) (83,98.7) (84,98.8) (85,98.9) (86,99.0) (87,99.1) (88,99.2) (89,99.3) (90,99.4) (91,99.5) (92,99.5) (93,99.6) (94,99.7) (95,99.8) (96,99.8) (97,99.9) (98,99.9) (99,100.0) (100,100.0)};
+            \addplot[azul!75, very thick] coordinates {(0,0.0) (1,22.3) (2,34.3) (3,41.9) (4,47.3) (5,51.5) (6,54.9) (7,57.8) (8,60.3) (9,62.4) (10,64.3) (11,66.0) (12,67.5) (13,68.9) (14,70.2) (15,71.4) (16,72.5) (17,73.6) (18,74.5) (19,75.4) (20,76.3) (21,77.1) (22,77.9) (23,78.6) (24,79.3) (25,79.9) (26,80.6) (27,81.2) (28,81.8) (29,82.3) (30,82.9) (31,83.4) (32,83.9) (33,84.4) (34,84.8) (35,85.3) (36,85.7) (37,86.2) (38,86.6) (39,87.0) (40,87.4) (41,87.7) (42,88.1) (43,88.5) (44,88.8) (45,89.1) (46,89.5) (47,89.8) (48,90.1) (49,90.4) (50,90.7) (51,91.0) (52,91.3) (53,91.5) (54,91.8) (55,92.1) (56,92.3) (57,92.6) (58,92.9) (59,93.1) (60,93.3) (61,93.6) (62,93.8) (63,94.0) (64,94.3) (65,94.5) (66,94.7) (67,94.9) (68,95.1) (69,95.3) (70,95.5) (71,95.7) (72,95.9) (73,96.1) (74,96.3) (75,96.5) (76,96.7) (77,96.9) (78,97.0) (79,97.2) (80,97.4) (81,97.5) (82,97.7) (83,97.9) (84,98.0) (85,98.2) (86,98.3) (87,98.5) (88,98.6) (89,98.8) (90,98.9) (91,99.0) (92,99.2) (93,99.3) (94,99.4) (95,99.5) (96,99.6) (97,99.7) (98,99.8) (99,99.9) (100,100.0)};
+            \addplot[azul!70!black, very thick] coordinates {(0,0.0) (1,30.6) (2,42.7) (3,49.8) (4,54.8) (5,58.5) (6,61.6) (7,64.1) (8,66.2) (9,68.1) (10,69.8) (11,71.2) (12,72.6) (13,73.8) (14,74.9) (15,75.9) (16,76.8) (17,77.7) (18,78.6) (19,79.3) (20,80.1) (21,80.7) (22,81.4) (23,82.0) (24,82.6) (25,83.2) (26,83.7) (27,84.2) (28,84.7) (29,85.2) (30,85.7) (31,86.1) (32,86.5) (33,86.9) (34,87.3) (35,87.7) (36,88.1) (37,88.5) (38,88.8) (39,89.1) (40,89.5) (41,89.8) (42,90.1) (43,90.4) (44,90.7) (45,91.0) (46,91.3) (47,91.5) (48,91.8) (49,92.1) (50,92.3) (51,92.6) (52,92.8) (53,93.1) (54,93.3) (55,93.5) (56,93.7) (57,94.0) (58,94.2) (59,94.4) (60,94.6) (61,94.8) (62,95.0) (63,95.2) (64,95.4) (65,95.6) (66,95.8) (67,95.9) (68,96.1) (69,96.3) (70,96.5) (71,96.6) (72,96.8) (73,96.9) (74,97.1) (75,97.3) (76,97.4) (77,97.6) (78,97.7) (79,97.8) (80,98.0) (81,98.1) (82,98.3) (83,98.4) (84,98.5) (85,98.6) (86,98.8) (87,98.9) (88,99.0) (89,99.1) (90,99.2) (91,99.3) (92,99.4) (93,99.5) (94,99.6) (95,99.7) (96,99.8) (97,99.8) (98,99.9) (99,100.0) (100,100.0)};
+            \draw[dashed, naranja] (axis cs:20,0) -- (axis cs:20,80) -- (axis cs:0,80);
+            \legend{$P$,$M$,$G$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Curva de Pareto de las líneas en los tres depósitos, en el formato de la Figura~\ref{fig:perfil-pareto}. La línea punteada marca la regla del 80-20.}
+    \label{fig:pareto-depositos}
+\end{figure}
+
+La cola de esa curva, en cambio, casi no trabaja pero ocupa buena parte del espacio, porque cada SKU tiene su propia ubicación sin importar cuánto se pida, y así la mitad menos pedida del catálogo, que llena la mitad de las ubicaciones ocupadas, genera menos del 10\% de las líneas en los tres depósitos.
+Es la idea de la Sección~\ref{sec:perfil} de que cada depósito son en realidad dos, uno chico donde está el trabajo y otro mucho más grande que se lleva el espacio, y en estos datos el primero, formado por las SKU que hacen el 80\% de las líneas, ocupa entre la sexta y la cuarta parte de las ubicaciones ocupadas.
+% Seis meses (scratchpad v34/cola.py). Mitad menos pedida: 6,5% (P), 9,3% (M), 7,7% (G) de las lineas. SKU
+% del 80% de las lineas: 275, 1.734 y 4.958, el 15,9, 25,1 y 19,9% de las ubicaciones ocupadas.
+
+Las SKU que concentran la demanda, además, son casi siempre las mismas, ya que de la quinta parte más pedida en un mes, entre el 79 y el 88\% sigue en ese grupo al mes siguiente, aunque esa estabilidad no es pareja a lo largo de la curva y reproduce la asimetría que describía la Sección~\ref{sec:perfil}.
+Entre las más pedidas el orden se mantiene casi igual de un mes al otro, mientras que en la cola, donde una SKU se pide apenas entre una y tres veces por mes, basta con que se pida una vez más o una menos para que salte muchos puestos en el ranking.
+% Meses consecutivos, enero a junio (en G hay 63 lineas del 1 de julio, de dos batches que cruzan el cierre,
+% que se excluyen). Quinta parte mas pedida que sigue arriba: 79% (P), 86-88% (M), 81-83% (G). Spearman entre
+% meses dentro de las mas pedidas 0,88/0,93/0,90 y dentro de la cola 0,34/0,55/0,41. Lineas por mes de una SKU
+% de la mitad menos pedida: 1,2/3,2/1,7. Descartado por trivial: unidades contra lineas (1 a 3 unidades al azar,
+% correlacion por SKU 1,00) y volumen parejo (ordenes por dia fijas, sin ciclo por hora ni por dia).
+
+\section{La asignación de ubicaciones y sus cambios}
+\label{sec:asignacion-deposito}
+
+La Sección~\ref{sec:slotting} definía la asignación como juntar la geometría con el perfil, y con los dos ya descritos queda mirar cómo los junta este depósito, empezando por el tipo de almacenamiento, que está a mitad de camino entre los dos que allí se distinguían.
+Como en el dedicado, cada SKU ocupa una sola ubicación a la vez y no la comparte con ninguna otra, pero esa ubicación no es fija, porque el lugar de un producto puede cambiar cada vez que se repone, como en el compartido, y por eso conviene mirar la asignación en dos momentos, cómo estaba al comenzar el período y cómo la fueron cambiando las reposiciones.
+
+Al comenzar, la asignación no tiene en cuenta la demanda, como muestra la Figura~\ref{fig:plano-asignacion}, que compara sobre la planta de $M$ la distancia de cada bay al dock, que crece de manera ordenada hacia el fondo y hacia los últimos pasillos, con la demanda de lo que guardaba cada bay, que aparece salpicada por todo el depósito, con bays muy pedidos tanto junto al dock como en la esquina más lejana.
+Es la regla aleatoria de la Sección~\ref{sec:slotting}, que reparte el trabajo de forma pareja, y así cada pasillo de $M$ recibe entre el 11,9 y el 14,3\% de las líneas, cerca del 12,5\% que le tocaría si todos pesaran igual, y en $G$ pasa lo mismo, mientras que en $P$, donde 36 SKU hacen la mitad de las líneas, alcanza con dónde caigan esas pocas para que un pasillo reciba el 22\% y otro el 32\%.
+% Seis meses (scratchpad v34/asignacion.py). Spearman entre las lineas de lo que guardaba cada bay el 1 de enero
+% y su distancia al dock: 0,027 (P), -0,012 (M), -0,002 (G); al 30 de junio -0,078, -0,059, -0,061. Reparto
+% por pasillo al comenzar: P 21,7-31,6% (parejo 25), M 11,9-14,3% (12,5), G 5,3-7,7% (6,2). En el plano, la
+% escala de (b) es lineal de 800 a 6.000 lineas; el maximo es A07-18 con 10.420 y A08-01, el bay mas lejano
+% del dock (3.488 pulgadas), tiene 6.743.
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=0.0024cm, y=0.0024cm]
+                \fill[gray!10, rounded corners=3pt] (-110,-290) rectangle (1596,2016);
+                \begin{scope}[gray!60, line width=0.3pt, dash pattern=on 1.5pt off 1pt, line cap=round]
+                \foreach \a in {1,...,8} { \draw ({96+192*(\a-1)},60) -- ({96+192*(\a-1)},1956); }
+                \foreach \yc in {60,756,1356,1956} { \draw (96,\yc) -- (1440,\yc); }
+                \draw (0,-200) -- (0,60) -- (96,60);
+                \end{scope}
+                \fill[azul!8] (5,127) rectangle (43,209);
+                \fill[azul!8] (149,127) rectangle (187,209);
+                \fill[azul!11] (5,223) rectangle (43,305);
+                \fill[azul!11] (149,223) rectangle (187,305);
+                \fill[azul!14] (5,319) rectangle (43,401);
+                \fill[azul!14] (149,319) rectangle (187,401);
+                \fill[azul!17] (5,415) rectangle (43,497);
+                \fill[azul!17] (149,415) rectangle (187,497);
+                \fill[azul!20] (5,511) rectangle (43,593);
+                \fill[azul!20] (149,511) rectangle (187,593);
+                \fill[azul!23] (5,607) rectangle (43,689);
+                \fill[azul!23] (149,607) rectangle (187,689);
+                \fill[azul!29] (5,823) rectangle (43,905);
+                \fill[azul!29] (149,823) rectangle (187,905);
+                \fill[azul!32] (5,919) rectangle (43,1001);
+                \fill[azul!32] (149,919) rectangle (187,1001);
+                \fill[azul!35] (5,1015) rectangle (43,1097);
+                \fill[azul!35] (149,1015) rectangle (187,1097);
+                \fill[azul!38] (5,1111) rectangle (43,1193);
+                \fill[azul!38] (149,1111) rectangle (187,1193);
+                \fill[azul!41] (5,1207) rectangle (43,1289);
+                \fill[azul!41] (149,1207) rectangle (187,1289);
+                \fill[azul!47] (5,1423) rectangle (43,1505);
+                \fill[azul!47] (149,1423) rectangle (187,1505);
+                \fill[azul!50] (5,1519) rectangle (43,1601);
+                \fill[azul!50] (149,1519) rectangle (187,1601);
+                \fill[azul!53] (5,1615) rectangle (43,1697);
+                \fill[azul!53] (149,1615) rectangle (187,1697);
+                \fill[azul!56] (5,1711) rectangle (43,1793);
+                \fill[azul!56] (149,1711) rectangle (187,1793);
+                \fill[azul!59] (5,1807) rectangle (43,1889);
+                \fill[azul!59] (149,1807) rectangle (187,1889);
+                \fill[azul!65] (197,1807) rectangle (235,1889);
+                \fill[azul!65] (341,1807) rectangle (379,1889);
+                \fill[azul!62] (197,1711) rectangle (235,1793);
+                \fill[azul!62] (341,1711) rectangle (379,1793);
+                \fill[azul!59] (197,1615) rectangle (235,1697);
+                \fill[azul!59] (341,1615) rectangle (379,1697);
+                \fill[azul!56] (197,1519) rectangle (235,1601);
+                \fill[azul!56] (341,1519) rectangle (379,1601);
+                \fill[azul!53] (197,1423) rectangle (235,1505);
+                \fill[azul!53] (341,1423) rectangle (379,1505);
+                \fill[azul!47] (197,1207) rectangle (235,1289);
+                \fill[azul!47] (341,1207) rectangle (379,1289);
+                \fill[azul!44] (197,1111) rectangle (235,1193);
+                \fill[azul!44] (341,1111) rectangle (379,1193);
+                \fill[azul!41] (197,1015) rectangle (235,1097);
+                \fill[azul!41] (341,1015) rectangle (379,1097);
+                \fill[azul!38] (197,919) rectangle (235,1001);
+                \fill[azul!38] (341,919) rectangle (379,1001);
+                \fill[azul!35] (197,823) rectangle (235,905);
+                \fill[azul!35] (341,823) rectangle (379,905);
+                \fill[azul!28] (197,607) rectangle (235,689);
+                \fill[azul!28] (341,607) rectangle (379,689);
+                \fill[azul!26] (197,511) rectangle (235,593);
+                \fill[azul!26] (341,511) rectangle (379,593);
+                \fill[azul!23] (197,415) rectangle (235,497);
+                \fill[azul!23] (341,415) rectangle (379,497);
+                \fill[azul!20] (197,319) rectangle (235,401);
+                \fill[azul!20] (341,319) rectangle (379,401);
+                \fill[azul!17] (197,223) rectangle (235,305);
+                \fill[azul!17] (341,223) rectangle (379,305);
+                \fill[azul!14] (197,127) rectangle (235,209);
+                \fill[azul!14] (341,127) rectangle (379,209);
+                \fill[azul!20] (389,127) rectangle (427,209);
+                \fill[azul!20] (533,127) rectangle (571,209);
+                \fill[azul!23] (389,223) rectangle (427,305);
+                \fill[azul!23] (533,223) rectangle (571,305);
+                \fill[azul!26] (389,319) rectangle (427,401);
+                \fill[azul!26] (533,319) rectangle (571,401);
+                \fill[azul!28] (389,415) rectangle (427,497);
+                \fill[azul!28] (533,415) rectangle (571,497);
+                \fill[azul!31] (389,511) rectangle (427,593);
+                \fill[azul!31] (533,511) rectangle (571,593);
+                \fill[azul!34] (389,607) rectangle (427,689);
+                \fill[azul!34] (533,607) rectangle (571,689);
+                \fill[azul!41] (389,823) rectangle (427,905);
+                \fill[azul!41] (533,823) rectangle (571,905);
+                \fill[azul!44] (389,919) rectangle (427,1001);
+                \fill[azul!44] (533,919) rectangle (571,1001);
+                \fill[azul!47] (389,1015) rectangle (427,1097);
+                \fill[azul!47] (533,1015) rectangle (571,1097);
+                \fill[azul!50] (389,1111) rectangle (427,1193);
+                \fill[azul!50] (533,1111) rectangle (571,1193);
+                \fill[azul!53] (389,1207) rectangle (427,1289);
+                \fill[azul!53] (533,1207) rectangle (571,1289);
+                \fill[azul!59] (389,1423) rectangle (427,1505);
+                \fill[azul!59] (533,1423) rectangle (571,1505);
+                \fill[azul!62] (389,1519) rectangle (427,1601);
+                \fill[azul!62] (533,1519) rectangle (571,1601);
+                \fill[azul!65] (389,1615) rectangle (427,1697);
+                \fill[azul!65] (533,1615) rectangle (571,1697);
+                \fill[azul!68] (389,1711) rectangle (427,1793);
+                \fill[azul!68] (533,1711) rectangle (571,1793);
+                \fill[azul!71] (389,1807) rectangle (427,1889);
+                \fill[azul!71] (533,1807) rectangle (571,1889);
+                \fill[azul!77] (581,1807) rectangle (619,1889);
+                \fill[azul!77] (725,1807) rectangle (763,1889);
+                \fill[azul!74] (581,1711) rectangle (619,1793);
+                \fill[azul!74] (725,1711) rectangle (763,1793);
+                \fill[azul!71] (581,1615) rectangle (619,1697);
+                \fill[azul!71] (725,1615) rectangle (763,1697);
+                \fill[azul!68] (581,1519) rectangle (619,1601);
+                \fill[azul!68] (725,1519) rectangle (763,1601);
+                \fill[azul!65] (581,1423) rectangle (619,1505);
+                \fill[azul!65] (725,1423) rectangle (763,1505);
+                \fill[azul!58] (581,1207) rectangle (619,1289);
+                \fill[azul!58] (725,1207) rectangle (763,1289);
+                \fill[azul!55] (581,1111) rectangle (619,1193);
+                \fill[azul!55] (725,1111) rectangle (763,1193);
+                \fill[azul!53] (581,1015) rectangle (619,1097);
+                \fill[azul!53] (725,1015) rectangle (763,1097);
+                \fill[azul!50] (581,919) rectangle (619,1001);
+                \fill[azul!50] (725,919) rectangle (763,1001);
+                \fill[azul!47] (581,823) rectangle (619,905);
+                \fill[azul!47] (725,823) rectangle (763,905);
+                \fill[azul!40] (581,607) rectangle (619,689);
+                \fill[azul!40] (725,607) rectangle (763,689);
+                \fill[azul!37] (581,511) rectangle (619,593);
+                \fill[azul!37] (725,511) rectangle (763,593);
+                \fill[azul!34] (581,415) rectangle (619,497);
+                \fill[azul!34] (725,415) rectangle (763,497);
+                \fill[azul!31] (581,319) rectangle (619,401);
+                \fill[azul!31] (725,319) rectangle (763,401);
+                \fill[azul!28] (581,223) rectangle (619,305);
+                \fill[azul!28] (725,223) rectangle (763,305);
+                \fill[azul!26] (581,127) rectangle (619,209);
+                \fill[azul!26] (725,127) rectangle (763,209);
+                \fill[azul!31] (773,127) rectangle (811,209);
+                \fill[azul!31] (917,127) rectangle (955,209);
+                \fill[azul!34] (773,223) rectangle (811,305);
+                \fill[azul!34] (917,223) rectangle (955,305);
+                \fill[azul!37] (773,319) rectangle (811,401);
+                \fill[azul!37] (917,319) rectangle (955,401);
+                \fill[azul!40] (773,415) rectangle (811,497);
+                \fill[azul!40] (917,415) rectangle (955,497);
+                \fill[azul!43] (773,511) rectangle (811,593);
+                \fill[azul!43] (917,511) rectangle (955,593);
+                \fill[azul!46] (773,607) rectangle (811,689);
+                \fill[azul!46] (917,607) rectangle (955,689);
+                \fill[azul!53] (773,823) rectangle (811,905);
+                \fill[azul!53] (917,823) rectangle (955,905);
+                \fill[azul!55] (773,919) rectangle (811,1001);
+                \fill[azul!55] (917,919) rectangle (955,1001);
+                \fill[azul!58] (773,1015) rectangle (811,1097);
+                \fill[azul!58] (917,1015) rectangle (955,1097);
+                \fill[azul!61] (773,1111) rectangle (811,1193);
+                \fill[azul!61] (917,1111) rectangle (955,1193);
+                \fill[azul!64] (773,1207) rectangle (811,1289);
+                \fill[azul!64] (917,1207) rectangle (955,1289);
+                \fill[azul!71] (773,1423) rectangle (811,1505);
+                \fill[azul!71] (917,1423) rectangle (955,1505);
+                \fill[azul!74] (773,1519) rectangle (811,1601);
+                \fill[azul!74] (917,1519) rectangle (955,1601);
+                \fill[azul!77] (773,1615) rectangle (811,1697);
+                \fill[azul!77] (917,1615) rectangle (955,1697);
+                \fill[azul!80] (773,1711) rectangle (811,1793);
+                \fill[azul!80] (917,1711) rectangle (955,1793);
+                \fill[azul!82] (773,1807) rectangle (811,1889);
+                \fill[azul!82] (917,1807) rectangle (955,1889);
+                \fill[azul!88] (965,1807) rectangle (1003,1889);
+                \fill[azul!88] (1109,1807) rectangle (1147,1889);
+                \fill[azul!85] (965,1711) rectangle (1003,1793);
+                \fill[azul!85] (1109,1711) rectangle (1147,1793);
+                \fill[azul!82] (965,1615) rectangle (1003,1697);
+                \fill[azul!82] (1109,1615) rectangle (1147,1697);
+                \fill[azul!80] (965,1519) rectangle (1003,1601);
+                \fill[azul!80] (1109,1519) rectangle (1147,1601);
+                \fill[azul!77] (965,1423) rectangle (1003,1505);
+                \fill[azul!77] (1109,1423) rectangle (1147,1505);
+                \fill[azul!70] (965,1207) rectangle (1003,1289);
+                \fill[azul!70] (1109,1207) rectangle (1147,1289);
+                \fill[azul!67] (965,1111) rectangle (1003,1193);
+                \fill[azul!67] (1109,1111) rectangle (1147,1193);
+                \fill[azul!64] (965,1015) rectangle (1003,1097);
+                \fill[azul!64] (1109,1015) rectangle (1147,1097);
+                \fill[azul!61] (965,919) rectangle (1003,1001);
+                \fill[azul!61] (1109,919) rectangle (1147,1001);
+                \fill[azul!58] (965,823) rectangle (1003,905);
+                \fill[azul!58] (1109,823) rectangle (1147,905);
+                \fill[azul!52] (965,607) rectangle (1003,689);
+                \fill[azul!52] (1109,607) rectangle (1147,689);
+                \fill[azul!49] (965,511) rectangle (1003,593);
+                \fill[azul!49] (1109,511) rectangle (1147,593);
+                \fill[azul!46] (965,415) rectangle (1003,497);
+                \fill[azul!46] (1109,415) rectangle (1147,497);
+                \fill[azul!43] (965,319) rectangle (1003,401);
+                \fill[azul!43] (1109,319) rectangle (1147,401);
+                \fill[azul!40] (965,223) rectangle (1003,305);
+                \fill[azul!40] (1109,223) rectangle (1147,305);
+                \fill[azul!37] (965,127) rectangle (1003,209);
+                \fill[azul!37] (1109,127) rectangle (1147,209);
+                \fill[azul!43] (1157,127) rectangle (1195,209);
+                \fill[azul!43] (1301,127) rectangle (1339,209);
+                \fill[azul!46] (1157,223) rectangle (1195,305);
+                \fill[azul!46] (1301,223) rectangle (1339,305);
+                \fill[azul!49] (1157,319) rectangle (1195,401);
+                \fill[azul!49] (1301,319) rectangle (1339,401);
+                \fill[azul!52] (1157,415) rectangle (1195,497);
+                \fill[azul!52] (1301,415) rectangle (1339,497);
+                \fill[azul!55] (1157,511) rectangle (1195,593);
+                \fill[azul!55] (1301,511) rectangle (1339,593);
+                \fill[azul!58] (1157,607) rectangle (1195,689);
+                \fill[azul!58] (1301,607) rectangle (1339,689);
+                \fill[azul!64] (1157,823) rectangle (1195,905);
+                \fill[azul!64] (1301,823) rectangle (1339,905);
+                \fill[azul!67] (1157,919) rectangle (1195,1001);
+                \fill[azul!67] (1301,919) rectangle (1339,1001);
+                \fill[azul!70] (1157,1015) rectangle (1195,1097);
+                \fill[azul!70] (1301,1015) rectangle (1339,1097);
+                \fill[azul!73] (1157,1111) rectangle (1195,1193);
+                \fill[azul!73] (1301,1111) rectangle (1339,1193);
+                \fill[azul!76] (1157,1207) rectangle (1195,1289);
+                \fill[azul!76] (1301,1207) rectangle (1339,1289);
+                \fill[azul!82] (1157,1423) rectangle (1195,1505);
+                \fill[azul!82] (1301,1423) rectangle (1339,1505);
+                \fill[azul!85] (1157,1519) rectangle (1195,1601);
+                \fill[azul!85] (1301,1519) rectangle (1339,1601);
+                \fill[azul!88] (1157,1615) rectangle (1195,1697);
+                \fill[azul!88] (1301,1615) rectangle (1339,1697);
+                \fill[azul!91] (1157,1711) rectangle (1195,1793);
+                \fill[azul!91] (1301,1711) rectangle (1339,1793);
+                \fill[azul!94] (1157,1807) rectangle (1195,1889);
+                \fill[azul!94] (1301,1807) rectangle (1339,1889);
+                \fill[azul!100] (1349,1807) rectangle (1387,1889);
+                \fill[azul!100] (1493,1807) rectangle (1531,1889);
+                \fill[azul!97] (1349,1711) rectangle (1387,1793);
+                \fill[azul!97] (1493,1711) rectangle (1531,1793);
+                \fill[azul!94] (1349,1615) rectangle (1387,1697);
+                \fill[azul!94] (1493,1615) rectangle (1531,1697);
+                \fill[azul!91] (1349,1519) rectangle (1387,1601);
+                \fill[azul!91] (1493,1519) rectangle (1531,1601);
+                \fill[azul!88] (1349,1423) rectangle (1387,1505);
+                \fill[azul!88] (1493,1423) rectangle (1531,1505);
+                \fill[azul!82] (1349,1207) rectangle (1387,1289);
+                \fill[azul!82] (1493,1207) rectangle (1531,1289);
+                \fill[azul!79] (1349,1111) rectangle (1387,1193);
+                \fill[azul!79] (1493,1111) rectangle (1531,1193);
+                \fill[azul!76] (1349,1015) rectangle (1387,1097);
+                \fill[azul!76] (1493,1015) rectangle (1531,1097);
+                \fill[azul!73] (1349,919) rectangle (1387,1001);
+                \fill[azul!73] (1493,919) rectangle (1531,1001);
+                \fill[azul!70] (1349,823) rectangle (1387,905);
+                \fill[azul!70] (1493,823) rectangle (1531,905);
+                \fill[azul!63] (1349,607) rectangle (1387,689);
+                \fill[azul!63] (1493,607) rectangle (1531,689);
+                \fill[azul!61] (1349,511) rectangle (1387,593);
+                \fill[azul!61] (1493,511) rectangle (1531,593);
+                \fill[azul!58] (1349,415) rectangle (1387,497);
+                \fill[azul!58] (1493,415) rectangle (1531,497);
+                \fill[azul!55] (1349,319) rectangle (1387,401);
+                \fill[azul!55] (1493,319) rectangle (1531,401);
+                \fill[azul!52] (1349,223) rectangle (1387,305);
+                \fill[azul!52] (1493,223) rectangle (1531,305);
+                \fill[azul!49] (1349,127) rectangle (1387,209);
+                \fill[azul!49] (1493,127) rectangle (1531,209);
+                \fill[black!75] (0,-200) circle (32);
+                \node[font=\tiny, anchor=west] at (50,-200) {dock};
+                \shade[left color=azul!8, right color=azul] (100,-560) rectangle (1400,-480);
+                \node[font=\tiny, anchor=north] at (100,-580) {12 m};
+                \node[font=\tiny, anchor=north] at (1400,-580) {89 m};
+        \end{tikzpicture}
+        \caption{Distancia de cada bay al dock}
+        \label{fig:plano-distancia}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}[x=0.0024cm, y=0.0024cm]
+                \fill[gray!10, rounded corners=3pt] (-110,-290) rectangle (1596,2016);
+                \begin{scope}[gray!60, line width=0.3pt, dash pattern=on 1.5pt off 1pt, line cap=round]
+                \foreach \a in {1,...,8} { \draw ({96+192*(\a-1)},60) -- ({96+192*(\a-1)},1956); }
+                \foreach \yc in {60,756,1356,1956} { \draw (96,\yc) -- (1440,\yc); }
+                \draw (0,-200) -- (0,60) -- (96,60);
+                \end{scope}
+                \fill[azul!63] (5,127) rectangle (43,209);
+                \fill[azul!51] (149,127) rectangle (187,209);
+                \fill[azul!24] (5,223) rectangle (43,305);
+                \fill[azul!17] (149,223) rectangle (187,305);
+                \fill[azul!69] (5,319) rectangle (43,401);
+                \fill[azul!44] (149,319) rectangle (187,401);
+                \fill[azul!33] (5,415) rectangle (43,497);
+                \fill[azul!38] (149,415) rectangle (187,497);
+                \fill[azul!100] (5,511) rectangle (43,593);
+                \fill[azul!13] (149,511) rectangle (187,593);
+                \fill[azul!19] (5,607) rectangle (43,689);
+                \fill[azul!81] (149,607) rectangle (187,689);
+                \fill[azul!31] (5,823) rectangle (43,905);
+                \fill[azul!23] (149,823) rectangle (187,905);
+                \fill[azul!18] (5,919) rectangle (43,1001);
+                \fill[azul!22] (149,919) rectangle (187,1001);
+                \fill[azul!70] (5,1015) rectangle (43,1097);
+                \fill[azul!16] (149,1015) rectangle (187,1097);
+                \fill[azul!62] (5,1111) rectangle (43,1193);
+                \fill[azul!59] (149,1111) rectangle (187,1193);
+                \fill[azul!43] (5,1207) rectangle (43,1289);
+                \fill[azul!24] (149,1207) rectangle (187,1289);
+                \fill[azul!18] (5,1423) rectangle (43,1505);
+                \fill[azul!25] (149,1423) rectangle (187,1505);
+                \fill[azul!35] (5,1519) rectangle (43,1601);
+                \fill[azul!61] (149,1519) rectangle (187,1601);
+                \fill[azul!27] (5,1615) rectangle (43,1697);
+                \fill[azul!78] (149,1615) rectangle (187,1697);
+                \fill[azul!36] (5,1711) rectangle (43,1793);
+                \fill[azul!58] (149,1711) rectangle (187,1793);
+                \fill[azul!28] (5,1807) rectangle (43,1889);
+                \fill[azul!13] (149,1807) rectangle (187,1889);
+                \fill[azul!47] (197,1807) rectangle (235,1889);
+                \fill[azul!29] (341,1807) rectangle (379,1889);
+                \fill[azul!68] (197,1711) rectangle (235,1793);
+                \fill[azul!28] (341,1711) rectangle (379,1793);
+                \fill[azul!8] (197,1615) rectangle (235,1697);
+                \fill[azul!83] (341,1615) rectangle (379,1697);
+                \fill[azul!68] (197,1519) rectangle (235,1601);
+                \fill[azul!13] (341,1519) rectangle (379,1601);
+                \fill[azul!36] (197,1423) rectangle (235,1505);
+                \fill[azul!19] (341,1423) rectangle (379,1505);
+                \fill[azul!49] (197,1207) rectangle (235,1289);
+                \fill[azul!53] (341,1207) rectangle (379,1289);
+                \fill[azul!35] (197,1111) rectangle (235,1193);
+                \fill[azul!26] (341,1111) rectangle (379,1193);
+                \fill[azul!78] (197,1015) rectangle (235,1097);
+                \fill[azul!52] (341,1015) rectangle (379,1097);
+                \fill[azul!13] (197,919) rectangle (235,1001);
+                \fill[azul!97] (341,919) rectangle (379,1001);
+                \fill[azul!59] (197,823) rectangle (235,905);
+                \fill[azul!73] (341,823) rectangle (379,905);
+                \fill[azul!33] (197,607) rectangle (235,689);
+                \fill[azul!85] (341,607) rectangle (379,689);
+                \fill[azul!17] (197,511) rectangle (235,593);
+                \fill[azul!26] (341,511) rectangle (379,593);
+                \fill[azul!26] (197,415) rectangle (235,497);
+                \fill[azul!30] (341,415) rectangle (379,497);
+                \fill[azul!22] (197,319) rectangle (235,401);
+                \fill[azul!16] (341,319) rectangle (379,401);
+                \fill[azul!17] (197,223) rectangle (235,305);
+                \fill[azul!22] (341,223) rectangle (379,305);
+                \fill[azul!59] (197,127) rectangle (235,209);
+                \fill[azul!51] (341,127) rectangle (379,209);
+                \fill[azul!23] (389,127) rectangle (427,209);
+                \fill[azul!41] (533,127) rectangle (571,209);
+                \fill[azul!47] (389,223) rectangle (427,305);
+                \fill[azul!85] (533,223) rectangle (571,305);
+                \fill[azul!64] (389,319) rectangle (427,401);
+                \fill[azul!56] (533,319) rectangle (571,401);
+                \fill[azul!90] (389,415) rectangle (427,497);
+                \fill[azul!78] (533,415) rectangle (571,497);
+                \fill[azul!49] (389,511) rectangle (427,593);
+                \fill[azul!8] (533,511) rectangle (571,593);
+                \fill[azul!57] (389,607) rectangle (427,689);
+                \fill[azul!22] (533,607) rectangle (571,689);
+                \fill[azul!81] (389,823) rectangle (427,905);
+                \fill[azul!15] (533,823) rectangle (571,905);
+                \fill[azul!69] (389,919) rectangle (427,1001);
+                \fill[azul!72] (533,919) rectangle (571,1001);
+                \fill[azul!12] (389,1015) rectangle (427,1097);
+                \fill[azul!25] (533,1015) rectangle (571,1097);
+                \fill[azul!25] (389,1111) rectangle (427,1193);
+                \fill[azul!73] (533,1111) rectangle (571,1193);
+                \fill[azul!26] (389,1207) rectangle (427,1289);
+                \fill[azul!16] (533,1207) rectangle (571,1289);
+                \fill[azul!14] (389,1423) rectangle (427,1505);
+                \fill[azul!68] (533,1423) rectangle (571,1505);
+                \fill[azul!22] (389,1519) rectangle (427,1601);
+                \fill[azul!16] (533,1519) rectangle (571,1601);
+                \fill[azul!36] (389,1615) rectangle (427,1697);
+                \fill[azul!54] (533,1615) rectangle (571,1697);
+                \fill[azul!24] (389,1711) rectangle (427,1793);
+                \fill[azul!42] (533,1711) rectangle (571,1793);
+                \fill[azul!55] (389,1807) rectangle (427,1889);
+                \fill[azul!14] (533,1807) rectangle (571,1889);
+                \fill[azul!79] (581,1807) rectangle (619,1889);
+                \fill[azul!31] (725,1807) rectangle (763,1889);
+                \fill[azul!27] (581,1711) rectangle (619,1793);
+                \fill[azul!86] (725,1711) rectangle (763,1793);
+                \fill[azul!29] (581,1615) rectangle (619,1697);
+                \fill[azul!28] (725,1615) rectangle (763,1697);
+                \fill[azul!31] (581,1519) rectangle (619,1601);
+                \fill[azul!22] (725,1519) rectangle (763,1601);
+                \fill[azul!34] (581,1423) rectangle (619,1505);
+                \fill[azul!22] (725,1423) rectangle (763,1505);
+                \fill[azul!48] (581,1207) rectangle (619,1289);
+                \fill[azul!25] (725,1207) rectangle (763,1289);
+                \fill[azul!20] (581,1111) rectangle (619,1193);
+                \fill[azul!18] (725,1111) rectangle (763,1193);
+                \fill[azul!27] (581,1015) rectangle (619,1097);
+                \fill[azul!77] (725,1015) rectangle (763,1097);
+                \fill[azul!39] (581,919) rectangle (619,1001);
+                \fill[azul!22] (725,919) rectangle (763,1001);
+                \fill[azul!47] (581,823) rectangle (619,905);
+                \fill[azul!75] (725,823) rectangle (763,905);
+                \fill[azul!93] (581,607) rectangle (619,689);
+                \fill[azul!19] (725,607) rectangle (763,689);
+                \fill[azul!25] (581,511) rectangle (619,593);
+                \fill[azul!65] (725,511) rectangle (763,593);
+                \fill[azul!59] (581,415) rectangle (619,497);
+                \fill[azul!25] (725,415) rectangle (763,497);
+                \fill[azul!31] (581,319) rectangle (619,401);
+                \fill[azul!45] (725,319) rectangle (763,401);
+                \fill[azul!30] (581,223) rectangle (619,305);
+                \fill[azul!34] (725,223) rectangle (763,305);
+                \fill[azul!35] (581,127) rectangle (619,209);
+                \fill[azul!62] (725,127) rectangle (763,209);
+                \fill[azul!20] (773,127) rectangle (811,209);
+                \fill[azul!51] (917,127) rectangle (955,209);
+                \fill[azul!20] (773,223) rectangle (811,305);
+                \fill[azul!21] (917,223) rectangle (955,305);
+                \fill[azul!84] (773,319) rectangle (811,401);
+                \fill[azul!60] (917,319) rectangle (955,401);
+                \fill[azul!49] (773,415) rectangle (811,497);
+                \fill[azul!63] (917,415) rectangle (955,497);
+                \fill[azul!75] (773,511) rectangle (811,593);
+                \fill[azul!64] (917,511) rectangle (955,593);
+                \fill[azul!36] (773,607) rectangle (811,689);
+                \fill[azul!60] (917,607) rectangle (955,689);
+                \fill[azul!17] (773,823) rectangle (811,905);
+                \fill[azul!30] (917,823) rectangle (955,905);
+                \fill[azul!91] (773,919) rectangle (811,1001);
+                \fill[azul!49] (917,919) rectangle (955,1001);
+                \fill[azul!22] (773,1015) rectangle (811,1097);
+                \fill[azul!25] (917,1015) rectangle (955,1097);
+                \fill[azul!88] (773,1111) rectangle (811,1193);
+                \fill[azul!31] (917,1111) rectangle (955,1193);
+                \fill[azul!79] (773,1207) rectangle (811,1289);
+                \fill[azul!44] (917,1207) rectangle (955,1289);
+                \fill[azul!52] (773,1423) rectangle (811,1505);
+                \fill[azul!92] (917,1423) rectangle (955,1505);
+                \fill[azul!27] (773,1519) rectangle (811,1601);
+                \fill[azul!79] (917,1519) rectangle (955,1601);
+                \fill[azul!43] (773,1615) rectangle (811,1697);
+                \fill[azul!54] (917,1615) rectangle (955,1697);
+                \fill[azul!68] (773,1711) rectangle (811,1793);
+                \fill[azul!40] (917,1711) rectangle (955,1793);
+                \fill[azul!52] (773,1807) rectangle (811,1889);
+                \fill[azul!17] (917,1807) rectangle (955,1889);
+                \fill[azul!33] (965,1807) rectangle (1003,1889);
+                \fill[azul!46] (1109,1807) rectangle (1147,1889);
+                \fill[azul!23] (965,1711) rectangle (1003,1793);
+                \fill[azul!35] (1109,1711) rectangle (1147,1793);
+                \fill[azul!20] (965,1615) rectangle (1003,1697);
+                \fill[azul!14] (1109,1615) rectangle (1147,1697);
+                \fill[azul!29] (965,1519) rectangle (1003,1601);
+                \fill[azul!42] (1109,1519) rectangle (1147,1601);
+                \fill[azul!32] (965,1423) rectangle (1003,1505);
+                \fill[azul!38] (1109,1423) rectangle (1147,1505);
+                \fill[azul!42] (965,1207) rectangle (1003,1289);
+                \fill[azul!21] (1109,1207) rectangle (1147,1289);
+                \fill[azul!45] (965,1111) rectangle (1003,1193);
+                \fill[azul!31] (1109,1111) rectangle (1147,1193);
+                \fill[azul!24] (965,1015) rectangle (1003,1097);
+                \fill[azul!100] (1109,1015) rectangle (1147,1097);
+                \fill[azul!87] (965,919) rectangle (1003,1001);
+                \fill[azul!42] (1109,919) rectangle (1147,1001);
+                \fill[azul!28] (965,823) rectangle (1003,905);
+                \fill[azul!100] (1109,823) rectangle (1147,905);
+                \fill[azul!35] (965,607) rectangle (1003,689);
+                \fill[azul!30] (1109,607) rectangle (1147,689);
+                \fill[azul!45] (965,511) rectangle (1003,593);
+                \fill[azul!21] (1109,511) rectangle (1147,593);
+                \fill[azul!38] (965,415) rectangle (1003,497);
+                \fill[azul!41] (1109,415) rectangle (1147,497);
+                \fill[azul!40] (965,319) rectangle (1003,401);
+                \fill[azul!63] (1109,319) rectangle (1147,401);
+                \fill[azul!92] (965,223) rectangle (1003,305);
+                \fill[azul!38] (1109,223) rectangle (1147,305);
+                \fill[azul!29] (965,127) rectangle (1003,209);
+                \fill[azul!19] (1109,127) rectangle (1147,209);
+                \fill[azul!37] (1157,127) rectangle (1195,209);
+                \fill[azul!18] (1301,127) rectangle (1339,209);
+                \fill[azul!23] (1157,223) rectangle (1195,305);
+                \fill[azul!27] (1301,223) rectangle (1339,305);
+                \fill[azul!44] (1157,319) rectangle (1195,401);
+                \fill[azul!57] (1301,319) rectangle (1339,401);
+                \fill[azul!27] (1157,415) rectangle (1195,497);
+                \fill[azul!24] (1301,415) rectangle (1339,497);
+                \fill[azul!37] (1157,511) rectangle (1195,593);
+                \fill[azul!47] (1301,511) rectangle (1339,593);
+                \fill[azul!29] (1157,607) rectangle (1195,689);
+                \fill[azul!19] (1301,607) rectangle (1339,689);
+                \fill[azul!10] (1157,823) rectangle (1195,905);
+                \fill[azul!17] (1301,823) rectangle (1339,905);
+                \fill[azul!12] (1157,919) rectangle (1195,1001);
+                \fill[azul!31] (1301,919) rectangle (1339,1001);
+                \fill[azul!19] (1157,1015) rectangle (1195,1097);
+                \fill[azul!100] (1301,1015) rectangle (1339,1097);
+                \fill[azul!29] (1157,1111) rectangle (1195,1193);
+                \fill[azul!32] (1301,1111) rectangle (1339,1193);
+                \fill[azul!34] (1157,1207) rectangle (1195,1289);
+                \fill[azul!26] (1301,1207) rectangle (1339,1289);
+                \fill[azul!100] (1157,1423) rectangle (1195,1505);
+                \fill[azul!59] (1301,1423) rectangle (1339,1505);
+                \fill[azul!37] (1157,1519) rectangle (1195,1601);
+                \fill[azul!17] (1301,1519) rectangle (1339,1601);
+                \fill[azul!21] (1157,1615) rectangle (1195,1697);
+                \fill[azul!39] (1301,1615) rectangle (1339,1697);
+                \fill[azul!88] (1157,1711) rectangle (1195,1793);
+                \fill[azul!42] (1301,1711) rectangle (1339,1793);
+                \fill[azul!82] (1157,1807) rectangle (1195,1889);
+                \fill[azul!32] (1301,1807) rectangle (1339,1889);
+                \fill[azul!100] (1349,1807) rectangle (1387,1889);
+                \fill[azul!45] (1493,1807) rectangle (1531,1889);
+                \fill[azul!25] (1349,1711) rectangle (1387,1793);
+                \fill[azul!100] (1493,1711) rectangle (1531,1793);
+                \fill[azul!16] (1349,1615) rectangle (1387,1697);
+                \fill[azul!67] (1493,1615) rectangle (1531,1697);
+                \fill[azul!32] (1349,1519) rectangle (1387,1601);
+                \fill[azul!46] (1493,1519) rectangle (1531,1601);
+                \fill[azul!57] (1349,1423) rectangle (1387,1505);
+                \fill[azul!46] (1493,1423) rectangle (1531,1505);
+                \fill[azul!51] (1349,1207) rectangle (1387,1289);
+                \fill[azul!16] (1493,1207) rectangle (1531,1289);
+                \fill[azul!30] (1349,1111) rectangle (1387,1193);
+                \fill[azul!14] (1493,1111) rectangle (1531,1193);
+                \fill[azul!30] (1349,1015) rectangle (1387,1097);
+                \fill[azul!21] (1493,1015) rectangle (1531,1097);
+                \fill[azul!33] (1349,919) rectangle (1387,1001);
+                \fill[azul!12] (1493,919) rectangle (1531,1001);
+                \fill[azul!66] (1349,823) rectangle (1387,905);
+                \fill[azul!82] (1493,823) rectangle (1531,905);
+                \fill[azul!46] (1349,607) rectangle (1387,689);
+                \fill[azul!58] (1493,607) rectangle (1531,689);
+                \fill[azul!17] (1349,511) rectangle (1387,593);
+                \fill[azul!60] (1493,511) rectangle (1531,593);
+                \fill[azul!18] (1349,415) rectangle (1387,497);
+                \fill[azul!33] (1493,415) rectangle (1531,497);
+                \fill[azul!61] (1349,319) rectangle (1387,401);
+                \fill[azul!23] (1493,319) rectangle (1531,401);
+                \fill[azul!74] (1349,223) rectangle (1387,305);
+                \fill[azul!32] (1493,223) rectangle (1531,305);
+                \fill[azul!65] (1349,127) rectangle (1387,209);
+                \fill[azul!46] (1493,127) rectangle (1531,209);
+                \fill[black!75] (0,-200) circle (32);
+                \node[font=\tiny, anchor=west] at (50,-200) {dock};
+                \shade[left color=azul!8, right color=azul] (100,-560) rectangle (1400,-480);
+                \node[font=\tiny, anchor=north] at (100,-580) {800 líneas o menos};
+                \node[font=\tiny, anchor=north] at (1400,-580) {6.000 o más};
+        \end{tikzpicture}
+        \caption{Demanda de cada bay al comenzar}
+        \label{fig:plano-demanda}
+    \end{subfigure}
+    \caption{Planta de $M$ con cada bay sombreado, en (a), según su distancia al dock, y en (b), según cuántas líneas generaron en los seis meses las SKU que guardaba el 1 de enero. En los dos paneles, más oscuro es más.}
+    \label{fig:plano-asignacion}
+\end{figure}
+
+Los merchants, por su parte, tienen todos un tamaño parecido, porque en cada depósito las órdenes se reparten entre ellos casi en partes iguales, y en $M$, por ejemplo, cada uno de los 50 hace alrededor del 2\% de las órdenes, mientras que dentro de su propio catálogo cada merchant repite la forma de la Figura~\ref{fig:pareto-depositos}, con unas pocas SKU que hacen la mayor parte de sus líneas.
+La asignación tampoco mira de quién es cada producto, así que ningún merchant queda agrupado en una zona y todos tienen productos en todos los pasillos, de modo que la remera de la marca de ropa puede estar junto al dock y su buzo en la otra punta del depósito.
+% Seis meses (scratchpad v34/asignacion.py). Merchants: 4 (P), 50 (M), 100 (G); ordenes por merchant 24,7-25,2%,
+% 1,93-2,08% y 0,96-1,03%; SKU por merchant 422-442, 107-157 y 215-287; el 80% de sus lineas lo hace el
+% 15,8-16,2%, 23,5-29,0% y 18,8-22,0% de sus SKU. Todos tienen SKU en todos los pasillos el 1 de enero; cuota
+% de un merchant en un pasillo 21,9-28,1% (P, parejo 25), 4,8-20,8% (M, 12,5) y 2,0-12,4% (G, 6,2).
+
+Esa asignación inicial, sin embargo, no dura, porque las reposiciones la van cambiando todos los días, y lo hacen de dos maneras, ya que cuando a la ubicación todavía le queda stock la reposición simplemente la vuelve a llenar, pero cuando el producto ya se agotó, nueve de cada diez veces la SKU se muda a una ubicación libre cualquiera, sin preferencia por ninguna zona, y deja libre la que tenía, de modo que casi la mitad de las reposiciones termina siendo una mudanza, unas 190 por día en $M$.
+Las que más se mudan, además, son las SKU más pedidas, porque cada reposición trae más o menos la misma cantidad sin importar cuánto se pida el producto, así que las muy pedidas se vacían más seguido, se reponen más veces y tienen más ocasiones de mudarse, y en estos datos los picks y las reposiciones que la Sección~\ref{sec:slotting} pedía separar terminan yendo juntos, con el 10\% más pedido del catálogo haciendo entre dos tercios y tres cuartos tanto de las líneas como de las mudanzas.
+% Seis meses (scratchpad v34/asignacion.py). Reposiciones por dia: 52 (P), 425 (M), 947 (G); mudanzas (origen
+% distinto del destino) 45,0/44,9/44,6%, es decir 23, 191 y 423 por dia. Stock reconstruido por SKU (unidades
+% del 1 de enero + reposiciones - picks): de las reposiciones que llegan con la SKU en cero, son mudanza el
+% 90,1/90,0/90,1%, casi exacto en los tres, probablemente un parametro del generador.
+% Al reves, las mudanzas con la SKU en cero son el 95,3% en M y el 97,8% en G pero solo el 72,9% en P (el resto
+% con unas 3 unidades). En G el stock reconstruido llega a -6 en algun momento (registro con pequenas
+% inconsistencias). Destino por pasillo 23,9-25,9% (P), 12,0-13,0% (M), 6,0-6,7% (G); Spearman entre lineas de
+% la SKU y distancia del destino al dock -0,01 a 0,00. Spearman por SKU entre unidades por reposicion y lineas
+% 0,37/0,19/0,32, entre cantidad de reposiciones y lineas 0,73/0,72/0,73. El 10% mas pedido hace el
+% 73,8/64,3/69,8% de las lineas y el 75,0/65,8/72,8% de las mudanzas.
+
+Con mudanzas todos los días, la asignación del comienzo se va desarmando de a poco, como muestra la Figura~\ref{fig:nunca-mudadas}, y al cabo de los seis meses en $M$ apenas un tercio de las SKU sigue en la ubicación que tenía el 1 de enero, mientras que en $P$ y en $G$ sigue alrededor de la mitad, una diferencia que no acompaña al tamaño y que viene de cuán seguido se agotan los productos en cada depósito.
+Lo que no cambia es la relación con la demanda, porque como cada mudanza lleva la SKU a una ubicación cualquiera, al 30 de junio lo más pedido sigue tan repartido por el depósito como al comienzo, y así queda descrito dónde está cada producto y cómo se mueve, siempre mirando cada SKU por separado, sin atender todavía a qué productos se piden juntos, que es la pregunta de la Sección~\ref{sec:demanda-conjunta}.
+% Seis meses (scratchpad v34/asignacion.py). SKU que siguen en su ubicacion inicial al 1 de abril: 72,6% (P),
+% 50,8% (M), 66,9% (G); al 30 de junio 54,9% (948), 31,6% (2.184) y 48,2% (12.003). Mudanzas por dia sobre el
+% catalogo: 1,4% (P), 2,8% (M), 1,7% (G). Al 30 de junio, Spearman entre lineas del bay y distancia al dock
+% -0,078/-0,059/-0,061 y reparto por pasillo 17,4-30,2% (P), 11,5-14,4% (M), 4,9-7,3% (G).
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[width=0.72\textwidth, height=5.4cm, xmin=0, xmax=181, ymin=0, ymax=100, xtick={0,31,59,90,120,151,181}, xticklabels={1 ene,1 feb,1 mar,1 abr,1 may,1 jun,1 jul}, ytick={0,25,50,75,100}, ylabel={\% de las SKU}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, axis lines=left, legend style={font=\scriptsize, draw=none, at={(0.02,0.05)}, anchor=south west}, legend cell align=left, clip=false]
+            \addplot[azul!40, very thick] coordinates {(0,100.0) (7,97.7) (14,95.3) (21,92.8) (28,90.9) (31,89.9) (35,88.3) (42,85.5) (49,83.2) (56,81.6) (59,80.8) (63,80.0) (70,78.1) (77,76.2) (84,74.2) (90,72.6) (91,72.4) (98,71.4) (105,70.0) (112,68.5) (119,66.2) (120,66.0) (126,64.9) (133,63.5) (140,62.5) (147,61.4) (151,60.8) (154,60.0) (161,58.2) (168,57.0) (175,55.8) (181,54.9)};
+            \addplot[azul!75, very thick] coordinates {(0,100.0) (7,93.4) (14,87.3) (21,82.0) (28,77.5) (31,75.7) (35,73.4) (42,69.6) (49,66.4) (56,63.4) (59,61.8) (63,60.2) (70,57.3) (77,55.0) (84,52.9) (90,50.8) (91,50.6) (98,48.4) (105,46.5) (112,44.5) (119,43.0) (120,42.9) (126,41.7) (133,40.2) (140,38.6) (147,37.3) (151,36.6) (154,35.9) (161,34.5) (168,33.6) (175,32.5) (181,31.6)};
+            \addplot[azul!70!black, very thick] coordinates {(0,100.0) (7,96.4) (14,92.9) (21,90.0) (28,87.0) (31,86.0) (35,84.4) (42,81.9) (49,79.3) (56,77.0) (59,76.0) (63,74.8) (70,72.6) (77,70.6) (84,68.7) (90,66.9) (91,66.6) (98,64.8) (105,63.1) (112,61.5) (119,59.9) (120,59.6) (126,58.4) (133,56.9) (140,55.4) (147,54.1) (151,53.3) (154,52.8) (161,51.5) (168,50.3) (175,49.2) (181,48.2)};
+            \node[font=\scriptsize, anchor=west] at (axis cs:183,54.9) {$P$\enspace 54,9\,\% (948)};
+            \node[font=\scriptsize, anchor=west] at (axis cs:183,48.2) {$G$\enspace 48,2\,\% (12.003)};
+            \node[font=\scriptsize, anchor=west] at (axis cs:183,31.6) {$M$\enspace 31,6\,\% (2.184)};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{SKU que siguen en la ubicación que tenían al comenzar, en porcentaje del catálogo y, al final, también en cantidad, en los tres depósitos.}
+    \label{fig:nunca-mudadas}
+\end{figure}
+
+\section{La estructura de demanda conjunta}
+\label{sec:demanda-conjunta}
+
+Para saber qué productos se piden juntos hay que elegir primero sobre qué contar, ya que la Sección~\ref{sec:afinidad} distinguía entre lo que se compra junto, la orden, y lo que se recolecta junto, la lista, y en estos datos esa diferencia pesa mucho.
+Como cada orden es de un solo merchant, contando por orden solo pueden coincidir productos del mismo cliente, como la remera y el buzo de la marca de ropa, mientras que la remera y una taza nunca comparten una orden, aunque sí pueden caer en el mismo batch, que junta órdenes de unos veinte merchants, y por eso contar por batch, que es lo que la Sección~\ref{sec:afinidad} recomendaba por ser lo que camina el operario, agrega muchos pares que por orden no existen, al punto de que en $M$ casi todos los pares que coinciden en algún batch son de merchants distintos.
+% Seis meses (scratchpad v34/coocurrencia.py). Pares distintos que coinciden por batch y son de merchants
+% distintos: 73,8% (P), 96,8% (M), 97,6% (G). Por orden, el 100% es del mismo merchant.
+
+En cualquiera de las dos cuentas la mayoría de los pares nunca coincide, como anticipaba la Sección~\ref{sec:afinidad} para un depósito con muchas SKU y pedidos chicos.
+Por orden la matriz es rala en extremo, porque cada SKU solo puede coincidir con las de su propio merchant y aun dentro de él la mayoría de los pares no aparece nunca, mientras que por batch se llena bastante más, y en $M$ algo más de la cuarta parte de todos los pares posibles coincide al menos una vez en los seis meses, una proporción que en $G$, con muchas más SKU para la misma cantidad de líneas por batch, baja a menos de la décima parte.
+% Pares posibles: 1.492.128 (P), 23.884.416 (M), 309.569.403 (G). Por orden coinciden al menos una vez 34.127,
+% 165.055 y 508.730 pares, el 2,3/0,69/0,16% de todos y el 9,2/34,6/16,4% de los del mismo merchant. Por batch
+% coinciden 436.145, 6.495.294 y 24.344.692, el 29,2/27,2/7,9% de todos.
+
+Sobre esos pares, las medidas de la Sección~\ref{sec:afinidad} se comportan solo en parte como allí se anticipaba, como muestra la Tabla~\ref{tab:afinidad-datos}, que las calcula por batch para dos pares de un mismo merchant de $M$, uno de dos SKU muy pedidas y otro de dos de la cola.
+La co-ocurrencia, el soporte, la confianza, Jaccard y el coseno ponen primero al par popular, y solo el lift da vuelta el orden, con un valor más de cuarenta veces mayor para el par raro gracias a apenas tres coincidencias, porque con frecuencias tan chicas lo esperado por azar es casi nulo y cualquier coincidencia lo multiplica, que es el régimen de la cola larga en el que la Sección~\ref{sec:afinidad} advertía que el lift se dispara.
+% Pares de la tabla (scratchpad v34/par_raro.py), M por batch, N = 8.145: popular s = 2.294 y 1.456, n = 1.039;
+% raro s = 17 y 13, n = 3, los dos del mismo merchant. Por orden (N = 203.625) el par popular da lift 48,8,
+% porque contar sobre todas las ordenes mezcla el efecto de pertenecer al mismo merchant (cada uno hace el 2%
+% de las ordenes). De los 59.032 pares por batch con ambas SKU de soporte <= 20, solo 884 coinciden 2 o mas veces.
+
+\begin{table}[ht]
+    \centering
+    \footnotesize
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{|l|r|r|r|r|r|r|}
+        \hline
+        \textbf{Par} & \textbf{Co-ocurr.} & \textbf{Soporte} & \textbf{Confianza} & \textbf{Lift} & \textbf{Jaccard} & \textbf{Coseno} \\
+        \hline
+        Popular & 1.039 & 0,13 & 0,45 & 2,5 & 0,38 & 0,57 \\
+        \hline
+        Raro & 3 & 0,0004 & 0,18 & 111 & 0,11 & 0,20 \\
+        \hline
+    \end{tabular}
+    \caption{Las seis medidas de la Sección~\ref{sec:afinidad} para dos pares de SKU de un mismo merchant de $M$, contadas sobre sus 8.145 batches. Las SKU del par popular aparecen en 2.294 y 1.456 batches y las del raro en 17 y 13, y la confianza es la de la más pedida de cada par hacia la otra.}
+    \label{tab:afinidad-datos}
+\end{table}
+
+% PARA EL CAPITULO DE RESULTADOS (decidido 2026-11-15: el modelo nulo no va en 3.6). Notas que estaban como
+% TODO de esta seccion, con cifras sobre train que hay que recalcular sobre los seis meses:
+% - Modelo nulo: permutar las lineas entre las ordenes de cada merchant conservando el tamano de cada orden y
+% las lineas de cada SKU, sin repetir una SKU en una orden, K barajados; lift observado = n_ij sobre el
+% esperado del nulo. Reportar sobre los pares con esperado >= 20 y >= 5, junto a la banda que da un barajado
+% tratado como observado. Referencia sobre train (recalcular sobre seis meses): con >= 20, 6.179 pares, lift
+% de 0,79 a 1,34 (p5 a p99) contra 0,78 a 1,33 del azar; con >= 5, 0,55 a 1,75 contra 0,55 a 1,78. Para
+% batches, el mismo test permutando entre las ordenes del batch. Antes de escribir, resolver la diferencia con
+% la banda del manual (tab:hechos, 0,65 a 1,19, notebook 01, otra definicion).
+% - Figura: co-ocurrencia observada contra esperada por par (datos/lift.dat recalculado, log-log), con la
+% diagonal y la banda del azar. Pregunta: hay pares por encima de lo que explican las frecuencias dentro del
+% merchant.
+% - Cautela: la conclusion preliminar es que no aparece afinidad mas alla del merchant. Escribirla como que
+% no se distingue del azar con este test y estos umbrales, no como ausencia probada, y conectarla con la cuarta
+% condicion de sec:sintesis y con Zhang 2016.
+
+\section{Síntesis del análisis}
+\label{sec:sintesis-deposito}
+
+Al comenzar el capítulo se dijo que cuánto puede ganar una asignación depende de qué productos concentran la demanda, de cómo se juntan los pedidos en cada recorrido y de cuánto cambia con el tiempo el lugar de cada producto, y los datos dieron una respuesta para cada una de esas tres cosas.
+La demanda tiene la forma del 80-20 que describía el capítulo anterior y se concentra en un grupo de productos que es casi siempre el mismo, los pedidos se juntan en batches que terminan recorriendo prácticamente todo el depósito, y el lugar de cada producto cambia todo el tiempo, porque las reposiciones mudan sobre todo a lo más pedido, aunque siempre a una ubicación cualquiera, de modo que la asignación sigue tan ajena a la demanda como al principio.
+A eso se suma que lo que se pide junto queda dentro de cada merchant cuando se mira la orden, mientras que en el batch, que es lo que camina el operario, se mezclan productos de muchos clientes.
+
+Los tres depósitos comparten esas reglas y se diferencian sobre todo en la escala, aunque la escala no deja todo igual, ya que en $P$, con un catálogo chico, unos pocos productos hacen buena parte de las líneas y se repiten dentro de un mismo batch, y el operario para menos veces de las que indica la lista, mientras que en $G$ listas del mismo largo se reparten en un depósito mucho más grande y a veces dejan algún pasillo sin visitar.
+Entre los dos queda $M$, que es además donde la asignación se desarma más rápido, señal de que no todo lo que distingue a los tres depósitos sigue a su tamaño, y por eso conviene seguir mirándolos por separado en lo que viene.
+
+Esas son las condiciones del propio depósito, con su ruteo, su batching y su curva de demanda, bajo las que la Sección~\ref{sec:sintesis} anunció que este trabajo iba a evaluar las asignaciones, y el capítulo siguiente parte de ellas para formular el problema y plantear los métodos con que se busca una asignación mejor que la actual.

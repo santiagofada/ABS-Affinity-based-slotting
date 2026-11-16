@@ -1,0 +1,12 @@
+,medium,medium-alpha-1.3,big
+corte,2026-05-25 19:12:22.733333,2026-05-25 19:12:22.733333,2026-05-25 19:13:15.933333
+batches_train,6516,6516,14480
+batches_test,1629,1629,3620
+ordenes_train,162900,162900,362000
+ordenes_test,40725,40725,90500
+lineas_train,569482,569320,1265889
+lineas_test,142655,142540,317121
+dias_train,144,144,144
+dias_test,36,36,36
+repos_movidas_a_train,0,0,5
+lineas_train_despues_del_corte,6,0,84
