@@ -1,13 +1,15 @@
 """Run experiment tasks, in parallel, saving each result to disk as it finishes.
 
 For every task: build (or reuse) the instance context, build the plan, then for
-each evaluation re-batch the test orders, simulate and record the metrics. A
-task whose result file exists is skipped, so an interrupted run resumes where
-it stopped. Results:
+each evaluation simulate the test period and record the metrics (see
+:func:`evaluate` for the two starting points). A task whose result file exists
+is skipped, so an interrupted run resumes where it stopped. Results:
 
 - ``<out>/tareas/<key>.parquet``: one row per evaluation (specs + metrics).
 - ``<out>/batches/<key>.parquet``: one row per simulated batch (for
   per-period breakdowns).
+- ``<out>/pasos/<key>.parquet``: one row per simulation step of the
+  evaluations that start from the real warehouse (how far the plan came in).
 - ``<out>/progreso.log``: one line per finished or failed task.
 """
 
@@ -41,9 +43,9 @@ def _affinity_filter(text: str):
     return filter_registry.get(name)(float(value) if name == "threshold" else int(value))
 
 
-def _dataset(name: str) -> SimpleNamespace:
+def _dataset(name: str, test_size: float) -> SimpleNamespace:
     """Tables, split and replenishment split of a dataset (cached, one at a time)."""
-    if name not in _DATASETS:
+    if (name, test_size) not in _DATASETS:
         from ..config import dataset_dir
         from ..data import WarehouseDataLoader, split_picking_events
         from ..simulation import split_replenishments
@@ -51,14 +53,14 @@ def _dataset(name: str) -> SimpleNamespace:
         _DATASETS.clear()
         _CONTEXTS.clear()
         ds = WarehouseDataLoader(dataset_dir("v2", name)).load_all()
-        split = split_picking_events(ds.picking_events, test_size=0.2)
+        split = split_picking_events(ds.picking_events, test_size=test_size)
         replen_train, replen_test = split_replenishments(ds.replenishment_events, split.train, ds.initial_stock, split.cutoff)
         start = ds.picking_events.groupby("batch_id")["timestamp"].min().sort_values()
-        _DATASETS[name] = SimpleNamespace(
+        _DATASETS[(name, test_size)] = SimpleNamespace(
             ds=ds, split=split, replen_train=replen_train, replen_test=replen_test,
             minutes_per_batch=float(start.diff().dt.total_seconds().median() / 60),
         )
-    return _DATASETS[name]
+    return _DATASETS[(name, test_size)]
 
 
 def context(spec: InstanceSpec) -> SimpleNamespace:
@@ -70,7 +72,7 @@ def context(spec: InstanceSpec) -> SimpleNamespace:
     from ..simulation import Simulator, build_event_stream, state_after_history, state_from_initial_stock
     from ..slotting import build_full_instance
 
-    d = _dataset(spec.dataset)
+    d = _dataset(spec.dataset, spec.test_size)
     instance = build_full_instance(
         d.split.train, d.ds.initial_stock, d.ds.distances,
         affinity_metric=spec.affinity_metric, cooccurrence_col=spec.cooccurrence_col,
@@ -82,7 +84,7 @@ def context(spec: InstanceSpec) -> SimpleNamespace:
     s_shape = SShapeRouting.from_tables(instance, d.ds.coordinates)
     ctx = SimpleNamespace(
         spec=spec, data=d, instance=instance, state_cut=state_cut, s_shape=s_shape,
-        aisle_set_cost=s_shape.mask_costs(),
+        aisle_set_cost=s_shape.mask_costs(), location_aisle=s_shape.bay_aisle[instance.location_bay],
         simulators={r: Simulator.from_tables(instance, d.ds.coordinates, routing=r) for r in ("s_shape", "snake")},
     )
     _CONTEXTS[spec] = ctx
@@ -95,7 +97,7 @@ def context(spec: InstanceSpec) -> SimpleNamespace:
 def _method(name: str, ctx: SimpleNamespace, spec: SlottingSpec | None = None):
     from ..clustering import clustering_registry
     from ..methods import (AisleFillSlotting, BiLevelSlotting, DemandGreedySlotting, LinearAssignmentSlotting,
-                           MerchantAisleFillSlotting, SwapSearchSlotting)
+                           MerchantAisleFillSlotting, RandomSlotting, SwapSearchSlotting)
 
     coords = ctx.data.ds.coordinates
     if name == "demand_greedy":
@@ -115,6 +117,8 @@ def _method(name: str, ctx: SimpleNamespace, spec: SlottingSpec | None = None):
         return BiLevelSlotting(clustering_registry.get(spec.clustering)(), DemandGreedySlotting(), location_cost=location_cost)
     if name == "swap_search":
         return SwapSearchSlotting(_method(spec.seed or "demand_greedy", ctx), lam=spec.lam, neighborhood=spec.neighborhood or "bay")
+    if name == "random":
+        return RandomSlotting(int(spec.seed or 0))
     raise ValueError(f"unknown slotting method {name!r}")
 
 
@@ -153,39 +157,81 @@ def plan_diagnostics(ctx: SimpleNamespace, plan, aisle: pd.Series) -> dict:
 
 
 # --------------------------------------------------------------------------- evaluation
-def evaluate(ctx: SimpleNamespace, plan, aisle: pd.Series, ev: EvalSpec, batchings: dict) -> tuple[dict, pd.DataFrame]:
+def _policy(ctx: SimpleNamespace, ev: EvalSpec):
+    from ..simulation import PlanAislePolicy, replenishment_policy_registry
+
+    if ev.replenishment == "plan_aisle":
+        return PlanAislePolicy(ctx.location_aisle, trigger=ev.rule_trigger, target=ev.rule_target)
+    return replenishment_policy_registry.get(ev.replenishment)()
+
+
+def evaluate(ctx: SimpleNamespace, plan, aisle: pd.Series, ev: EvalSpec,
+             batchings: dict) -> tuple[dict, pd.DataFrame, pd.DataFrame | None]:
+    """Simulate the plan under ``ev``: a row of metrics, the batch log and (start real) the step log.
+
+    ``start="plan"`` applies the plan at once and re-batches the whole test with
+    the plan's aisles (they never change under ``home``); ``start="real"``
+    starts from the warehouse at the cutoff and re-batches pool by pool with
+    the aisles of the moment (``simulate_rolling``).
+    """
     from ..batching import AisleCoverBatching, order_waits
-    from ..simulation import build_event_stream, replenishment_policy_registry, reslot_state
+    from ..simulation import build_event_stream, reslot_state, simulate_rolling
 
     d, inst = ctx.data, ctx.instance
-    key = (ev.window, ev.batching_passes)
-    if key not in batchings:
+    policy = _policy(ctx, ev)
+    if ev.start == "plan":
+        key = (ev.window, ev.batching_passes)
+        if key not in batchings:
+            t0 = time.time()
+            batching = AisleCoverBatching(aisle, ctx.aisle_set_cost, batch_size=25, window=ev.window,
+                                          max_passes=ev.batching_passes)
+            picking = batching.make_batches(d.split.test)
+            waits = order_waits(picking, ev.window) * d.minutes_per_batch
+            n = picking["batch_id"].nunique()
+            batchings[key] = (picking, {
+                "batching_seconds": time.time() - t0,
+                "static_fifo": batching.stats_["fifo"] / n, "static_construction": batching.stats_["construction"] / n,
+                "static_final": batching.stats_["local_search"] / n,
+                "wait_mean_min": float(waits.mean()), "wait_max_min": float(waits.max()),
+            })
+        picking, batching_metrics = batchings[key]
         t0 = time.time()
-        batching = AisleCoverBatching(aisle, ctx.aisle_set_cost, batch_size=25, window=ev.window, max_passes=ev.batching_passes)
-        picking = batching.make_batches(d.split.test)
-        waits = order_waits(picking, ev.window) * d.minutes_per_batch
-        n = picking["batch_id"].nunique()
-        batchings[key] = (picking, {
-            "batching_seconds": time.time() - t0,
-            "static_fifo": batching.stats_["fifo"] / n, "static_construction": batching.stats_["construction"] / n,
-            "static_final": batching.stats_["local_search"] / n,
+        events = build_event_stream(picking, d.replen_test, inst)
+        res = ctx.simulators[ev.routing].run(reslot_state(ctx.state_cut, plan, inst), events, policy,
+                                            planned=plan, lam=ev.replenishment_lam)
+        log, steps = res.batch_log, None
+        relocations, shortfall, off_home = res.n_relocations, res.shortfall_lines, res.final_off_home_fraction
+    elif ev.start == "real":
+        t0 = time.time()
+        res = simulate_rolling(ctx.simulators[ev.routing], inst, ctx.state_cut, d.split.test, d.replen_test, policy,
+                               aisle_set_cost=ctx.aisle_set_cost, window=ev.window, batch_size=25,
+                               max_passes=ev.batching_passes, planned=plan, lam=ev.replenishment_lam,
+                               location_aisle=ctx.location_aisle)
+        log, steps = res.batch_log, res.step_log
+        waits = order_waits(res.picking, ev.window) * d.minutes_per_batch
+        n = res.picking["batch_id"].nunique()
+        batching_metrics = {
+            "batching_seconds": float("nan"),
+            "static_fifo": res.batching["fifo"] / n, "static_construction": res.batching["construction"] / n,
+            "static_final": res.batching["local_search"] / n,
             "wait_mean_min": float(waits.mean()), "wait_max_min": float(waits.max()),
-        })
-    picking, batching_metrics = batchings[key]
+        }
+        relocations, shortfall, off_home = res.n_relocations, res.shortfall_lines, float("nan")
+    else:
+        raise ValueError(f"unknown start {ev.start!r}")
 
-    t0 = time.time()
-    events = build_event_stream(picking, d.replen_test, inst)
-    policy = replenishment_policy_registry.get(ev.replenishment)()
-    res = ctx.simulators[ev.routing].run(reslot_state(ctx.state_cut, plan, inst), events, policy,
-                                        planned=plan, lam=ev.replenishment_lam)
-    log = res.batch_log
+    last = log["timestamp"] >= log["timestamp"].max() - pd.Timedelta(days=14)
     row = {
         "mean_distance": float(log["distance"].mean()), "p95_distance": float(log["distance"].quantile(0.95)),
+        "last14_distance": float(log.loc[last, "distance"].mean()),
         "mean_aisles": float(log["n_aisles"].mean()), "n_batches": len(log),
-        "shortfall_lines": res.shortfall_lines, "relocations": res.n_relocations,
-        "final_off_home": res.final_off_home_fraction, "sim_seconds": time.time() - t0, **batching_metrics,
+        "shortfall_lines": shortfall, "relocations": relocations,
+        "final_off_home": off_home,
+        "final_in_plan": float(steps["demand_in_plan_aisle"].iloc[-1]) if steps is not None else float("nan"),
+        "final_aisles_per_order": float(steps["aisles_per_order"].iloc[-1]) if steps is not None else float("nan"),
+        "sim_seconds": time.time() - t0, **batching_metrics,
     }
-    return row, log[["timestamp", "distance", "n_aisles"]]
+    return row, log[["timestamp", "distance", "n_aisles"]], steps
 
 
 def run_task(task: Task, out_dir: Path) -> dict:
@@ -202,18 +248,22 @@ def run_task(task: Task, out_dir: Path) -> dict:
     aisle = sku_aisles(ctx, plan)
     diag = plan_diagnostics(ctx, plan, aisle)
 
-    rows, logs, batchings = [], [], {}
+    rows, logs, step_logs, batchings = [], [], [], {}
     for i, ev in enumerate(task.evals):
-        row, log = evaluate(ctx, plan, aisle, ev, batchings)
+        row, log, steps = evaluate(ctx, plan, aisle, ev, batchings)
         spec_cols = {"block": task.block, "task": task.key, "eval": i,
                      **asdict(task.instance), **{f"slot_{k}": v for k, v in asdict(task.slotting).items()}, **asdict(ev)}
         rows.append({**spec_cols, **diag, "plan_seconds": plan_seconds, **row})
         logs.append(log.assign(task=task.key, eval=i))
+        if steps is not None:
+            step_logs.append(steps.assign(task=task.key, eval=i))
 
-    for sub in ("tareas", "batches"):
+    for sub in ("tareas", "batches", "pasos"):
         (out_dir / sub).mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(".tmp")
     pd.concat(logs).to_parquet(out_dir / "batches" / f"{task.key}.parquet", index=False)
+    if step_logs:
+        pd.concat(step_logs).to_parquet(out_dir / "pasos" / f"{task.key}.parquet", index=False)
     pd.DataFrame(rows).to_parquet(tmp, index=False)
     tmp.rename(target)                                   # the result file appears only when complete
     return {"key": task.key, "status": "ok", "seconds": time.time() - t_start}
@@ -272,4 +322,10 @@ def load_results(out_dir) -> pd.DataFrame:
 
 def load_batches(out_dir) -> pd.DataFrame:
     files = sorted((Path(out_dir) / "batches").glob("*.parquet"))
+    return pd.concat([pd.read_parquet(f) for f in files], ignore_index=True) if files else pd.DataFrame()
+
+
+def load_steps(out_dir) -> pd.DataFrame:
+    """Step logs of the evaluations that start from the real warehouse (``simulate_rolling``)."""
+    files = sorted((Path(out_dir) / "pasos").glob("*.parquet"))
     return pd.concat([pd.read_parquet(f) for f in files], ignore_index=True) if files else pd.DataFrame()

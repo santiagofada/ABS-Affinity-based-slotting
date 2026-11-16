@@ -18,9 +18,11 @@ from .initial_state import (
     state_from_initial_stock,
 )
 from .objective_greedy import ObjectiveGreedyPolicy
+from .plan_aisle import PlanAislePolicy
 from .random_storage import RandomStoragePolicy
 from .results import SimulationResult
 from .simulator import Simulator
+from .rolling import RollingResult, location_aisles, simulate_rolling
 from .state import FreeLocationPool, WarehouseState
 
 __all__ = [
@@ -39,8 +41,12 @@ __all__ = [
     "RandomStoragePolicy",
     "HomePolicy",
     "ObjectiveGreedyPolicy",
+    "PlanAislePolicy",
     "SimulationResult",
     "Simulator",
+    "RollingResult",
+    "location_aisles",
+    "simulate_rolling",
     "FreeLocationPool",
     "WarehouseState",
 ]

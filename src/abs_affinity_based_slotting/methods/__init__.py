@@ -5,6 +5,7 @@ from .demand_greedy import DemandGreedySlotting
 from .exact import ExactQAPSlotting
 from .linear_assignment import LinearAssignmentSlotting
 from .local_search import SwapSearchSlotting
+from .random_assignment import RandomSlotting
 from .two_stage import (
     ClusterAggregation,
     BiLevelSlotting,
@@ -24,6 +25,7 @@ __all__ = [
     "ExactQAPSlotting",
     "LinearAssignmentSlotting",
     "SwapSearchSlotting",
+    "RandomSlotting",
     "BiLevelSlotting",
     "ClusterAggregation",
     "aggregate_clusters",

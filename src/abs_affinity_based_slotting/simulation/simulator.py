@@ -85,9 +85,10 @@ class Simulator:
         events: list[PickBatch | ReplenEvent],
         policy: ReplenishmentPolicy,
         *,
-        planned: Assignment | None = None,
+        planned: Assignment | np.ndarray | None = None,
         lam: float = 0.5,
         seed: int = 0,
+        copy_state: bool = True,
     ) -> SimulationResult:
         """Simulate ``events`` from ``initial_state`` under ``policy``.
 
@@ -95,15 +96,23 @@ class Simulator:
         ----------
         planned:
             The slotting plan being simulated; required by plan-aware policies
-            and by the off-home metric. Must cover the SKU universe.
+            and by the off-home metric. Must cover the SKU universe. An array
+            is taken as the planned location index of every SKU (what an
+            Assignment is converted to), to skip the conversion when the same
+            plan is simulated in many pieces.
+        copy_state:
+            False runs on ``initial_state`` itself, for callers that chain runs
+            and do not need the input state afterwards.
         """
         instance = self._instance
-        state = initial_state.copy()
+        state = initial_state.copy() if copy_state else initial_state
 
-        if planned is not None:
-            planned_location = _assignment_location_indices(planned, instance)
-        else:
+        if planned is None:
             planned_location = None
+        elif isinstance(planned, np.ndarray):
+            planned_location = planned.astype(np.int64, copy=False)
+        else:
+            planned_location = _assignment_location_indices(planned, instance)
 
         context = SimulationContext(
             instance=instance,
@@ -115,14 +124,10 @@ class Simulator:
         # A SKU is "at home" when it sits on its planned location and nowhere
         # else. Counted once, then updated per SKU as events touch it.
         if planned_location is not None:
-            at_home = np.fromiter(
-                (
-                    state.locations_of(s) == frozenset({int(planned_location[s])})
-                    for s in range(instance.n_skus)
-                ),
-                dtype=bool,
-                count=instance.n_skus,
-            )
+            location_sku, _ = state.location_arrays()
+            held = location_sku[location_sku >= 0]
+            n_locations = np.bincount(held, minlength=instance.n_skus)
+            at_home = (location_sku[planned_location] == np.arange(instance.n_skus)) & (n_locations == 1)
             off_home_count = int(instance.n_skus - at_home.sum())
         else:
             at_home = None

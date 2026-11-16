@@ -96,7 +96,7 @@ def build_event_stream(
         )
 
     replenishments = replenishments.sort_values("timestamp", kind="stable")
-    for column in ("sku", "source_location_id", "target_location_id"):
+    for column in ("sku", "source_location_id", "target_location_id") if len(replenishments) else ():
         mapping = sku_to_idx if column == "sku" else loc_to_idx
         unresolved = ~replenishments[column].isin(mapping)
         if unresolved.any():

@@ -3,8 +3,15 @@
 A :class:`Task` is the unit of work. Building the plan is the expensive part
 (``swap_search`` takes minutes), so a task builds one plan and evaluates it
 under several :class:`EvalSpec` (batching window, routing, replenishment),
-which are cheap. Every field is a plain value so tasks hash, pickle and
+which are cheaper. Every field is a plain value so tasks hash, pickle and
 serialise without surprises.
+
+The defaults describe how the project simulates a plan: the test period is the
+last 40% of the batches, the warehouse starts as it really is at the cutoff,
+and the plan enters through relocations (``plan_aisle``, see
+:mod:`..simulation.rolling`). Applying the whole plan at once at the cutoff
+(``start="plan"``) is the upper bound, kept for comparison; it was the only
+regime of the first grid (``notebooks/data2/old_base/05_combinatoria``).
 """
 
 from __future__ import annotations
@@ -12,6 +19,11 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
+
+# Fields added after the first grid, with the value that grid used implicitly.
+# They are left out of the key when they hold that value, so its cached results
+# keep their keys.
+_LEGACY = {"test_size": 0.2, "start": "plan", "rule_trigger": "stockout", "rule_target": "aisle"}
 
 
 @dataclass(frozen=True)
@@ -25,6 +37,7 @@ class InstanceSpec:
     affinity_filter: str = "top_k:10"    # none | top_k:K | mutual_top_k:K | threshold:X
     normalize: bool = True
     pair_distance: str = "aisle"         # walking | aisle
+    test_size: float = 0.4               # last fraction of the batches used as test
 
 
 @dataclass(frozen=True)
@@ -32,10 +45,10 @@ class SlottingSpec:
     """Which method builds the plan, with its parameters (None = not used)."""
 
     method: str                          # vigente | demand_greedy | linear_assignment | aisle_fill |
-                                         # merchant_aisle_fill | bilevel | swap_search
+                                         # merchant_aisle_fill | bilevel | swap_search | random
     lam: float | None = None             # swap_search
     neighborhood: str | None = None      # swap_search: bay | neighbor
-    seed: str | None = None              # swap_search: plan it starts from
+    seed: str | None = None              # swap_search: plan it starts from; random: seed of the draw
     clustering: str | None = None        # bilevel: merchant | demand_class
     zone_cost: str | None = None         # bilevel: dock (cost bands) | aisle_order (zones aisle by aisle)
 
@@ -47,8 +60,19 @@ class EvalSpec:
     window: int = 1                      # FIFO batches pooled by the re-batching; 1 = FIFO
     batching_passes: int = 20            # swap passes of the re-batching; 0 = construction only
     routing: str = "s_shape"             # s_shape | snake
-    replenishment: str = "home"          # home | random | objective_greedy
+    start: str = "real"                  # real: the warehouse at the cutoff | plan: the plan applied at once
+    replenishment: str = "plan_aisle"    # plan_aisle | random | objective_greedy | home
     replenishment_lam: float = 0.5       # objective_greedy only
+    rule_trigger: str = "stockout"       # plan_aisle: move only when the SKU ran out | always
+    rule_target: str = "aisle"           # plan_aisle: aisle | location
+
+
+def _without_legacy(value):
+    if isinstance(value, dict):
+        return {k: _without_legacy(v) for k, v in value.items() if not (k in _LEGACY and v == _LEGACY[k])}
+    if isinstance(value, (list, tuple)):
+        return [_without_legacy(v) for v in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -61,7 +85,7 @@ class Task:
     @property
     def key(self) -> str:
         """Stable identifier: same task, same key, across runs and machines."""
-        text = json.dumps(asdict(self), sort_keys=True, default=str)
+        text = json.dumps(_without_legacy(asdict(self)), sort_keys=True, default=str)
         return hashlib.sha1(text.encode()).hexdigest()[:16]
 
     @property

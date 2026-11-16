@@ -10,6 +10,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     "gurobipy",
+    "mlflow>=3.17.2",
 ]
 
 [tool.setuptools.packages.find]

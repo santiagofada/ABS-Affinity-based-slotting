@@ -114,6 +114,10 @@ class WarehouseState:
     def free_pool(self) -> FreeLocationPool:
         return self._free
 
+    def location_arrays(self) -> tuple[np.ndarray, np.ndarray]:
+        """SKU (FREE if none) and units of every location, as copies."""
+        return self._location_sku.copy(), self._location_units.copy()
+
     def primary_location(self, sku_idx: int) -> int:
         """The SKU's location with most units (ties: lowest index); -1 if none."""
         locations = self._sku_locations[sku_idx]
