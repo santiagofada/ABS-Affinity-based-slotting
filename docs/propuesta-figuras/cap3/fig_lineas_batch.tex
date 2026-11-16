@@ -1,0 +1,49 @@
+\documentclass{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{pgfplots}
+\usepackage{subcaption}
+\pgfplotsset{compat=1.18}
+\definecolor{azul}{HTML}{4C78A8}
+\pagestyle{empty}
+
+% Distribucion por batch sobre los seis meses, en intervalos de 4 (44-48, 48-52, ...), marcados en su centro.
+% Lineas por batch: media 87,5 en los tres, p5-p95 78-96/97, min-max 70-103 (P), 67-109 (M), 65-110 (G).
+% Ubicaciones distintas por batch: mediana 64 (P), 83 (M), 86 (G); p5-p95 56-72, 74-93, 76-95.
+% Calculo en scratchpad v34/dist_batch.py y v34/hist.py.
+
+\begin{document}
+
+\begin{figure}[ht]
+    \centering
+    \pgfplotsset{batchhist/.style={width=\linewidth, height=4.8cm, xmin=44, xmax=112, ymin=0, ymax=35, xtick={50,60,...,110}, ytick={0,10,20,30}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, ylabel={\% de los batches}, axis lines=left, legend style={font=\scriptsize, draw=none, at={(0.02,0.98)}, anchor=north west}, legend cell align=left}}
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[batchhist, xlabel={Líneas del batch}]
+                \addplot[azul!40, thick, mark=o, mark size=1.3pt] coordinates {(66,0.0) (70,0.1) (74,1.2) (78,6.1) (82,14.5) (86,27.9) (90,27.6) (94,16.1) (98,4.9) (102,1.7) (106,0.0)};
+                \addplot[azul!75, thick, mark=square, mark size=1.2pt] coordinates {(66,0.0) (70,0.2) (74,1.4) (78,6.4) (82,16.6) (86,25.7) (90,25.8) (94,16.4) (98,6.2) (102,1.1) (106,0.2) (110,0.0)};
+                \addplot[azul!70!black, thick, mark=triangle, mark size=1.5pt] coordinates {(66,0.0) (70,0.2) (74,1.5) (78,6.0) (82,16.0) (86,26.3) (90,26.2) (94,16.5) (98,5.8) (102,1.3) (106,0.2) (110,0.0)};
+                \legend{$P$,$M$,$G$}
+            \end{axis}
+        \end{tikzpicture}
+        \caption{Cuántas líneas tiene un batch}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[batchhist, xlabel={Ubicaciones distintas que visita el batch}]
+                \addplot[azul!40, thick, mark=o, mark size=1.3pt] coordinates {(46,0.1) (50,0.3) (54,3.8) (58,12.2) (62,26.4) (66,30.8) (70,19.6) (74,5.6) (78,1.2) (82,0.0)};
+                \addplot[azul!75, thick, mark=square, mark size=1.2pt] coordinates {(62,0.0) (66,0.2) (70,1.4) (74,6.2) (78,16.2) (82,26.1) (86,25.5) (90,16.4) (94,6.7) (98,1.1) (102,0.2) (106,0.0)};
+                \addplot[azul!70!black, thick, mark=triangle, mark size=1.5pt] coordinates {(66,0.0) (70,0.6) (74,3.0) (78,10.0) (82,21.7) (86,27.6) (90,22.1) (94,11.3) (98,3.1) (102,0.6) (106,0.0)};
+                \legend{$P$,$M$,$G$}
+            \end{axis}
+        \end{tikzpicture}
+        \caption{Cuántas paradas hace el operario}
+    \end{subfigure}
+    \caption{Distribución de los batches según su cantidad de líneas y de ubicaciones distintas en los tres depósitos. Cada punto reúne los batches de un intervalo de cuatro valores.}
+    \label{fig:lineas-batch}
+\end{figure}
+
+\end{document}

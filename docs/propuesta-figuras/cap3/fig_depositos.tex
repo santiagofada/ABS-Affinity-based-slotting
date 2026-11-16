@@ -1,0 +1,99 @@
+\documentclass{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+\usepackage{subcaption}
+\definecolor{azul}{HTML}{4C78A8}
+\definecolor{naranja}{HTML}{F58518}
+\pagestyle{empty}
+
+% Planta de un deposito a escala, en pulgadas, con la geometria de los datos: pasillos cada 192,
+% bays a 72 del centro de su pasillo y uno cada 96 a lo largo del pasillo, transversales de 120,
+% corredores a 108 del primer y del ultimo bay y el dock en (0, -200). Los bays de pasillos vecinos
+% quedan espalda con espalda, asi que cada estanteria interior es doble.
+% #1 desplazamiento en x, #2 cantidad de pasillos, #3 tramos de bays entre transversales
+% (primer/ultimo indice), #4 y del ultimo bay, #5 y de los transversales, #6 nombre.
+% Cada bay es un rectangulo relleno sin borde, separado de sus vecinos por un hueco de 14 en las dos
+% direcciones; las lineas grises punteadas son los ejes de pasillos y corredores.
+\newcommand{\planta}[6]{%
+    \begin{scope}[shift={(#1,0)}]
+        \fill[gray!10, rounded corners=3pt] (-110,-290) rectangle (#2*192+60, #4+168);
+        % ejes por donde se camina: pasillos, corredores frontal y del fondo, transversales y acceso al dock
+        \begin{scope}[gray!60, line width=0.3pt, dash pattern=on 1.5pt off 1pt, line cap=round]
+            \foreach \a in {1,...,#2} { \draw ({96+192*(\a-1)},60) -- ({96+192*(\a-1)},#4+108); }
+            \foreach \yc in {60,#5,#4+108} { \draw (96,\yc) -- ({96+192*(#2-1)},\yc); }
+            \draw (0,-200) -- (0,60) -- (96,60);
+        \end{scope}
+        % bays
+        \foreach \c in {0,...,#2} {
+            \foreach \f/\l [count=\t from 0] in {#3} {
+                \foreach \j in {\f,...,\l} {
+                    \pgfmathsetmacro{\yy}{168+96*\j+120*\t}
+                    \ifnum\c>0 \fill[azul!60] ({192*\c-45},\yy-41) rectangle ({192*\c-7},\yy+41); \fi
+                    \ifnum\c<#2 \fill[azul!60] ({192*\c+7},\yy-41) rectangle ({192*\c+45},\yy+41); \fi
+                }
+            }
+        }
+        \fill[black!75] (0,-200) circle (32);
+        \node[anchor=north, align=center] at (#2*96,-330) {#6};
+    \end{scope}%
+}
+
+\begin{document}
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[x=0.00185cm, y=0.00185cm]
+        \planta{0}{4}{0/4,5/9}{1152}{660}{$P$\\[-1pt]{\scriptsize\color{black!60} 4 pasillos}}
+        \planta{1150}{8}{0/5,6/10,11/15}{1848}{756,1356}{$M$\\[-1pt]{\scriptsize\color{black!60} 8 pasillos}}
+        \planta{3060}{16}{0/5,6/11,12/17,18/23}{2736}{756,1452,2148}{$G$\\[-1pt]{\scriptsize\color{black!60} 16 pasillos}}
+        % el bay A03-27 de M, centro en (408, 1656)
+        \fill[naranja] (1150+391,1615) rectangle (1150+429,1697);
+        \draw[black!80, line width=0.5pt] (1150+381,1605) rectangle (1150+435,1707);
+        % escala de 10 metros (393,7 pulgadas), abajo a la derecha
+        \draw[black!70, line width=0.6pt] (5698,-200) -- (6092,-200);
+        \draw[black!70, line width=0.6pt] (5698,-230) -- (5698,-170);
+        \draw[black!70, line width=0.6pt] (6092,-230) -- (6092,-170);
+        \node[font=\scriptsize, anchor=south] at (5895,-165) {10 m};
+        \node[font=\scriptsize, anchor=west] at (60,-200) {\emph{dock}};
+    \end{tikzpicture}
+    \caption{Plantas de los depósitos $P$, $M$ y $G$, dibujadas a la misma escala. Cada rectángulo azul es un bay, las líneas grises punteadas son los ejes por donde se camina y el punto negro es el \emph{dock}, donde empieza y termina cada recorrido. El bay naranja de $M$ es el que muestra la Figura~\ref{fig:bay}.}
+    \label{fig:depositos}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[x=0.7cm, y=0.7cm, font=\footnotesize]
+        \fill[azul!10] (0,0) rectangle (6,5);
+        \fill[naranja!60] (4,4) rectangle (5,5);
+        \foreach \b in {1,...,5} { \draw[azul!40, line width=0.4pt] (\b,0) -- (\b,5); }
+        \foreach \i in {1,...,4} { \draw[azul!70!black, line width=1pt] (0,\i) -- (6,\i); }
+        \draw[azul!70!black, line width=1pt] (0,0) rectangle (6,5);
+        \foreach \s [count=\i from 0] in {A,B,C,D,E} { \node at (-0.45,\i+0.5) {\s}; }
+        \foreach \b in {1,...,6} { \node at (\b-0.5,-0.4) {0\b}; }
+        \node[rotate=90] at (-1.2,2.5) {estantes};
+        \node at (3,-1.1) {compartimentos};
+        % el nombre de la ubicacion, con cada parte rotulada
+        \begin{scope}[every node/.style={font=\small, inner xsep=1pt}]
+            \node (p) at (1.1,6.3) {A03};
+            \node[right=0pt of p, inner xsep=7pt] (d1) {-};
+            \node[right=0pt of d1] (b) {27};
+            \node[right=0pt of b, inner xsep=7pt] (d2) {-};
+            \node[right=0pt of d2] (e) {E};
+            \node[right=0pt of e, inner xsep=7pt] (d3) {-};
+            \node[right=0pt of d3] (c) {05};
+        \end{scope}
+        \begin{scope}[every node/.style={font=\scriptsize, text=black!60}, black!35, line width=0.4pt]
+            \node[above=6pt of p] (lp) {pasillo}; \draw (lp.south) -- (p.north);
+            \node[above=17pt of b] (lb) {bay}; \draw (lb.south) -- (b.north);
+            \node[above=6pt of e] (le) {estante}; \draw (le.south) -- (e.north);
+            \node[above=17pt of c] (lc) {compartimento}; \draw (lc.south) -- (c.north);
+        \end{scope}
+        \draw[-{Stealth}, naranja!80!black, line width=0.6pt] (c.south) -- (4.5,5.08);
+    \end{tikzpicture}
+    \caption{El bay A03-27 de $M$ visto de frente, dividido en estantes y compartimentos. Cada casilla es una ubicación, y su nombre se arma con el pasillo, el bay, el estante y el compartimento.}
+    \label{fig:bay}
+\end{figure}
+
+\end{document}

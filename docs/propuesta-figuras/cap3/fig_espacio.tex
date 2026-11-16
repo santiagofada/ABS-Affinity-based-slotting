@@ -1,0 +1,85 @@
+\documentclass{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+\usepackage{subcaption}
+\definecolor{azul}{HTML}{4C78A8}
+\definecolor{naranja}{HTML}{F58518}
+\pagestyle{empty}
+\begin{document}
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}{0.64\textwidth}
+        \centering
+        \begin{tikzpicture}[x=1cm, y=1cm, font=\scriptsize]
+            % corredores: frontal, transversal y del fondo
+            \fill[gray!12] (-1.0,-0.8) rectangle (7.6,-0.2);
+            \fill[gray!12] (0.3,1.98) rectangle (7.6,2.53);
+            \fill[gray!12] (0.3,4.75) rectangle (7.6,5.35);
+            % pasillos y bays
+            \foreach \a in {0,...,3} {
+                \pgfmathsetmacro{\cx}{2.0*\a+1.2}
+                \fill[gray!12] (\cx-0.3,-0.8) rectangle (\cx+0.3,5.35);
+                \foreach \j in {0,...,9} {
+                    \pgfmathsetmacro{\yy}{0.4*\j + (\j>4)*0.55}
+                    \draw[gray!60, fill=white] (\cx-0.7,\yy) rectangle (\cx-0.32,\yy+0.36);
+                    \draw[gray!60, fill=white] (\cx+0.32,\yy) rectangle (\cx+0.7,\yy+0.36);
+                }
+                \pgfmathtruncatemacro{\num}{\a+1}
+                \node at (\cx,5.65) {pasillo \num};
+            }
+            % grafo por el que se camina
+            \foreach \a in {0,...,3} {
+                \pgfmathsetmacro{\cx}{2.0*\a+1.2}
+                \draw[gray!55, densely dashed] (\cx,-0.5) -- (\cx,5.05);
+            }
+            \draw[gray!55, densely dashed] (-0.55,-0.5) -- (7.2,-0.5);
+            \draw[gray!55, densely dashed] (1.2,2.255) -- (7.2,2.255);
+            \draw[gray!55, densely dashed] (1.2,5.05) -- (7.2,5.05);
+            % dock
+            \fill[black!70] (-0.55,-0.5) circle (0.08);
+            \node[anchor=north] at (-0.55,-0.62) {\emph{dock}};
+            % dos bays y el camino mas corto entre ellos
+            \fill[naranja!45] (0.5,2.95) rectangle (0.88,3.31);
+            \draw[naranja!80!black, thick] (0.5,2.95) rectangle (0.88,3.31);
+            \fill[naranja!45] (7.52,3.35) rectangle (7.9,3.71);
+            \draw[naranja!80!black, thick] (7.52,3.35) rectangle (7.9,3.71);
+            \draw[azul, very thick, -{Stealth}] (1.2,3.13) -- (1.2,2.255) -- (7.2,2.255) -- (7.2,3.53);
+            \node[anchor=east] at (0.45,3.13) {A01-13};
+            \node[anchor=west] at (7.95,3.53) {A04-06};
+            % rotulos de los corredores
+            \node[anchor=west, align=left] at (7.65,-0.5) {corredor\\frontal};
+            \node[anchor=west, align=left] at (7.65,2.255) {pasillo\\transversal};
+            \node[anchor=west, align=left] at (7.65,5.05) {corredor\\del fondo};
+        \end{tikzpicture}
+        \caption{Plano esquemático}
+        \label{fig:espacio-plano}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \begin{tikzpicture}[x=0.55cm, y=0.55cm, font=\scriptsize]
+            \foreach \s [count=\i from 0] in {A,B,C,D,E} {
+                \node at (-0.7,\i+0.5) {\s};
+                \foreach \b in {1,...,6} {
+                    \draw[gray!70, fill=white] (\b-1,\i) rectangle (\b,\i+1);
+                }
+            }
+            \foreach \b in {1,...,6} { \node at (\b-0.5,-0.5) {\b}; }
+            \fill[naranja!45] (1,1) rectangle (2,2);
+            \draw[naranja!80!black, very thick] (1,1) rectangle (2,2);
+            \node at (3,-1.4) {compartimentos};
+            \node[rotate=90] at (-1.6,2.5) {estantes};
+            \node[align=center] at (3,6.2) {ubicación A03-07-B-02};
+            \draw[-{Stealth}, naranja!80!black] (3,5.75) -- (1.6,2.05);
+        \end{tikzpicture}
+        \caption{Un bay visto de frente}
+        \label{fig:espacio-bay}
+    \end{subfigure}
+    \caption{Esquema de un depósito de cuatro pasillos. En (a), cada rectángulo blanco es un bay, las franjas grises son los pasillos y corredores, la línea punteada es el grafo sobre el que se miden las distancias y la flecha es el camino más corto entre los dos bays marcados. En (b), cada casilla del bay es una ubicación.}
+    \label{fig:espacio}
+\end{figure}
+
+\end{document}

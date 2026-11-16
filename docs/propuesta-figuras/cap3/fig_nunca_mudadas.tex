@@ -1,0 +1,31 @@
+\documentclass{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\definecolor{azul}{HTML}{4C78A8}
+\pagestyle{empty}
+
+% SKU que todavia estan en la ubicacion que tenian el 1 de enero (ninguna mudanza hasta esa fecha), cada 7
+% dias y el primero de cada mes. Calculo en scratchpad v34/asignacion.py, asignacion.json.
+% Al 1 de abril: P 72,6% (1.255), M 50,8% (3.513), G 66,9% (16.649).
+
+\begin{document}
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[width=0.72\textwidth, height=5.4cm, xmin=0, xmax=181, ymin=0, ymax=100, xtick={0,31,59,90,120,151,181}, xticklabels={1 ene,1 feb,1 mar,1 abr,1 may,1 jun,1 jul}, ytick={0,25,50,75,100}, ylabel={\% de las SKU}, tick label style={font=\scriptsize}, label style={font=\scriptsize}, axis lines=left, legend style={font=\scriptsize, draw=none, at={(0.02,0.05)}, anchor=south west}, legend cell align=left, clip=false]
+            \addplot[azul!40, very thick] coordinates {(0,100.0) (7,97.7) (14,95.3) (21,92.8) (28,90.9) (31,89.9) (35,88.3) (42,85.5) (49,83.2) (56,81.6) (59,80.8) (63,80.0) (70,78.1) (77,76.2) (84,74.2) (90,72.6) (91,72.4) (98,71.4) (105,70.0) (112,68.5) (119,66.2) (120,66.0) (126,64.9) (133,63.5) (140,62.5) (147,61.4) (151,60.8) (154,60.0) (161,58.2) (168,57.0) (175,55.8) (181,54.9)};
+            \addplot[azul!75, very thick] coordinates {(0,100.0) (7,93.4) (14,87.3) (21,82.0) (28,77.5) (31,75.7) (35,73.4) (42,69.6) (49,66.4) (56,63.4) (59,61.8) (63,60.2) (70,57.3) (77,55.0) (84,52.9) (90,50.8) (91,50.6) (98,48.4) (105,46.5) (112,44.5) (119,43.0) (120,42.9) (126,41.7) (133,40.2) (140,38.6) (147,37.3) (151,36.6) (154,35.9) (161,34.5) (168,33.6) (175,32.5) (181,31.6)};
+            \addplot[azul!70!black, very thick] coordinates {(0,100.0) (7,96.4) (14,92.9) (21,90.0) (28,87.0) (31,86.0) (35,84.4) (42,81.9) (49,79.3) (56,77.0) (59,76.0) (63,74.8) (70,72.6) (77,70.6) (84,68.7) (90,66.9) (91,66.6) (98,64.8) (105,63.1) (112,61.5) (119,59.9) (120,59.6) (126,58.4) (133,56.9) (140,55.4) (147,54.1) (151,53.3) (154,52.8) (161,51.5) (168,50.3) (175,49.2) (181,48.2)};
+            \node[font=\scriptsize, anchor=west] at (axis cs:183,54.9) {$P$\enspace 54,9\,\% (948)};
+            \node[font=\scriptsize, anchor=west] at (axis cs:183,48.2) {$G$\enspace 48,2\,\% (12.003)};
+            \node[font=\scriptsize, anchor=west] at (axis cs:183,31.6) {$M$\enspace 31,6\,\% (2.184)};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{SKU que siguen en la ubicación que tenían al comenzar, en porcentaje del catálogo y, al final, también en cantidad, en los tres depósitos.}
+    \label{fig:nunca-mudadas}
+\end{figure}
+
+\end{document}
